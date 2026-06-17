@@ -1,0 +1,9 @@
+{
+  "name": "fittrack",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Personal weight-loss / muscle-gain tracker",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

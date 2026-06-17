@@ -90,6 +90,11 @@
   .btn.danger{background:transparent;color:var(--red);border:1px solid var(--line);box-shadow:none;}
   .chip{background:var(--card2);border:1px solid var(--line);color:var(--txt);padding:9px 13px;border-radius:12px;font-size:13px;font-weight:700;}
   .chip:active{transform:scale(.96);}
+  .chip.on{background:var(--grad);color:#04130e;border-color:transparent;}
+  .airow{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:14px;}
+  .aiconf{font-size:10px;font-weight:800;padding:3px 8px;border-radius:7px;text-transform:uppercase;letter-spacing:.04em;}
+  .spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(4,19,14,.3);border-top-color:#04130e;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;}
+  @keyframes sp{to{transform:rotate(360deg)}}
   input,select,textarea{font-family:inherit;background:var(--bg2);border:1px solid var(--line);
     color:var(--txt);border-radius:12px;padding:12px;font-size:15px;width:100%;outline:none;}
   input:focus,select:focus,textarea:focus{border-color:var(--accent);}
@@ -434,10 +439,17 @@
   <div class="sheet">
     <div class="grab"></div>
     <h3 style="font-size:18px;margin-bottom:14px">Add food</h3>
-    <div class="seg"><button id="segDb" class="on" onclick="foodTab('db')">Search</button><button id="segCustom" onclick="foodTab('custom')">Custom</button></div>
-    <div id="foodDb">
+    <div class="seg"><button id="segAi" class="on" onclick="foodTab('ai')">✨ AI estimate</button><button id="segDb" onclick="foodTab('db')">Search</button><button id="segCustom" onclick="foodTab('custom')">Custom</button></div>
+    <div id="foodAi">
+      <div class="small muted" style="margin-bottom:10px;line-height:1.5">Type <b>any</b> food or meal in plain English — a salmon bagel with cream cheese &amp; onion, a bowl of bolognese, a chicken shawarma. Claude estimates the calories &amp; macros.</div>
+      <textarea id="aiInput" rows="2" placeholder="e.g. large beef shawarma plate with rice and garlic sauce" style="margin-bottom:10px"></textarea>
+      <button class="btn" id="aiBtn" onclick="estimateAI()">Estimate with AI</button>
+      <div id="aiResult" style="margin-top:14px"></div>
+    </div>
+    <div id="foodDb" class="hide">
       <input id="foodSearch" placeholder="Search foods…" oninput="renderFoodOptions()" autocomplete="off">
-      <div id="foodOptions" style="margin-top:12px;max-height:46vh;overflow-y:auto"></div>
+      <div class="row" style="gap:8px;margin-top:10px"><button id="chipAll" class="chip on" onclick="setFoodScope('all')">All foods</button><button id="chipMtl" class="chip" onclick="setFoodScope('mtl')">📍 Montreal spots</button></div>
+      <div id="foodOptions" style="margin-top:12px;max-height:42vh;overflow-y:auto"></div>
     </div>
     <div id="foodCustom" class="hide">
       <div class="fld"><label>Food name</label><input id="cfName" placeholder="e.g. Chicken shawarma"></div>
@@ -548,7 +560,26 @@ const FOODS=[
   ['Beef burger (1)',540,28,40,30],['Pizza slice',285,12,36,10],['Falafel (4 pcs)',230,9,22,12],
   ['Hummus (2 tbsp)',70,2,6,5],['Dates (2)',120,1,32,0],['Coffee w/ milk',40,2,4,1.5],['Black coffee',2,0,0,0],
 ];
-let pendingFood=null;
+// Curated Montreal restaurant dishes (Mile End · Downtown · Griffintown · Old Port)
+const MTL=[
+  ["Smoked meat sandwich — Schwartz's",620,45,38,31],["Smoked meat platter — Schwartz's",540,60,6,31],["Liver brochette — Schwartz's",380,34,8,23],
+  ["Sesame bagel — St-Viateur",270,10,52,3],["Bagel w/ lox & cream cheese — St-Viateur",520,26,56,22],["Poppyseed bagel — Fairmount",280,11,53,4],
+  ["The Special (salami & bologna) — Wilensky's",480,19,34,30],["Cheese latke & egg breakfast — Beautys",640,24,55,36],["Mish-Mash omelette — Beautys",580,32,14,44],
+  ["Breakfast sandwich — Larrys",560,24,38,34],["Whole grilled sea bass — Milos",460,62,4,22],["Fried zucchini & eggplant — Milos",420,9,34,28],
+  ["Garam masala cauliflower — Sparrow",330,8,30,21],["Falafel pita — Falafel Yoni",540,18,62,25],
+  ["Roast pork & clams — Nora Gray",610,48,12,40],["Lobster ravioli — Nora Gray",720,32,58,40],["Snow crab agnolotti — Nora Gray",650,28,54,36],
+  ["Beef carpaccio — Nora Gray",340,24,6,24],["Burrata — Nora Gray",430,18,14,34],["Flambé pasta — Le Richmond",780,26,78,40],
+  ["Meat lasagna — Le Richmond",720,38,56,38],["Avocado French toast — Le Richmond",620,16,62,36],["Dany pizza (spicy honey) — Elena",820,30,86,38],
+  ["Pepperoni pizza (NY style) — Elena",850,32,84,42],
+  ["Classic poutine — La Banquise",1010,27,92,60],["Elvis poutine — La Banquise",1320,45,98,82],["T-Rex poutine — La Banquise",1580,62,96,100],
+  ["Grilled lamb chops — Ferreira Café",640,52,8,44],["Cataplana seafood stew — Ferreira Café",560,48,26,28],["Prime rib 12oz — The Keg",880,70,4,64],
+  ["Bacon-wrapped filet — The Keg",620,56,3,42],["Mezzmich sandwich — Mezzmiz",620,28,60,30],["Roast veg & ricotta — Bouillon Bilk",480,16,42,28],
+  ["Cubano sandwich — Olive et Gourmando",720,38,56,38],["Almond croissant — Olive et Gourmando",480,10,44,30],["Cheese wheel pasta — Jacopo",920,30,90,48],
+  ["Calamari fritti — Jacopo",560,28,38,34],["Tiramisu — Jacopo",480,8,46,30],["Peruvian ceviche — Barranco",320,34,26,8],
+  ["Tiradito — Tiradito",290,28,14,14],["Filet mignon 8oz — Gibbys",560,52,4,38],["Monte Carlo potatoes — Gibbys",420,8,38,27],
+  ["Rack of lamb — Modavie",680,50,12,48],["Jambon beurre — La Cave à Manger",560,24,52,28],["Crème brûlée — Vieux-Port Steakhouse",420,6,38,28],
+];
+let pendingFood=null, foodScope='all';
 
 /* ========================= ACHIEVEMENTS ========================= */
 const ACH=[
@@ -779,15 +810,17 @@ function renderFoodList(elId){const d=day(),el=document.getElementById(elId);if(
   if(!d.foods.length){el.innerHTML='<div class="small dim" style="padding:8px 0">Nothing logged'+(isToday()?' yet today':'')+'.</div>';return;}
   el.innerHTML=d.foods.map((x,i)=>`<div class="frow"><div><div class="nm">${x.name}</div><div class="sub">P ${Math.round(x.p)} · C ${Math.round(x.c)} · F ${Math.round(x.f)}${x.qty&&x.qty!=1?' · ×'+x.qty:''}</div></div><div class="row" style="gap:6px"><div class="kc">${Math.round(x.kcal)}</div><button class="del" onclick="delFood(${i})">×</button></div></div>`).join('');}
 function delFood(i){day().foods.splice(i,1);save();refresh();}
-function openFood(){foodTab('db');document.getElementById('foodSearch').value='';renderFoodOptions();openModal('foodModal');}
-function foodTab(t){document.getElementById('segDb').classList.toggle('on',t==='db');document.getElementById('segCustom').classList.toggle('on',t==='custom');
-  document.getElementById('foodDb').classList.toggle('hide',t!=='db');document.getElementById('foodCustom').classList.toggle('hide',t!=='custom');}
+function openFood(){foodTab('ai');document.getElementById('foodSearch').value='';document.getElementById('aiInput').value='';document.getElementById('aiResult').innerHTML='';setFoodScope('all');openModal('foodModal');}
+function foodTab(t){['ai','db','custom'].forEach(k=>{document.getElementById('seg'+k[0].toUpperCase()+k.slice(1)).classList.toggle('on',t===k);
+  document.getElementById('food'+k[0].toUpperCase()+k.slice(1)).classList.toggle('hide',t!==k);});}
+function setFoodScope(s){foodScope=s;document.getElementById('chipAll').classList.toggle('on',s==='all');document.getElementById('chipMtl').classList.toggle('on',s==='mtl');renderFoodOptions();}
+let _curList=[];
 function renderFoodOptions(){const q=(document.getElementById('foodSearch').value||'').toLowerCase();
-  const list=FOODS.filter(f=>f[0].toLowerCase().includes(q));
-  document.getElementById('foodOptions').innerHTML=list.map(f=>{const idx=FOODS.indexOf(f);
-    return `<div class="foodopt" onclick="pickFood(${idx})"><div><div class="nm" style="font-size:14px;font-weight:700">${f[0]}</div><div class="sub" style="font-size:11px;color:var(--mut)">P ${f[2]} · C ${f[3]} · F ${f[4]}</div></div><div style="font-weight:800">${f[1]}<span class="xs dim"> kcal</span></div></div>`;
-  }).join('')||'<div class="small dim">No match — add it as custom.</div>';}
-function pickFood(idx){const f=FOODS[idx];pendingFood={name:f[0].replace(/\s*\([^)]*\)/,''),kcal:f[1],p:f[2],c:f[3],f:f[4]};
+  _curList=(foodScope==='mtl'?MTL:FOODS).filter(f=>f[0].toLowerCase().includes(q));
+  document.getElementById('foodOptions').innerHTML=_curList.map((f,idx)=>
+    `<div class="foodopt" onclick="pickFood(${idx})"><div><div class="nm" style="font-size:14px;font-weight:700">${f[0]}</div><div class="sub" style="font-size:11px;color:var(--mut)">P ${f[2]} · C ${f[3]} · F ${f[4]}</div></div><div style="font-weight:800">${f[1]}<span class="xs dim"> kcal</span></div></div>`
+  ).join('')||'<div class="small dim">No match — try ✨ AI estimate, or add as custom.</div>';}
+function pickFood(idx){const f=_curList[idx];pendingFood={name:f[0].replace(/\s*\([^)]*\)/,''),kcal:f[1],p:f[2],c:f[3],f:f[4]};
   document.getElementById('qtyName').textContent=pendingFood.name;
   document.getElementById('qtyBase').textContent='Per serving: '+f[1]+' kcal · P'+f[2]+' C'+f[3]+' F'+f[4];
   document.getElementById('qtyVal').value=1;updateQty();closeModal('foodModal');openModal('qtyModal');}
@@ -803,6 +836,31 @@ function addCustomFood(){const n=document.getElementById('cfName').value.trim();
   if(!n||!kc){toast('Add a name and calories');return;}
   day().foods.push({name:n,kcal:kc,p:parseFloat(document.getElementById('cfP').value)||0,c:parseFloat(document.getElementById('cfC').value)||0,f:parseFloat(document.getElementById('cfF').value)||0,qty:1});
   save();['cfName','cfKcal','cfP','cfC','cfF'].forEach(id=>document.getElementById(id).value='');closeModal('foodModal');refresh();checkNewAch();toast('Added '+n);}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+let aiPending=null;
+async function estimateAI(){
+  const desc=document.getElementById('aiInput').value.trim();if(!desc){toast('Type a food first');return;}
+  const btn=document.getElementById('aiBtn'),res=document.getElementById('aiResult');
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span> Estimating…';res.innerHTML='';aiPending=null;
+  try{
+    const r=await fetch('/api/estimate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({description:desc})});
+    const data=await r.json();
+    if(!r.ok)throw new Error(data.code==='NO_KEY'?'AI estimator isn\'t set up on the server yet (missing API key).':(data.error||'Could not estimate.'));
+    aiPending={name:data.food||desc,kcal:Math.round(data.kcal),p:Math.round(data.protein),c:Math.round(data.carbs),f:Math.round(data.fat)};
+    const cc={low:'var(--amber)',medium:'var(--blue)',high:'var(--accent)'}[data.confidence]||'var(--mut)';
+    res.innerHTML=`<div class="airow fadein"><div class="row between"><div class="nm" style="font-size:15px;font-weight:800">${esc(aiPending.name)}</div><span class="aiconf" style="background:${cc}22;color:${cc};border:1px solid ${cc}55">${data.confidence||''}</span></div>
+      <div class="grid4" style="margin-top:12px">
+        <div class="stat" style="text-align:center"><div class="v">${aiPending.kcal}</div><div class="l">kcal</div></div>
+        <div class="stat" style="text-align:center"><div class="v">${aiPending.p}g</div><div class="l">protein</div></div>
+        <div class="stat" style="text-align:center"><div class="v">${aiPending.c}g</div><div class="l">carbs</div></div>
+        <div class="stat" style="text-align:center"><div class="v">${aiPending.f}g</div><div class="l">fat</div></div></div>
+      ${data.assumptions?`<div class="xs muted" style="margin-top:10px;line-height:1.5">📌 ${esc(data.assumptions)}</div>`:''}
+      <button class="btn" style="margin-top:12px" onclick="addAIFood()">Add to ${dateLabel(viewKey).toLowerCase()}</button>
+      <div class="xs dim" style="text-align:center;margin-top:8px">AI estimate — tweak via Custom if your portion differs.</div></div>`;
+  }catch(e){res.innerHTML=`<div class="airow"><div class="small" style="color:var(--amber);line-height:1.5">${esc(e.message)}</div></div>`;}
+  finally{btn.disabled=false;btn.textContent='Estimate with AI';}
+}
+function addAIFood(){if(!aiPending)return;day().foods.push({name:aiPending.name,kcal:aiPending.kcal,p:aiPending.p,c:aiPending.c,f:aiPending.f,qty:1});save();closeModal('foodModal');refresh();checkNewAch();toast('Added '+aiPending.name);}
 
 /* ========================= WEIGHT ========================= */
 function openWeight(){document.getElementById('wForDate').textContent=dateLabel(viewKey).toLowerCase();

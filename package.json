@@ -1,9 +1,12 @@
 {
   "name": "fittrack",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Personal weight-loss / muscle-gain tracker",
   "scripts": {
     "start": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.104.2"
   }
 }

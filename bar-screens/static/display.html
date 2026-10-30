@@ -229,7 +229,7 @@
         bus = gameBus();
         channel = window.BarGames.create(slide.conf && slide.conf.game, canvas, W, H, { bus, barName: slide.barName });
       } else if (window.BarChannels) {
-        channel = window.BarChannels.create(slide.channel, canvas, W, H, { conf: slide.conf, barName: slide.barName });
+        channel = window.BarChannels.create(slide.channel, canvas, W, H, { conf: slide.conf, barName: slide.barName, side: slide.side });
       }
       layer._cleanup = () => { if (channel) channel.stop(); if (bus) bus.release(); };
       requestAnimationFrame(onReady);
@@ -555,7 +555,10 @@
       const live = state.live[screen.id] || {};
       let slide = state.slides.find((s) => s.id === (soloSlide || live.slide)) || null;
       if (!soloSlide && !live.slide && live.channel) {
-        slide = { type: 'channel', channel: live.channel, conf: (state.channels || {})[live.channel], barName: state.settings.barName };
+        // With two walls in use, the first is the left of the pair and the second the right.
+        const inUse = state.screens.filter((s) => s.enabled).map((s) => s.id);
+        const side = inUse.length > 1 ? (screen.id === inUse[0] ? 'left' : 'right') : '';
+        slide = { type: 'channel', channel: live.channel, conf: (state.channels || {})[live.channel], barName: state.settings.barName, side };
       }
       const mirror = state.mirror, st = state.settings;
       if (!soloSlide && mirror && mirror.live && (st.mirrorScreen === 'all' || st.mirrorScreen === screen.id)) {

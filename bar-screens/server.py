@@ -60,7 +60,7 @@ NEWS_FEEDS = {
     "entertainment": ("https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml", "Entertainment"),
     "sport": ("https://feeds.bbci.co.uk/sport/rss.xml", "Sport"),
 }
-VISUAL_STYLES = ["mix", "skyline", "deco", "lift", "clockface", "fans", "bubbles"]
+VISUAL_STYLES = ["mix", "botanical", "deco", "lift", "clockface", "skyline", "bubbles", "fans"]
 GAMES = [["breaker", "Brick Breaker"], ["duel", "Deco Duel"], ["snake", "Serpentine"], ["quickdraw", "Quick Draw"]]
 
 for ext, ctype in ((".webp", "image/webp"), (".avif", "image/avif"), (".mp4", "video/mp4"),
@@ -179,7 +179,7 @@ def default_state():
     return {
         "settings": {"brightness": 100, "blackout": False, "testPattern": True, "barName": "THE BASEMENT",
                      "mirrorScreen": "all", "mirrorFit": "contain"},
-        "screens": [default_screen("s1", "Screen 1", True), default_screen("s2", "Screen 2", False)],
+        "screens": [default_screen("s1", "Left screen", True), default_screen("s2", "Right screen", False)],
         "slides": [],
         "channels": default_channels(),
     }

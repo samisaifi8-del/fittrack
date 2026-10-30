@@ -671,7 +671,91 @@
     tracking(ctx, 0);
   }
 
+  // One banana leaf: a stem, then a long blade along a gently curving midrib, with parallel veins
+  // and the odd tear in its edge. Back leaves are dimmer; each one fills dark so leaves behind it
+  // don't show through.
+  function drawLeaf(ctx, L, t, s) {
+    const sway = Math.sin(t * 0.22 + L.phase) * 0.035;
+    const bend = L.bend + Math.sin(t * 0.16 + L.phase * 1.3) * 0.04;
+    const N = 60, step = L.len / N, start = 0.16;
+    const pts = [];
+    let x = L.bx, y = L.by;
+    for (let i = 0; i <= N; i++) {
+      const u = i / N;
+      const ang = L.angle + sway + bend * u * u;
+      pts.push({ x, y, ang, u });
+      x += Math.sin(ang) * step;
+      y -= Math.cos(ang) * step;
+    }
+    const halfWidth = (p, side) => {
+      if (p.u < start) return 0;
+      const v = (p.u - start) / (1 - start);
+      let w = L.width * Math.pow(Math.sin(Math.PI * Math.min(1, v)), 0.6);
+      for (const tear of L.tears) if (tear.side === side) w *= 1 - 0.8 * Math.exp(-(((v - tear.at) / 0.014) ** 2));
+      return w;
+    };
+    const edge = (p, side) => {
+      const w = halfWidth(p, side) * side;
+      return [p.x + Math.cos(p.ang) * w, p.y + Math.sin(p.ang) * w];
+    };
+    const blade = pts.filter((p) => p.u >= start);
+    const lw = hair(s);
+    const a = 0.3 + L.depth * 0.55;
+    ctx.beginPath();
+    blade.forEach((p, i) => { const [ex, ey] = edge(p, 1); if (i) ctx.lineTo(ex, ey); else ctx.moveTo(ex, ey); });
+    for (let i = blade.length - 1; i >= 0; i--) { const [ex, ey] = edge(blade[i], -1); ctx.lineTo(ex, ey); }
+    ctx.closePath();
+    ctx.fillStyle = `rgba(6, 18, 12, ${0.75 + L.depth * 0.2})`;
+    ctx.fill();
+    ctx.strokeStyle = rgba(GOLD, a);
+    ctx.lineWidth = lw;
+    ctx.stroke();
+    ctx.strokeStyle = rgba(GOLD, a * 0.35);
+    for (let i = 3; i < blade.length - 3; i += 2) {
+      const p = blade[i], q = blade[Math.min(blade.length - 1, i + 3)];
+      for (const side of [1, -1]) {
+        const [ex, ey] = edge(q, side);
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(ex, ey); ctx.stroke();
+      }
+    }
+    ctx.strokeStyle = rgba(GOLD, Math.min(1, a + 0.15));
+    ctx.lineWidth = lw * 1.5;
+    ctx.beginPath();
+    pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+    ctx.stroke();
+  }
+
   const EFFECTS = {
+    // Banana leaves in fine gold line, after the wallpaper through the house, swaying slowly.
+    botanical(W, H) {
+      const s = Math.min(W, H);
+      const rand = rng(Math.round(W * 13 + H * 7));
+      const leaves = Array.from({ length: 8 }, (_, i) => {
+        const fromLeft = i % 2 === 0;
+        return {
+          bx: W * (fromLeft ? -0.08 + rand() * 0.4 : 0.68 + rand() * 0.4),
+          by: H * (1.02 + rand() * 0.06),
+          angle: (fromLeft ? 1 : -1) * (0.1 + rand() * 0.45),
+          len: H * (0.6 + rand() * 0.45),
+          width: s * (0.13 + rand() * 0.08),
+          bend: (fromLeft ? 1 : -1) * (0.2 + rand() * 0.3),
+          phase: rand() * 6.28,
+          depth: i / 7,
+          tears: Array.from({ length: 2 + ((rand() * 4) | 0) }, () => ({ at: 0.2 + rand() * 0.65, side: rand() < 0.5 ? 1 : -1 })),
+        };
+      });
+      return (ctx, t) => {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, W, H);
+        for (const L of leaves) drawLeaf(ctx, L, t, s);
+        const g = ctx.createLinearGradient(0, 0, 0, H * 0.45);
+        g.addColorStop(0, 'rgba(0,0,0,0.9)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H * 0.45);
+      };
+    },
+
     // The bar's sign: a monogram inside a stepped deco archway, the name underneath.
     deco(W, H, opts) {
       const name = (opts.barName || 'THE BASEMENT').toUpperCase();
@@ -965,7 +1049,10 @@
       };
     },
   };
-  const MIX = ['deco', 'lift', 'clockface', 'skyline', 'bubbles', 'fans'];
+  const MIX = ['deco', 'botanical', 'lift', 'clockface', 'skyline', 'bubbles', 'fans'];
+  // Artwork without words is mirrored on the right-hand screen, so a pair frames whatever sits
+  // between them.
+  const MIRRORED = ['botanical', 'skyline', 'fans', 'bubbles'];
 
   function visuals(canvas, W, H, opts) {
     const ctx = canvas.getContext('2d');
@@ -974,7 +1061,16 @@
     const stop = animate((t) => {
       const want = style === 'mix' ? MIX[Math.floor(t / 60) % MIX.length] : style;
       if (want !== current) { current = want; draw = EFFECTS[want](W, H, opts); since = t; }
-      draw(ctx, t);
+      if (opts.side === 'right' && MIRRORED.includes(current)) {
+        ctx.save();
+        ctx.translate(W, 0);
+        ctx.scale(-1, 1);
+        draw(ctx, t);
+        ctx.restore();
+      } else {
+        draw(ctx, t);
+      }
+      if (current === 'botanical') frame(ctx, W, H);
       const fade = 1 - (t - since) / 2;
       if (fade > 0) { ctx.fillStyle = `rgba(0,0,0,${fade})`; ctx.fillRect(0, 0, W, H); }
     }, 30);

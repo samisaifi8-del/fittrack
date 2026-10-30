@@ -170,7 +170,14 @@
     layer.className = 'layer';
     layer.style.background = slide.bg || '#000000';
     layer._cleanup = () => {};
-    if (slide.type === 'image' || slide.type === 'video') {
+    if (slide.type === 'image' && !/\.gif$/i.test(slide.file || '')) {
+      const canvas = document.createElement('canvas');
+      layer.appendChild(canvas);
+      const img = new Image();
+      img.onload = () => { drawPhoto(canvas, img, slide, W, H); onReady(); };
+      img.onerror = onReady;
+      img.src = '/media/' + encodeURIComponent(slide.file || '');
+    } else if (slide.type === 'image' || slide.type === 'video') {
       const el = document.createElement(slide.type === 'image' ? 'img' : 'video');
       el.style.objectFit = slide.fit || 'cover';
       el.style.objectPosition = `${slide.posX ?? 50}% ${slide.posY ?? 50}%`;
@@ -265,6 +272,59 @@
       },
     };
     return sharedBus;
+  }
+
+  // Photos are redrawn at the wall's exact pixel size: halved step by step (one big jump from a
+  // 4000-pixel photo is what makes edges jagged), placed using the item's fit and crop, then
+  // lightly sharpened. The TB6 gets a pixel-perfect picture with nothing left to rescale.
+  function drawPhoto(canvas, img, slide, W, H) {
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = slide.bg || '#000000';
+    ctx.fillRect(0, 0, W, H);
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    if (!iw || !ih) return;
+    let dw = W, dh = H;
+    if (slide.fit !== 'fill') {
+      const k = slide.fit === 'contain' ? Math.min(W / iw, H / ih) : Math.max(W / iw, H / ih);
+      dw = iw * k;
+      dh = ih * k;
+    }
+    const dx = Math.round(((W - dw) * (slide.posX ?? 50)) / 100);
+    const dy = Math.round(((H - dh) * (slide.posY ?? 50)) / 100);
+    let src = img, sw = iw, sh = ih;
+    while (sw / 2 >= dw && sh / 2 >= dh) {
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(sw / 2));
+      c.height = Math.max(1, Math.round(sh / 2));
+      const x = c.getContext('2d');
+      x.imageSmoothingEnabled = true;
+      x.imageSmoothingQuality = 'high';
+      x.drawImage(src, 0, 0, sw, sh, 0, 0, c.width, c.height);
+      src = c; sw = c.width; sh = c.height;
+    }
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, 0, 0, sw, sh, dx, dy, dw, dh);
+    if (iw > dw * 1.5) {
+      const x0 = Math.max(0, dx), y0 = Math.max(0, dy);
+      sharpen(ctx, x0, y0, Math.min(W, Math.floor(dx + dw)) - x0, Math.min(H, Math.floor(dy + dh)) - y0, 0.22);
+    }
+  }
+
+  function sharpen(ctx, x, y, w, h, amount) {
+    if (w < 3 || h < 3) return;
+    const img = ctx.getImageData(x, y, w, h), d = img.data, src = new Uint8ClampedArray(d), row = w * 4;
+    for (let yy = 1; yy < h - 1; yy++) {
+      for (let xx = 1; xx < w - 1; xx++) {
+        const i = yy * row + xx * 4;
+        for (let k = 0; k < 3; k++) {
+          d[i + k] = src[i + k] * (1 + 4 * amount) - amount * (src[i - row + k] + src[i + row + k] + src[i - 4 + k] + src[i + 4 + k]);
+        }
+      }
+    }
+    ctx.putImageData(img, x, y);
   }
 
   function retire(layer) {

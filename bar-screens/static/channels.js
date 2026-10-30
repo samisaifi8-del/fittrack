@@ -6,10 +6,10 @@
   'use strict';
 
   // Champagne gold, ivory and black, with one jewel tone per channel.
-  const GOLD = '#d4b06a';
-  const GOLD_LIGHT = '#fbe7b0';
-  const GOLD_DARK = '#7d5f27';
-  const IVORY = '#f4ecd8';
+  const GOLD = '#c5a467';
+  const GOLD_LIGHT = '#e4d2a6';
+  const GOLD_DARK = '#7a6238';
+  const IVORY = '#efe6d2';
   const THEMES = {
     rotation: { n: 1, name: 'THE BAR', accent: '#e9c46a' },  // gold
     scores: { n: 2, name: 'SCORES', accent: '#2fd39a' },      // emerald
@@ -99,18 +99,9 @@
     ctx.restore();
   }
 
-  // Metallic gold, like foil catching the light. `shine` (0-1) slides the bright band across.
-  function gold(ctx, x0, y0, x1, y1, shine) {
-    const g = ctx.createLinearGradient(x0, y0, x1, y1);
-    const sh = shine == null ? 0.42 : shine;
-    const at = (p) => Math.min(1, Math.max(0, p));
-    g.addColorStop(0, GOLD_DARK);
-    g.addColorStop(at(sh - 0.24), GOLD);
-    g.addColorStop(at(sh), '#fff6da');
-    g.addColorStop(at(sh + 0.1), '#e6c886');
-    g.addColorStop(at(sh + 0.36), '#9a7633');
-    g.addColorStop(1, GOLD_DARK);
-    return g;
+  // Gold is always flat champagne: no shine, no gradient.
+  function gold() {
+    return GOLD;
   }
 
   function tracking(ctx, px) {
@@ -218,8 +209,8 @@
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = color;
-    ctx.font = font('Limelight', fitSize(ctx, text, 'Limelight', size * 0.6, size * 0.56));
-    glow(ctx, color, size * 0.25, () => ctx.fillText(text, x + size / 2, y + size / 2 + size * 0.03));
+    ctx.font = font('Poiret One', fitSize(ctx, text, 'Poiret One', size * 0.6, size * 0.6));
+    ctx.fillText(text, x + size / 2, y + size / 2 + size * 0.03);
   }
 
   // Seeded random numbers, so a wall always gets the same city.
@@ -368,8 +359,9 @@
     const room = W - nx - cw - pad * 2;
     ctx.textAlign = 'left';
     tracking(ctx, s * 0.006);
-    const nameSize = fitSize(ctx, theme.name, 'Limelight', room * (label ? 0.62 : 1), bs * 0.56);
-    ctx.font = font('Limelight', nameSize);
+    tracking(ctx, s * 0.01);
+    const nameSize = fitSize(ctx, theme.name, 'Josefin Sans', room * (label ? 0.62 : 1), bs * 0.5);
+    ctx.font = font('Josefin Sans', nameSize);
     ctx.fillStyle = IVORY;
     ctx.fillText(theme.name, nx, midY);
     if (label) {
@@ -386,8 +378,8 @@
 
   function message(ctx, W, top, H, text, color) {
     const pad = Math.round(W * 0.08);
-    const box = fitWrapped(ctx, text, 'Bebas Neue', W - pad * 2, (H - top) * 0.5, 3, 1.05);
-    ctx.font = font('Bebas Neue', box.size);
+    const box = fitWrapped(ctx, text, 'Josefin Sans', W - pad * 2, (H - top) * 0.5, 3, 1.05);
+    ctx.font = font('Josefin Sans', box.size);
     ctx.fillStyle = color;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -486,12 +478,12 @@
       ctx.textAlign = 'left';
       ctx.fillStyle = theme.accent;
       const partText = page.of > 1 ? `${page.part}/${page.of}` : '';
-      ctx.font = font('Barlow Condensed', titleH * 0.6);
+      ctx.font = font('Barlow Medium', titleH * 0.6);
       const partW = partText ? ctx.measureText(partText).width + pad : 0;
-      ctx.font = font('Bebas Neue', fitSize(ctx, page.name.toUpperCase(), 'Bebas Neue', W - pad * 2 - partW, titleH * 0.85));
+      ctx.font = font('Josefin Sans', fitSize(ctx, page.name.toUpperCase(), 'Josefin Sans', W - pad * 2 - partW, titleH * 0.85));
       ctx.fillText(page.name.toUpperCase(), pad, y + titleH / 2);
       if (partText) {
-        ctx.font = font('Barlow Condensed', titleH * 0.6);
+        ctx.font = font('Barlow Medium', titleH * 0.6);
         ctx.fillStyle = '#8a93a3';
         ctx.textAlign = 'right';
         ctx.fillText(partText, W - pad, y + titleH / 2);
@@ -518,7 +510,7 @@
         ctx.fillRect(pad + teamsW - chipW, ry + 1, chipW, rowH - 2);
         const cy = ry + rowH / 2 + 1;
         const live = m.state === 'in';
-        ctx.font = font('Barlow Condensed', size);
+        ctx.font = font('Barlow Medium', size);
         ctx.fillStyle = IVORY;
         ctx.textAlign = 'left';
         ctx.fillText(m.home.abbr, pad + chipW * 2, cy);
@@ -526,12 +518,11 @@
         ctx.fillText(m.away.abbr, pad + teamsW - chipW * 2, cy);
         ctx.textAlign = 'center';
         const score = m.state === 'pre' ? 'v' : `${m.home.score}-${m.away.score}`;
-        ctx.font = font('Anton', size * 0.95);
-        ctx.fillStyle = live ? theme.accent : '#ffffff';
-        if (live) glow(ctx, theme.accent, rowH * 0.25, () => ctx.fillText(score, pad + teamsW / 2, cy));
-        else ctx.fillText(score, pad + teamsW / 2, cy);
+        ctx.font = font('Josefin Sans', size * 0.85);
+        ctx.fillStyle = live ? theme.accent : IVORY;
+        ctx.fillText(score, pad + teamsW / 2, cy);
         const status = m.state === 'pre' ? kickoff(m.date) : (m.detail || m.clock || '').toUpperCase();
-        ctx.font = font('Barlow Condensed', fitSize(ctx, status, 'Barlow Condensed', statusW - pad * 1.5, size * 0.85));
+        ctx.font = font('Barlow Medium', fitSize(ctx, status, 'Barlow Medium', statusW - pad * 1.5, size * 0.85));
         ctx.textAlign = 'right';
         ctx.fillStyle = live ? '#ff3b3b' : m.state === 'post' ? '#8a93a3' : '#d6dbe3';
         ctx.fillText(status, W - pad, cy);
@@ -558,10 +549,10 @@
       const text = `${(payload.source || '').toUpperCase()}  •  ` + items.map((i) => i.title).join('   •   ') + '   •   ';
       const c = document.createElement('canvas');
       const m = c.getContext('2d');
-      m.font = font('Barlow Condensed', h * 0.62);
+      m.font = font('Barlow Medium', h * 0.62);
       c.width = Math.min(30000, Math.ceil(m.measureText(text).width));
       c.height = h;
-      m.font = font('Barlow Condensed', h * 0.62);
+      m.font = font('Barlow Medium', h * 0.62);
       m.textBaseline = 'middle';
       m.fillStyle = '#ffffff';
       m.fillText(text, 0, h / 2 + 1);
@@ -582,8 +573,8 @@
       const bodyTop = hh + pad;
       const bodyH = H - hh - tickH - pad * 2.5;
       const headline = items[index].title;
-      const box = fitWrapped(ctx, headline, 'Barlow Condensed', W - pad * 2, bodyH * 0.86, 5, 1.08);
-      ctx.font = font('Barlow Condensed', box.size);
+      const box = fitWrapped(ctx, headline, 'Barlow Medium', W - pad * 2, bodyH * 0.86, 5, 1.08);
+      ctx.font = font('Barlow Medium', box.size);
       ctx.textBaseline = 'top';
       ctx.textAlign = 'left';
       const blockH = box.lines.length * box.size * 1.08;
@@ -598,7 +589,7 @@
       ctx.restore();
       if (reveal < 1) {
         ctx.fillStyle = theme.accent;
-        glow(ctx, theme.accent, pad, () => ctx.fillRect(pad + (W - pad) * reveal, y0, Math.max(2, pad * 0.25), blockH));
+        ctx.fillRect(pad + (W - pad) * reveal, y0, Math.max(1, Math.round(pad * 0.12)), blockH);
       }
       // time until the next headline
       const lineY = Math.min(H - tickH - pad, y0 + blockH + pad * 0.6);
@@ -626,7 +617,7 @@
       ctx.fillStyle = '#000000';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font = font('Bebas Neue', fitSize(ctx, 'LATEST', 'Bebas Neue', labelW * 0.85, tickH * 0.8));
+      ctx.font = font('Josefin Sans', fitSize(ctx, 'LATEST', 'Josefin Sans', labelW * 0.85, tickH * 0.8));
       ctx.fillText('LATEST', labelW / 2, ty + tickH / 2 + 1);
     }, 30);
     return { stop() { stop(); stopFeed(); } };
@@ -769,15 +760,15 @@
       ctx.textAlign = 'left';
       ctx.textBaseline = 'alphabetic';
       ctx.fillStyle = IVORY;
-      const tempSize = fitSize(ctx, temp, 'Anton', tw, nowH * 0.58);
-      ctx.font = font('Anton', tempSize);
-      glow(ctx, rgba(theme.accent, 0.8), tempSize * 0.15, () => ctx.fillText(temp, tx, top + nowH * 0.58));
+      const tempSize = fitSize(ctx, temp, 'Josefin Light', tw, nowH * 0.58);
+      ctx.font = font('Josefin Light', tempSize);
+      ctx.fillText(temp, tx, top + nowH * 0.58);
       ctx.fillStyle = theme.accent;
-      ctx.font = font('Bebas Neue', fitSize(ctx, desc.toUpperCase(), 'Bebas Neue', tw, nowH * 0.2));
+      ctx.font = font('Josefin Sans', fitSize(ctx, desc.toUpperCase(), 'Josefin Sans', tw, nowH * 0.2));
       ctx.fillText(desc.toUpperCase(), tx, top + nowH * 0.8);
       const extra = `FEELS ${Math.round(now.feels)}°  ·  WIND ${Math.round(now.wind)} MPH`;
       ctx.fillStyle = '#9aa4b5';
-      ctx.font = font('Barlow Condensed', fitSize(ctx, extra, 'Barlow Condensed', tw, nowH * 0.14));
+      ctx.font = font('Barlow Medium', fitSize(ctx, extra, 'Barlow Medium', tw, nowH * 0.14));
       ctx.fillText(extra, tx, top + nowH * 0.97);
 
       // forecast: alternates between the next few hours and the next few days
@@ -801,12 +792,12 @@
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#9aa4b5';
-        ctx.font = font('Barlow Condensed', fitSize(ctx, name, 'Barlow Condensed', cw * 0.9, fh * 0.2));
+        ctx.font = font('Barlow Medium', fitSize(ctx, name, 'Barlow Medium', cw * 0.9, fh * 0.2));
         ctx.fillText(name, cx, fy + fh * 0.16);
         weatherIcon(ctx, wx(f.code)[1], cx, fy + fh * 0.48, Math.min(cw * 0.8, fh * 0.42), t + i, true);
         const temps = showDays ? `${Math.round(f.max)}° ${Math.round(f.min)}°` : `${Math.round(f.temp)}°`;
         ctx.fillStyle = IVORY;
-        ctx.font = font('Barlow Condensed', fitSize(ctx, temps, 'Barlow Condensed', cw * 0.9, fh * 0.22));
+        ctx.font = font('Barlow Medium', fitSize(ctx, temps, 'Barlow Medium', cw * 0.9, fh * 0.22));
         ctx.fillText(temps, cx, fy + fh * 0.84);
       });
     }, 24);
@@ -851,95 +842,6 @@
   }
 
   const EFFECTS = {
-    plasma(W, H) {
-      const lr = lowRes(W, H, 200);
-      const pal = palette([[0, '#000000'], [0.3, '#3a2a06'], [0.5, '#d9b25b'], [0.6, '#fff1c2'], [0.7, '#1b8f6a'], [0.85, '#0a2a3a'], [1, '#000000']]);
-      return (ctx, t) => {
-        const { w, h, px } = lr;
-        for (let y = 0; y < h; y++) {
-          const v1 = Math.sin(y * 0.09 + t * 1.1);
-          for (let x = 0; x < w; x++) {
-            const v = v1 + Math.sin(x * 0.07 - t * 0.8) + Math.sin((x + y) * 0.05 + t * 0.6) +
-              Math.sin(Math.sqrt((x - w / 2) ** 2 + (y - h / 2) ** 2) * 0.12 - t * 1.5);
-            px[y * w + x] = pal[((v + 4) * 32 + t * 40) & 255];
-          }
-        }
-        blitUp(ctx, lr, W, H);
-      };
-    },
-
-    fire(W, H) {
-      const lr = lowRes(W, H, 140);
-      const { w, h } = lr;
-      const heat = new Float32Array(w * (h + 1));
-      const decay = 2 / (h * 0.75);
-      const pal = palette([[0, '#000000'], [0.25, '#4a0000'], [0.5, '#d01800'], [0.7, '#ff7a00'], [0.88, '#ffd24a'], [1, '#fff8e0']]);
-      return (ctx) => {
-        for (let x = 0; x < w; x++) heat[h * w + x] = 0.85 + Math.random() * 0.15;
-        // Each cell drifts up a row with a little sideways jitter and cools, which makes flame tongues.
-        for (let y = 1; y <= h; y++) {
-          for (let x = 0; x < w; x++) {
-            const r = (Math.random() * 3) | 0;
-            let dx = x - r + 1;
-            if (dx < 0) dx += w; else if (dx >= w) dx -= w;
-            const v = heat[y * w + x] - (r & 1) * decay * (0.5 + Math.random());
-            heat[(y - 1) * w + dx] = v > 0 ? v : 0;
-          }
-        }
-        for (let i = 0; i < w * h; i++) lr.px[i] = pal[Math.min(255, (heat[i] * 255) | 0)];
-        blitUp(ctx, lr, W, H);
-      };
-    },
-
-    lava(W, H) {
-      const lr = lowRes(W, H, 110);
-      const { w, h } = lr;
-      const pal = palette([[0, '#0a0012'], [0.45, '#2a0040'], [0.55, '#ff2a00'], [0.75, '#ff7a00'], [1, '#ffd200']]);
-      const balls = Array.from({ length: 7 }, (_, i) => ({ fx: 0.13 + i * 0.05, fy: 0.07 + i * 0.031, px: i * 1.7, py: i * 2.3, r: 0.12 + (i % 3) * 0.04 }));
-      return (ctx, t) => {
-        const s = Math.min(w, h);
-        const pos = balls.map((b) => [w * (0.5 + 0.38 * Math.sin(t * b.fx + b.px)), h * (0.5 + 0.45 * Math.sin(t * b.fy + b.py)), (b.r * s) ** 2]);
-        for (let y = 0; y < h; y++) {
-          for (let x = 0; x < w; x++) {
-            let f = 0;
-            for (const [bx, by, r2] of pos) f += r2 / ((x - bx) ** 2 + (y - by) ** 2 + 1);
-            lr.px[y * w + x] = pal[Math.min(255, (f * 128) | 0)];
-          }
-        }
-        blitUp(ctx, lr, W, H);
-      };
-    },
-
-    warp(W, H) {
-      const n = Math.min(400, Math.round((W * H) / 900) + 60);
-      const stars = Array.from({ length: n }, () => ({ x: Math.random() * 2 - 1, y: Math.random() * 2 - 1, z: Math.random() }));
-      const tints = ['#ffffff', '#9fe8ff', '#ffd27a', '#ff9df0'];
-      let last = 0;
-      return (ctx, t) => {
-        const dt = last ? Math.min(0.1, t - last) : 0;
-        last = t;
-        ctx.fillStyle = 'rgba(0,0,0,0.35)';
-        ctx.fillRect(0, 0, W, H);
-        const f = Math.max(W, H) * 0.5;
-        ctx.lineCap = 'round';
-        stars.forEach((s, i) => {
-          const z0 = s.z;
-          s.z -= dt * 0.45;
-          if (s.z <= 0.02) { s.x = Math.random() * 2 - 1; s.y = Math.random() * 2 - 1; s.z = 1; return; }
-          const x0 = W / 2 + (s.x / z0) * f, y0 = H / 2 + (s.y / z0) * f;
-          const x1 = W / 2 + (s.x / s.z) * f, y1 = H / 2 + (s.y / s.z) * f;
-          ctx.strokeStyle = tints[i % tints.length];
-          ctx.globalAlpha = Math.min(1, (1 - s.z) * 1.6);
-          ctx.lineWidth = Math.max(1, (1 - s.z) * Math.min(W, H) * 0.012);
-          ctx.beginPath();
-          ctx.moveTo(x0, y0);
-          ctx.lineTo(x1, y1);
-          ctx.stroke();
-        });
-        ctx.globalAlpha = 1;
-      };
-    },
-
     // Champagne: golden glass with streams of bubbles and a foamy top.
     bubbles(W, H) {
       const n = Math.round(Math.max(30, (W * H) / 1400));
@@ -979,80 +881,8 @@
       };
     },
 
-    // A neon sign: the bar's name and a cocktail glass, with the odd flicker.
-    neon(W, H, opts) {
-      const text = (opts.barName || 'THE BASEMENT').toUpperCase();
-      const colors = ['#ff3fd2', '#36d6ff', GOLD_LIGHT];
-      let flickerAt = 4 + Math.random() * 6;
-      return (ctx, t) => {
-        const g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.7);
-        g.addColorStop(0, '#0d0716');
-        g.addColorStop(1, '#000000');
-        ctx.fillStyle = g;
-        ctx.fillRect(0, 0, W, H);
-        const color = colors[Math.floor(t / 20) % colors.length];
-        const glass = colors[(Math.floor(t / 20) + 1) % colors.length];
-        if (t > flickerAt + 0.5) flickerAt = t + 5 + Math.random() * 8;
-        const flick = t > flickerAt && t < flickerAt + 0.5 && Math.sin(t * 90) > 0 ? 0.25 : 1;
-        const s = Math.min(W, H);
-        const wide = W / H > 1.25;
-        const gs = wide ? Math.min(H * 0.7, W * 0.3) : Math.min(W * 0.6, H * 0.42);
-        const gx = wide ? W * 0.08 + gs / 2 : W / 2;
-        const gy = wide ? H / 2 : H * 0.08 + gs / 2;
-        // cocktail glass
-        ctx.save();
-        ctx.lineWidth = Math.max(1, s * 0.012);
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = glass;
-        glow(ctx, glass, s * 0.05, () => {
-          ctx.beginPath();
-          ctx.moveTo(gx - gs * 0.4, gy - gs * 0.38);
-          ctx.lineTo(gx + gs * 0.4, gy - gs * 0.38);
-          ctx.lineTo(gx, gy + gs * 0.05);
-          ctx.closePath();
-          ctx.moveTo(gx, gy + gs * 0.05);
-          ctx.lineTo(gx, gy + gs * 0.36);
-          ctx.moveTo(gx - gs * 0.18, gy + gs * 0.4);
-          ctx.lineTo(gx + gs * 0.18, gy + gs * 0.4);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.arc(gx + gs * 0.12, gy - gs * 0.24, gs * 0.06, 0, Math.PI * 2);
-          ctx.moveTo(gx + gs * 0.12, gy - gs * 0.24);
-          ctx.lineTo(gx + gs * 0.3, gy - gs * 0.5);
-          ctx.stroke();
-        });
-        ctx.restore();
-        // the name, as a tube that glows
-        const tx = wide ? gx + gs / 2 + W * 0.05 : W * 0.06;
-        const tw = wide ? W - tx - W * 0.05 : W * 0.88;
-        const ty = wide ? 0 : gy + gs / 2 + H * 0.04;
-        const th = wide ? H : H - ty - H * 0.06;
-        const box = fitWrapped(ctx, text, 'Limelight', tw, th * 0.8, 3, 1.05);
-        ctx.font = font('Limelight', box.size);
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        const y0 = ty + th / 2 - ((box.lines.length - 1) * box.size) / 2;
-        ctx.globalAlpha = flick;
-        ctx.lineWidth = Math.max(1, box.size * 0.05);
-        ctx.strokeStyle = color;
-        ctx.fillStyle = 'rgba(255,255,255,0.92)';
-        box.lines.forEach((l, i) => {
-          const y = y0 + i * box.size;
-          glow(ctx, color, box.size * 0.35, () => ctx.strokeText(l, tx + tw / 2, y));
-          ctx.save();
-          ctx.shadowColor = color;
-          ctx.shadowBlur = box.size * 0.12;
-          ctx.globalAlpha = flick * 0.9;
-          ctx.fillText(l, tx + tw / 2, y);
-          ctx.restore();
-        });
-        ctx.globalAlpha = 1;
-      };
-    },
-
-    // The bar's sign: a monogram in a stepped deco archway, rays of light behind it, and the name
-    // in gold foil with a sheen that drifts across.
+    // The bar's sign: a monogram in a stepped deco archway with rays of light behind it, and the
+    // name in fine deco capitals underneath.
     deco(W, H, opts) {
       const name = (opts.barName || 'THE BASEMENT').toUpperCase();
       const mono = monogram(name);
@@ -1061,7 +891,7 @@
       return (ctx, t) => {
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, W, H);
-        const aw = wide ? Math.min(H * 0.62, W * 0.3) : Math.min(W * 0.46, H * 0.36);
+        const aw = wide ? Math.min(H * 0.5, W * 0.26) : Math.min(W * 0.42, H * 0.34);
         const ah = aw * 1.35;
         const ax = wide ? W * 0.1 + aw / 2 : W / 2;
         const ay = wide ? H / 2 + ah * 0.05 : H * 0.1 + ah / 2;
@@ -1079,11 +909,23 @@
           ctx.lineTo(ax + r, bottom);
           ctx.closePath();
         };
-        ctx.fillStyle = gold(ctx, ax - aw, 0, ax + aw, 0, 0.5);
-        for (let k = 1; k <= 2; k++) {
-          const sw = aw * 0.13 * k, sh = ah * (0.42 - k * 0.12);
-          ctx.fillRect(ax - aw / 2 - sw, ay + ah / 2 - sh, sw - lw * 2, sh);
-          ctx.fillRect(ax + aw / 2 + lw * 2, ay + ah / 2 - sh, sw - lw * 2, sh);
+        // stepped shoulders either side, as one ziggurat outline each
+        ctx.strokeStyle = GOLD;
+        ctx.lineWidth = lw;
+        ctx.lineJoin = 'miter';
+        const bottom = ay + ah / 2, step = aw * 0.085, gap = lw * 3;
+        const heights = [ah * 0.44, ah * 0.31, ah * 0.18];
+        for (const dir of [-1, 1]) {
+          const x0 = ax + dir * (aw / 2 + gap);
+          ctx.beginPath();
+          ctx.moveTo(x0, bottom);
+          heights.forEach((h, i) => {
+            ctx.lineTo(x0 + dir * step * i, bottom - h);
+            ctx.lineTo(x0 + dir * step * (i + 1), bottom - h);
+          });
+          ctx.lineTo(x0 + dir * step * heights.length, bottom);
+          ctx.closePath();
+          ctx.stroke();
         }
         ctx.fillStyle = '#000';
         arch(0);
@@ -1102,16 +944,11 @@
         arch(lw * 3);
         ctx.stroke();
         // monogram
-        const sheen = ((t * 0.18) % 1.8) - 0.4;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.font = font('Limelight', fitSize(ctx, mono, 'Limelight', aw * 0.62, ah * 0.42));
-        ctx.fillStyle = gold(ctx, ax - aw / 2, ay - ah / 2, ax + aw / 2, ay + ah / 2, sheen);
-        ctx.save();
-        ctx.shadowColor = rgba(GOLD, 0.5);
-        ctx.shadowBlur = aw * 0.08;
+        ctx.font = font('Poiret One', fitSize(ctx, mono, 'Poiret One', aw * 0.62, ah * 0.42));
+        ctx.fillStyle = GOLD;
         ctx.fillText(mono, ax, ay + ah * 0.12);
-        ctx.restore();
 
         // the name, in gold foil
         const tx = wide ? ax + aw / 2 + aw * 0.35 + W * 0.03 : W * 0.08;
@@ -1119,16 +956,12 @@
         const ty = wide ? H * 0.2 : ay + ah / 2 + H * 0.05;
         const th = wide ? H * 0.6 : H - ty - H * 0.1;
         tracking(ctx, s * 0.012);
-        const box = fitWrapped(ctx, name, 'Limelight', tw, th * 0.7, 2, 1.1);
-        ctx.font = font('Limelight', box.size);
+        const box = fitWrapped(ctx, name, 'Poiret One', tw, th * 0.7, 2, 1.1);
+        ctx.font = font('Poiret One', box.size);
         const blockH = box.lines.length * box.size * 1.1;
         const y0 = ty + (th - blockH) / 2 + box.size * 0.55;
-        ctx.fillStyle = gold(ctx, tx, ty, tx + tw, ty + th * 0.4, sheen);
-        ctx.save();
-        ctx.shadowColor = rgba(GOLD, 0.45);
-        ctx.shadowBlur = box.size * 0.2;
+        ctx.fillStyle = IVORY;
         box.lines.forEach((l, i) => ctx.fillText(l, tx + tw / 2, y0 + i * box.size * 1.1));
-        ctx.restore();
         tracking(ctx, 0);
         decoRule(ctx, tx + tw * 0.12, Math.min(H - s * 0.08, y0 + (box.lines.length - 0.35) * box.size * 1.1), tw * 0.76, s);
       };
@@ -1203,6 +1036,188 @@
       };
     },
 
+    // A 1930s lift floor indicator. The needle rests on B with its lamp lit, now and then rises
+    // to the top floor, and comes back down to The Basement.
+    lift(W, H, opts) {
+      const name = (opts.barName || 'THE BASEMENT').toUpperCase();
+      const floors = ['B', 'G', '1', '2', '3', '4', '5'];
+      const top = floors.length - 1;
+      const s = Math.min(W, H);
+      const wide = W / H > 1.3;
+      const R = wide ? Math.min(H * 0.5, W * 0.24) : Math.min(W * 0.4, H * 0.3);
+      const cx = wide ? W * 0.09 + R : W / 2;
+      const cy = wide ? H * 0.64 : H * 0.1 + R;
+      const lw = Math.max(1, Math.round(s * 0.005));
+      const ease = (x) => (x < 0.5 ? 2 * x * x : 1 - ((-2 * x + 2) ** 2) / 2);
+      const floorAt = (t) => {
+        const p = t % 45;
+        if (p < 24) return 0;
+        if (p < 31) return ease((p - 24) / 7) * top;
+        if (p < 34) return top;
+        return (1 - ease((p - 34) / 11)) * top;
+      };
+      const angle = (pos) => Math.PI + (0.08 + (pos / top) * 0.84) * Math.PI;
+      const diamond = (ctx, x, y, r) => {
+        ctx.beginPath();
+        ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y);
+        ctx.closePath();
+        ctx.fill();
+      };
+      return (ctx, t) => {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, W, H);
+        decoFrame(ctx, W, H);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, Math.PI, 0);
+        ctx.closePath();
+        ctx.clip();
+        sunburst(ctx, cx, cy, R, 30, GOLD, 0.1);
+        ctx.restore();
+        ctx.strokeStyle = GOLD;
+        ctx.lineWidth = lw;
+        for (const k of [1, 0.93]) { ctx.beginPath(); ctx.arc(cx, cy, R * k, Math.PI, 0); ctx.stroke(); }
+        ctx.beginPath(); ctx.moveTo(cx - R * 1.08, cy); ctx.lineTo(cx + R * 1.08, cy); ctx.stroke();
+        const ph = Math.max(2, R * 0.08);
+        ctx.strokeRect(cx - R * 1.08, cy + ph * 0.6, R * 2.16, ph);
+        ctx.strokeRect(cx - R * 0.84, cy + ph * 1.6 + lw, R * 1.68, ph);
+
+        const pos = floorAt(t);
+        const moving = Math.abs(floorAt(t + 0.1) - pos) > 0.0005;
+        const goingUp = floorAt(t + 0.1) > pos;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = font('Poiret One', R * 0.17);
+        floors.forEach((f, i) => {
+          const a = angle(i);
+          const lit = Math.abs(pos - i) < 0.3;
+          ctx.fillStyle = lit ? IVORY : rgba(GOLD, 0.7);
+          ctx.fillText(f, cx + Math.cos(a) * R * 0.76, cy + Math.sin(a) * R * 0.76);
+          ctx.fillStyle = lit ? IVORY : GOLD;
+          diamond(ctx, cx + Math.cos(a) * R * 0.965, cy + Math.sin(a) * R * 0.965, Math.max(1, R * 0.022));
+        });
+        const a = angle(pos);
+        ctx.strokeStyle = GOLD;
+        ctx.lineWidth = Math.max(1, lw * 1.3);
+        ctx.beginPath();
+        ctx.moveTo(cx - Math.cos(a) * R * 0.1, cy - Math.sin(a) * R * 0.1);
+        ctx.lineTo(cx + Math.cos(a) * R * 0.58, cy + Math.sin(a) * R * 0.58);
+        ctx.stroke();
+        ctx.fillStyle = GOLD;
+        diamond(ctx, cx + Math.cos(a) * R * 0.6, cy + Math.sin(a) * R * 0.6, Math.max(2, R * 0.035));
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(cx, cy, R * 0.07, 0, Math.PI * 2); ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = GOLD;
+        ctx.beginPath(); ctx.arc(cx, cy, R * 0.025, 0, Math.PI * 2); ctx.fill();
+
+        // the name, and what the lift is doing
+        const tx = wide ? cx + R * 1.25 : W * 0.1;
+        const tw = wide ? W - tx - W * 0.07 : W * 0.8;
+        const ty = wide ? H * 0.2 : cy + ph * 3 + s * 0.06;
+        const th = wide ? H * 0.6 : H - ty - s * 0.1;
+        tracking(ctx, s * 0.012);
+        const box = fitWrapped(ctx, name, 'Poiret One', tw, th * 0.55, 2, 1.12);
+        ctx.font = font('Poiret One', box.size);
+        ctx.fillStyle = IVORY;
+        const y0 = ty + th * 0.08 + box.size / 2;
+        box.lines.forEach((l, i) => ctx.fillText(l, tx + tw / 2, y0 + i * box.size * 1.12));
+        const ry = y0 + (box.lines.length - 0.4) * box.size * 1.12;
+        decoRule(ctx, tx + tw * 0.15, ry, tw * 0.7, s);
+        const status = moving ? (goingUp ? 'GOING UP' : 'GOING DOWN') : pos < 0.3 ? 'FLOOR B' : `FLOOR ${floors[Math.round(pos)]}`;
+        tracking(ctx, s * 0.014);
+        ctx.font = font('Josefin Sans', fitSize(ctx, status, 'Josefin Sans', tw * 0.7, box.size * 0.32));
+        ctx.fillStyle = GOLD;
+        ctx.fillText(status, tx + tw / 2, ry + box.size * 0.55);
+        tracking(ctx, 0);
+      };
+    },
+
+    // An art deco wall clock: sunburst face, numerals at the quarters, lozenge hands and a
+    // sweeping second hand, with the bar's name and the date beside it.
+    clockface(W, H, opts) {
+      const name = (opts.barName || 'THE BASEMENT').toUpperCase();
+      const s = Math.min(W, H);
+      const wide = W / H > 1.3;
+      const R = wide ? Math.min(H * 0.4, W * 0.24) : Math.min(W * 0.4, H * 0.3);
+      const cx = wide ? W * 0.09 + R : W / 2;
+      const cy = wide ? H / 2 : H * 0.1 + R;
+      const lw = Math.max(1, Math.round(s * 0.005));
+      const hand = (ctx, a, len, wid) => {
+        const c = Math.cos(a), sn = Math.sin(a), pc = Math.cos(a + Math.PI / 2), ps = Math.sin(a + Math.PI / 2);
+        ctx.beginPath();
+        ctx.moveTo(cx - c * len * 0.12, cy - sn * len * 0.12);
+        ctx.lineTo(cx + c * len * 0.3 + pc * wid, cy + sn * len * 0.3 + ps * wid);
+        ctx.lineTo(cx + c * len, cy + sn * len);
+        ctx.lineTo(cx + c * len * 0.3 - pc * wid, cy + sn * len * 0.3 - ps * wid);
+        ctx.closePath();
+        ctx.fill();
+      };
+      return (ctx) => {
+        const now = new Date();
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, W, H);
+        decoFrame(ctx, W, H);
+        ctx.save();
+        ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
+        sunburst(ctx, cx, cy, R, 36, GOLD, 0.09);
+        sunburst(ctx, cx, cy, R, 36, GOLD, 0.09, Math.PI);
+        ctx.restore();
+        ctx.strokeStyle = GOLD;
+        ctx.lineWidth = lw;
+        for (const k of [1, 0.94, 0.28]) { ctx.beginPath(); ctx.arc(cx, cy, R * k, 0, Math.PI * 2); ctx.stroke(); }
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = font('Poiret One', R * 0.2);
+        for (let i = 0; i < 12; i++) {
+          const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+          if (i % 3 === 0) {
+            ctx.fillStyle = IVORY;
+            ctx.fillText(String(i === 0 ? 12 : i), cx + Math.cos(a) * R * 0.75, cy + Math.sin(a) * R * 0.75 + R * 0.01);
+          } else {
+            const x = cx + Math.cos(a) * R * 0.82, y = cy + Math.sin(a) * R * 0.82, d = Math.max(1.5, R * 0.03);
+            ctx.fillStyle = GOLD;
+            ctx.beginPath(); ctx.moveTo(x, y - d); ctx.lineTo(x + d, y); ctx.lineTo(x, y + d); ctx.lineTo(x - d, y); ctx.fill();
+          }
+        }
+        const secs = now.getSeconds() + now.getMilliseconds() / 1000;
+        const mins = now.getMinutes() + secs / 60;
+        const hrs = (now.getHours() % 12) + mins / 60;
+        ctx.fillStyle = GOLD;
+        hand(ctx, (hrs / 12) * Math.PI * 2 - Math.PI / 2, R * 0.5, R * 0.06);
+        hand(ctx, (mins / 60) * Math.PI * 2 - Math.PI / 2, R * 0.78, R * 0.045);
+        const sa = (secs / 60) * Math.PI * 2 - Math.PI / 2;
+        ctx.strokeStyle = IVORY;
+        ctx.lineWidth = Math.max(1, lw * 0.6);
+        ctx.beginPath();
+        ctx.moveTo(cx - Math.cos(sa) * R * 0.18, cy - Math.sin(sa) * R * 0.18);
+        ctx.lineTo(cx + Math.cos(sa) * R * 0.88, cy + Math.sin(sa) * R * 0.88);
+        ctx.stroke();
+        ctx.fillStyle = GOLD;
+        ctx.beginPath(); ctx.arc(cx, cy, R * 0.045, 0, Math.PI * 2); ctx.fill();
+
+        const tx = wide ? cx + R * 1.25 : W * 0.1;
+        const tw = wide ? W - tx - W * 0.07 : W * 0.8;
+        const ty = wide ? H * 0.22 : cy + R + s * 0.06;
+        const th = wide ? H * 0.56 : H - ty - s * 0.1;
+        ctx.textAlign = 'center';
+        tracking(ctx, s * 0.012);
+        const box = fitWrapped(ctx, name, 'Poiret One', tw, th * 0.5, 2, 1.12);
+        ctx.font = font('Poiret One', box.size);
+        ctx.fillStyle = IVORY;
+        const y0 = ty + th * 0.1 + box.size / 2;
+        box.lines.forEach((l, i) => ctx.fillText(l, tx + tw / 2, y0 + i * box.size * 1.12));
+        const ry = y0 + (box.lines.length - 0.4) * box.size * 1.12;
+        decoRule(ctx, tx + tw * 0.15, ry, tw * 0.7, s);
+        const date = now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' }).replace(/,/g, '').toUpperCase();
+        tracking(ctx, s * 0.01);
+        ctx.font = font('Josefin Sans', fitSize(ctx, date, 'Josefin Sans', tw * 0.9, box.size * 0.3));
+        ctx.fillStyle = GOLD;
+        ctx.fillText(date, tx + tw / 2, ry + box.size * 0.55);
+        tracking(ctx, 0);
+      };
+    },
+
     // Classic deco wallpaper: rows of gold fans, with a shimmer rolling across them.
     fans(W, H) {
       const s = Math.min(W, H);
@@ -1257,40 +1272,8 @@
       };
     },
 
-    // Club lights: coloured beams sweeping through haze.
-    beams(W, H) {
-      const colors = ['#ff2fb0', '#36d6ff', '#7a5cff', '#ffb000'];
-      return (ctx, t) => {
-        ctx.fillStyle = '#05010a';
-        ctx.fillRect(0, 0, W, H);
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        const n = colors.length;
-        for (let i = 0; i < n; i++) {
-          const ox = W * ((i + 0.5) / n);
-          const a = Math.sin(t * (0.35 + i * 0.07) + i * 1.7) * 0.75;
-          const len = Math.hypot(W, H) * 1.1;
-          const spread = 0.09 + 0.03 * Math.sin(t + i);
-          const g = ctx.createLinearGradient(ox, H, ox + Math.sin(a) * len, H - Math.cos(a) * len);
-          g.addColorStop(0, rgba(colors[i], 0.75));
-          g.addColorStop(1, rgba(colors[i], 0));
-          ctx.fillStyle = g;
-          ctx.beginPath();
-          ctx.moveTo(ox, H);
-          ctx.lineTo(ox + Math.sin(a - spread) * len, H - Math.cos(a - spread) * len);
-          ctx.lineTo(ox + Math.sin(a + spread) * len, H - Math.cos(a + spread) * len);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = rgba(colors[i], 0.9);
-          ctx.beginPath();
-          ctx.arc(ox, H, Math.min(W, H) * 0.03, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.restore();
-      };
-    },
   };
-  const MIX = ['skyline', 'deco', 'neon', 'fans', 'bubbles', 'lava', 'beams', 'fire', 'plasma', 'warp'];
+  const MIX = ['skyline', 'deco', 'lift', 'clockface', 'fans', 'bubbles'];
 
   function visuals(canvas, W, H, opts) {
     const ctx = canvas.getContext('2d');
@@ -1354,7 +1337,7 @@
     ctx.textBaseline = 'middle';
     tracking(ctx, s * 0.008);
     ctx.fillStyle = IVORY;
-    ctx.font = font('Limelight', fitSize(ctx, theme.name, 'Limelight', room, bh * 0.3));
+    ctx.font = font('Poiret One', fitSize(ctx, theme.name, 'Poiret One', room, bh * 0.34));
     ctx.fillText(theme.name, x, cy - bh * 0.1);
     const sub = (barName || '').toUpperCase();
     if (sub) {
@@ -1377,5 +1360,7 @@
       return (FACTORIES[name] || visuals)(canvas, W, H, opts || {});
     },
     drawIdent,
+    // Shared drawing kit, used by the games so they match the channels.
+    kit: { font, fitSize, fitWrapped, glow, rgba, roundRect, tracking, gold, decoRule, header, backdrop, sunburst, timeStr, THEMES, GOLD, GOLD_LIGHT, IVORY },
   };
 })();

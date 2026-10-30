@@ -6,15 +6,15 @@
 <meta name="theme-color" content="#0b0a08">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Bar Screens</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Limelight&family=Josefin+Sans:wght@600;700&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Bebas+Neue&family=Silkscreen:wght@400;700&family=VT323&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Poiret+One&family=Josefin+Sans:wght@300;600;700&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Bebas+Neue&family=Silkscreen:wght@400;700&family=VT323&display=swap">
 <style>
 /* Layout: one phone-width column — live preview, quick controls, library, then setup */
 :root {
   --bg: #0b0a08; --surface: #15130f; --raise: #1e1b15; --line: #332d22;
   --fg: #f4ecd8; --muted: #a59a84;
-  --accent: #d9b25b; --accent-ink: #1a1203; --accent-text: #e9c97a;
+  --accent: #c5a467; --accent-ink: #15100a; --accent-text: #d8bf8c;
   --live: #39d98a; --danger: #ff6b6b;
-  --f-display: "Limelight", Georgia, serif;
+  --f-display: "Poiret One", Georgia, serif;
   --f-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-label: "Barlow Condensed", "Barlow", system-ui, sans-serif;
   --r: 12px;
@@ -41,7 +41,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding: calc(env(safe-area-inset-top, 0px) + 12px) max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px));
   border-bottom: 3px double var(--accent);
 }
-.brand { font: 400 20px/1 var(--f-display); letter-spacing: 0.06em; color: var(--fg); }
+.brand { font: 400 22px/1 var(--f-display); letter-spacing: 0.1em; color: var(--fg); }
 .brand b { font: 700 11px/1 "Josefin Sans", var(--f-label); letter-spacing: 0.3em; color: var(--accent-text); vertical-align: middle; margin-left: 4px; }
 .conn { display: inline-flex; align-items: center; gap: 6px; font: 600 14px var(--f-label); color: var(--muted); }
 .conn::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
@@ -300,8 +300,8 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   const SWATCHES = [['#e8b84a', 'Gold'], ['#ffb000', 'Amber'], ['#ffffff', 'White'], ['#ff2d2d', 'Red'], ['#2dff6e', 'Green'], ['#2ad4ff', 'Cyan'], ['#ff3fd2', 'Pink']];
-  const FONTS = [['Anton', 'Anton (tall and bold)'], ['Limelight', 'Limelight (art deco)'], ['Bebas Neue', 'Bebas Neue (clean capitals)'], ['Barlow Condensed', 'Barlow Condensed (easy to read)'], ['Silkscreen', 'Silkscreen (pixel font)'], ['VT323', 'VT323 (retro terminal)']];
-  const FONT_CSS = { 'Anton': '400 1em "Anton"', 'Limelight': '400 1em "Limelight"', 'Bebas Neue': '400 1em "Bebas Neue"', 'Barlow Condensed': '700 1em "Barlow Condensed"', 'Silkscreen': '400 1em "Silkscreen"', 'VT323': '400 1.2em "VT323"' };
+  const FONTS = [['Anton', 'Anton (tall and bold)'], ['Poiret One', 'Poiret One (art deco)'], ['Josefin Sans', 'Josefin Sans (1920s geometric)'], ['Bebas Neue', 'Bebas Neue (clean capitals)'], ['Barlow Condensed', 'Barlow Condensed (easy to read)'], ['Silkscreen', 'Silkscreen (pixel font)'], ['VT323', 'VT323 (retro terminal)']];
+  const FONT_CSS = { 'Anton': '400 1em "Anton"', 'Poiret One': '400 1em "Poiret One"', 'Josefin Sans': '600 1em "Josefin Sans"', 'Bebas Neue': '400 1em "Bebas Neue"', 'Barlow Condensed': '700 1em "Barlow Condensed"', 'Silkscreen': '400 1em "Silkscreen"', 'VT323': '400 1.2em "VT323"' };
   const TYPE_LABEL = { image: 'Photo', video: 'Video', text: 'Text', clock: 'Clock' };
   const EXT_FOR = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/gif': '.gif', 'image/webp': '.webp', 'image/heic': '.heic', 'video/mp4': '.mp4', 'video/quicktime': '.mov', 'video/webm': '.webm' };
 
@@ -310,9 +310,9 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     ['scores', 2, 'Scores', 'Live scores and this week\'s fixtures for your leagues.', '#22e08f'],
     ['news', 3, 'News', 'Headlines with a scrolling ticker.', '#ff3d5a'],
     ['weather', 4, 'Weather', 'Conditions now, the next few hours and the next few days.', '#3aa8ff'],
-    ['visuals', 5, 'Visuals', 'Dark deco city, your bar\'s sign, neon, champagne bubbles, lava lamp and more.', '#c77dff'],
+    ['visuals', 5, 'Visuals', 'Dark deco city, The Basement sign, the lift dial, a deco clock and more.', '#c77dff'],
   ];
-  const STYLE_NAMES = { mix: 'Mix (changes every 45 seconds)', skyline: 'Dark deco city', deco: 'The Basement sign', fans: 'Art deco fans', neon: 'Neon sign', bubbles: 'Champagne bubbles', lava: 'Lava lamp', beams: 'Club lights', fire: 'Fire', plasma: 'Plasma', warp: 'Warp speed' };
+  const STYLE_NAMES = { mix: 'Mix (changes every 45 seconds)', skyline: 'Dark deco city', deco: 'The Basement sign', lift: 'Lift floor indicator', clockface: 'Deco wall clock', fans: 'Art deco fans', bubbles: 'Champagne bubbles' };
 
   let state = null;
   let cur = 's1';

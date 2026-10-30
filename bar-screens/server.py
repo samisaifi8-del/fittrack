@@ -31,7 +31,7 @@ IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".avif"}
 VIDEO_EXT = {".mp4", ".mov", ".m4v", ".webm", ".mkv"}
 MAX_UPLOAD = 2 * 1024 ** 3
 MAX_JSON = 1024 ** 2
-FONTS = ["Anton", "Limelight", "Bebas Neue", "Barlow Condensed", "Silkscreen", "VT323"]
+FONTS = ["Anton", "Poiret One", "Josefin Sans", "Bebas Neue", "Barlow Condensed", "Silkscreen", "VT323"]
 FFMPEG = shutil.which("ffmpeg")
 
 # Channel 1 is your own rotation; the rest are live channels drawn on the Pi from free data feeds.
@@ -58,7 +58,7 @@ NEWS_FEEDS = {
     "entertainment": ("https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml", "Entertainment"),
     "sport": ("https://feeds.bbci.co.uk/sport/rss.xml", "Sport"),
 }
-VISUAL_STYLES = ["mix", "skyline", "deco", "fans", "neon", "bubbles", "lava", "beams", "fire", "plasma", "warp"]
+VISUAL_STYLES = ["mix", "skyline", "deco", "lift", "clockface", "fans", "bubbles"]
 
 for ext, ctype in ((".webp", "image/webp"), (".avif", "image/avif"), (".mp4", "video/mp4"),
                    (".m4v", "video/mp4"), (".webm", "video/webm"), (".mkv", "video/x-matroska")):

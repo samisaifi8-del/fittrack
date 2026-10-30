@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0e1014">
+<meta name="theme-color" content="#0b0a08">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Bar Screens</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Limelight&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Bebas+Neue&family=Silkscreen:wght@400;700&family=VT323&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Limelight&family=Josefin+Sans:wght@600;700&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Bebas+Neue&family=Silkscreen:wght@400;700&family=VT323&display=swap">
 <style>
 /* Layout: one phone-width column — live preview, quick controls, library, then setup */
 :root {
-  --bg: #0e1014; --surface: #171a20; --raise: #20242c; --line: #2b303a;
-  --fg: #eef0f4; --muted: #98a1b0;
+  --bg: #0b0a08; --surface: #15130f; --raise: #1e1b15; --line: #332d22;
+  --fg: #f4ecd8; --muted: #a59a84;
   --accent: #d9b25b; --accent-ink: #1a1203; --accent-text: #e9c97a;
   --live: #39d98a; --danger: #ff6b6b;
   --f-display: "Limelight", Georgia, serif;
@@ -22,8 +22,8 @@
 }
 @media (prefers-color-scheme: light) {
   :root {
-    --bg: #f1f2f5; --surface: #ffffff; --raise: #f5f6f8; --line: #d8dce3;
-    --fg: #15181e; --muted: #5a6372;
+    --bg: #f4efe4; --surface: #fffcf5; --raise: #f7f1e4; --line: #ddd2bb;
+    --fg: #1a160f; --muted: #6b604c;
     --accent: #c99a3a; --accent-ink: #1a1203; --accent-text: #7a5a14;
     --live: #10934f; --danger: #c92a2a;
     color-scheme: light;
@@ -41,8 +41,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding: calc(env(safe-area-inset-top, 0px) + 12px) max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px));
   border-bottom: 3px double var(--accent);
 }
-.brand { font: 400 20px/1 var(--f-display); letter-spacing: 0.04em; }
-.brand b { color: var(--accent-text); font-weight: 700; }
+.brand { font: 400 20px/1 var(--f-display); letter-spacing: 0.06em; color: var(--fg); }
+.brand b { font: 700 11px/1 "Josefin Sans", var(--f-label); letter-spacing: 0.3em; color: var(--accent-text); vertical-align: middle; margin-left: 4px; }
 .conn { display: inline-flex; align-items: center; gap: 6px; font: 600 14px var(--f-label); color: var(--muted); }
 .conn::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .conn.ok { color: var(--live); }
@@ -53,7 +53,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 40px) max(16px, env(safe-area-inset-left, 0px));
 }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 12px; min-width: 0; }
-h2 { margin: 0; font: 600 13px/1.2 var(--f-label); text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); }
+h2 { margin: 0; font: 700 12px/1.2 "Josefin Sans", var(--f-label); text-transform: uppercase; letter-spacing: 0.22em; color: var(--accent-text); }
 .muted { color: var(--muted); }
 .note { margin: 0; font-size: 14px; color: var(--muted); }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -169,7 +169,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 </head>
 <body>
 <header class="top">
-  <div class="brand">BAR <b>SCREENS</b></div>
+  <div class="brand"><span id="brandName">THE BASEMENT</span> <b>SCREENS</b></div>
   <span class="conn" id="conn" role="status">Connecting…</span>
 </header>
 
@@ -239,7 +239,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
   <details class="card" id="chSettings">
     <summary>Channel settings</summary>
     <div class="set-group" style="border-top:0;padding-top:0">
-      <label class="field"><span class="lab">Bar name</span><input type="text" id="barName" maxlength="24" placeholder="THE BAR"></label>
+      <label class="field"><span class="lab">Bar name</span><input type="text" id="barName" maxlength="24" placeholder="THE BASEMENT"></label>
       <p class="note">Shown on the neon sign and when you change channel.</p>
     </div>
     <div class="set-group">
@@ -310,9 +310,9 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     ['scores', 2, 'Scores', 'Live scores and this week\'s fixtures for your leagues.', '#22e08f'],
     ['news', 3, 'News', 'Headlines with a scrolling ticker.', '#ff3d5a'],
     ['weather', 4, 'Weather', 'Conditions now, the next few hours and the next few days.', '#3aa8ff'],
-    ['visuals', 5, 'Visuals', 'Art deco sign and fans, neon sign, champagne bubbles, lava lamp and more.', '#c77dff'],
+    ['visuals', 5, 'Visuals', 'Dark deco city, your bar\'s sign, neon, champagne bubbles, lava lamp and more.', '#c77dff'],
   ];
-  const STYLE_NAMES = { mix: 'Mix (changes every 45 seconds)', deco: 'Art deco sign', fans: 'Art deco fans', neon: 'Neon sign', bubbles: 'Champagne bubbles', lava: 'Lava lamp', beams: 'Club lights', fire: 'Fire', plasma: 'Plasma', warp: 'Warp speed' };
+  const STYLE_NAMES = { mix: 'Mix (changes every 45 seconds)', skyline: 'Dark deco city', deco: 'The Basement sign', fans: 'Art deco fans', neon: 'Neon sign', bubbles: 'Champagne bubbles', lava: 'Lava lamp', beams: 'Club lights', fire: 'Fire', plasma: 'Plasma', warp: 'Warp speed' };
 
   let state = null;
   let cur = 's1';
@@ -437,6 +437,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     $('displayOn').checked = state.displayOn;
     $('displayNote').hidden = state.displayOn;
 
+    $('brandName').textContent = state.settings.barName || 'THE BASEMENT';
     renderLibrary(screen, liveId);
     renderSetup();
     pushPreviews();

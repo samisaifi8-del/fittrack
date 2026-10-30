@@ -58,7 +58,7 @@ NEWS_FEEDS = {
     "entertainment": ("https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml", "Entertainment"),
     "sport": ("https://feeds.bbci.co.uk/sport/rss.xml", "Sport"),
 }
-VISUAL_STYLES = ["mix", "deco", "fans", "neon", "bubbles", "lava", "beams", "fire", "plasma", "warp"]
+VISUAL_STYLES = ["mix", "skyline", "deco", "fans", "neon", "bubbles", "lava", "beams", "fire", "plasma", "warp"]
 
 for ext, ctype in ((".webp", "image/webp"), (".avif", "image/avif"), (".mp4", "video/mp4"),
                    (".m4v", "video/mp4"), (".webm", "video/webm"), (".mkv", "video/x-matroska")):
@@ -172,7 +172,7 @@ def default_screen(sid, name, enabled):
 
 def default_state():
     return {
-        "settings": {"brightness": 100, "blackout": False, "testPattern": True, "barName": "THE BAR"},
+        "settings": {"brightness": 100, "blackout": False, "testPattern": True, "barName": "THE BASEMENT"},
         "screens": [default_screen("s1", "Screen 1", True), default_screen("s2", "Screen 2", False)],
         "slides": [],
         "channels": default_channels(),

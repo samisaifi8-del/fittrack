@@ -27,6 +27,17 @@ cd ~/bar-screens-src/bar-screens
 sudo reboot
 ```
 
+**Without GitHub:** copy `bar-screens.zip` to the Pi (download it in the Pi's browser, or use a
+USB stick), then run:
+
+```sh
+cd ~
+unzip -o ~/Downloads/bar-screens.zip   # or wherever the zip is
+cd ~/bar-screens
+bash install.sh
+sudo reboot
+```
+
 The installer prints the address of the control page when it finishes. It's usually
 `http://<your-pi's-name>.local/control`, for example `http://raspberrypi.local/control`.
 
@@ -96,7 +107,10 @@ Uploads and settings live in `bar-screens/data/`.
 cd ~/bar-screens-src && git pull && cd bar-screens && ./install.sh
 ```
 
-Your uploads and settings are kept.
+If you installed from the zip, unzip the new zip over the old folder with the same commands as
+above (`unzip -o` replaces the files), then run `bash install.sh` again.
+
+Your uploads and settings are kept either way.
 
 ## Troubleshooting
 

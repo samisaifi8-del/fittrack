@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Bar Screens display</title>
-<link id="fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;700&family=Bebas+Neue&family=Silkscreen:wght@400;700&family=VT323&display=swap">
+<link id="fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Limelight&family=Barlow+Condensed:wght@500;700&family=Bebas+Neue&family=Silkscreen:wght@400;700&family=VT323&display=swap">
 <style>
   html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
   body.kiosk { cursor: none; }
@@ -15,6 +15,9 @@
   .layer img, .layer video { display: block; width: 100%; height: 100%; }
   .layer canvas, .grid { position: absolute; inset: 0; display: block; width: 100%; height: 100%; image-rendering: pixelated; }
   .grid { z-index: 2; }
+  .ident { position: absolute; inset: 0; z-index: 3; display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
+  .ident.show { opacity: 1; }
+  body.testing .ident { display: none; }
   body.testing .layer { visibility: hidden; }
   body.testing.kiosk .screen { background: transparent; }
   body.testing:not(.kiosk) .screen { background: #15181d; }
@@ -25,6 +28,7 @@
 <canvas id="pattern" hidden></canvas>
 <div id="stage"></div>
 <div id="dim"></div>
+<script src="/static/channels.js"></script>
 <script>
 (() => {
   'use strict';
@@ -41,6 +45,7 @@
 
   const FONTS = {
     'Anton': [400, '"Anton"'],
+    'Limelight': [400, '"Limelight"'],
     'Bebas Neue': [400, '"Bebas Neue"'],
     'Barlow Condensed': [700, '"Barlow Condensed"'],
     'Silkscreen': [400, '"Silkscreen"'],
@@ -50,6 +55,8 @@
     const f = FONTS[name] || FONTS['Barlow Condensed'];
     return `${f[0]} ${px}px ${f[1]}, "Arial Narrow", Arial, sans-serif`;
   };
+
+  if (window.BarChannels) window.BarChannels.init({ fontStr });
 
   let state = null;
   const stage = document.getElementById('stage');
@@ -182,6 +189,14 @@
         (el.decode ? el.decode() : Promise.resolve()).then(onReady, onReady);
       }
       layer.appendChild(el);
+    } else if (slide.type === 'channel') {
+      const canvas = document.createElement('canvas');
+      layer.appendChild(canvas);
+      const channel = window.BarChannels
+        ? window.BarChannels.create(slide.channel, canvas, W, H, { conf: slide.conf, barName: slide.barName })
+        : null;
+      layer._cleanup = () => { if (channel) channel.stop(); };
+      requestAnimationFrame(onReady);
     } else {
       const canvas = document.createElement('canvas');
       layer.appendChild(canvas);
@@ -261,7 +276,7 @@
       grid.hidden = true;
       el.appendChild(grid);
       stage.appendChild(el);
-      view = { el, grid, key: '', gridKey: '', visible: null, pending: null };
+      view = { el, grid, key: '', gridKey: '', visible: null, pending: null, identKey: '', identEl: null, identTimer: 0 };
       views.set(screen.id, view);
     }
     return view;
@@ -378,6 +393,20 @@
     x.fillText(title, W / 2, H / 2);
   }
 
+  function showIdent(view, screen, channel) {
+    if (!window.BarChannels) return;
+    if (!view.identEl) {
+      view.identEl = document.createElement('canvas');
+      view.identEl.className = 'ident';
+      view.el.appendChild(view.identEl);
+    }
+    view.identDraw = () => window.BarChannels.drawIdent(view.identEl, screen.w, screen.h, channel, state.settings.barName);
+    view.identDraw();
+    view.identEl.classList.add('show');
+    clearTimeout(view.identTimer);
+    view.identTimer = setTimeout(() => view.identEl.classList.remove('show'), 3000);
+  }
+
   function render() {
     if (!state) return;
     const settings = state.settings;
@@ -395,8 +424,15 @@
     for (const screen of screens) {
       const view = ensureView(screen);
       placeView(view.el, screen);
-      const slideId = soloSlide || (state.live[screen.id] && state.live[screen.id].slide);
-      const slide = state.slides.find((s) => s.id === slideId) || null;
+      const live = state.live[screen.id] || {};
+      let slide = state.slides.find((s) => s.id === (soloSlide || live.slide)) || null;
+      if (!soloSlide && !live.slide && live.channel) {
+        slide = { type: 'channel', channel: live.channel, conf: (state.channels || {})[live.channel], barName: state.settings.barName };
+      }
+      if (!soloSlide && !screen.pinned) {
+        const channel = live.channel || 'rotation';
+        if (channel !== view.identKey) { view.identKey = channel; showIdent(view, screen, channel); }
+      }
       const key = slide ? JSON.stringify([slide, screen.w, screen.h]) : `none:${screen.w}x${screen.h}`;
       if (key !== view.key) {
         view.key = key;
@@ -416,6 +452,7 @@
       view.gridKey = '';
       if (view.visible && view.visible._redraw) view.visible._redraw();
       if (view.pending && view.pending._redraw) view.pending._redraw();
+      if (view.identDraw) view.identDraw();
     }
     render();
   }

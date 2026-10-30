@@ -6,15 +6,15 @@
 <meta name="theme-color" content="#0e1014">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Bar Screens</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Bebas+Neue&family=Silkscreen:wght@400;700&family=VT323&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Limelight&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Bebas+Neue&family=Silkscreen:wght@400;700&family=VT323&display=swap">
 <style>
 /* Layout: one phone-width column — live preview, quick controls, library, then setup */
 :root {
   --bg: #0e1014; --surface: #171a20; --raise: #20242c; --line: #2b303a;
   --fg: #eef0f4; --muted: #98a1b0;
-  --accent: #ffb000; --accent-ink: #1d1300; --accent-text: #ffbe3d;
+  --accent: #d9b25b; --accent-ink: #1a1203; --accent-text: #e9c97a;
   --live: #39d98a; --danger: #ff6b6b;
-  --f-display: "Silkscreen", ui-monospace, Menlo, monospace;
+  --f-display: "Limelight", Georgia, serif;
   --f-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-label: "Barlow Condensed", "Barlow", system-ui, sans-serif;
   --r: 12px;
@@ -24,7 +24,7 @@
   :root {
     --bg: #f1f2f5; --surface: #ffffff; --raise: #f5f6f8; --line: #d8dce3;
     --fg: #15181e; --muted: #5a6372;
-    --accent: #f0a000; --accent-ink: #1d1300; --accent-text: #8f4f00;
+    --accent: #c99a3a; --accent-ink: #1a1203; --accent-text: #7a5a14;
     --live: #10934f; --danger: #c92a2a;
     color-scheme: light;
   }
@@ -39,9 +39,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
   position: sticky; top: 0; z-index: 10; background: var(--bg);
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: calc(env(safe-area-inset-top, 0px) + 12px) max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px));
-  border-bottom: 1px solid var(--line);
+  border-bottom: 3px double var(--accent);
 }
-.brand { font: 700 18px/1 var(--f-display); letter-spacing: 0.02em; }
+.brand { font: 400 20px/1 var(--f-display); letter-spacing: 0.04em; }
 .brand b { color: var(--accent-text); font-weight: 700; }
 .conn { display: inline-flex; align-items: center; gap: 6px; font: 600 14px var(--f-label); color: var(--muted); }
 .conn::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
@@ -135,6 +135,15 @@ input[type="color"] { width: 44px; height: 36px; padding: 2px; border: 1px solid
 .up { display: grid; gap: 4px; font-size: 14px; }
 .up progress { width: 100%; height: 6px; accent-color: var(--accent); }
 
+.remote { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.ch { display: grid; justify-items: center; gap: 6px; padding: 8px 2px 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--raise); cursor: pointer; min-width: 0; }
+.ch-n { display: grid; place-items: center; width: 38px; height: 30px; border-radius: 6px; background: #000; color: var(--c); font: 400 20px/1 "Anton", var(--f-label); text-shadow: 0 0 8px var(--c); }
+.ch-name { font: 600 14px/1 var(--f-label); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ch[aria-pressed="true"] { border-color: var(--c); box-shadow: 0 0 0 1px var(--c), 0 0 16px -6px var(--c); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { min-height: 34px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--raise); cursor: pointer; font: 600 15px var(--f-label); }
+.chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.set-group { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
 details.card > summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font: 600 17px var(--f-label); }
 details.card > summary::-webkit-details-marker { display: none; }
 details.card > summary::after { content: "Show"; font: 600 14px var(--f-label); color: var(--muted); }
@@ -183,6 +192,18 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     </div>
   </section>
 
+  <section class="card" aria-labelledby="hCh">
+    <div class="section-head">
+      <h2 id="hCh">Channels</h2>
+      <div class="row">
+        <button type="button" class="btn small" id="chDown" aria-label="Previous channel">CH −</button>
+        <button type="button" class="btn small" id="chUp" aria-label="Next channel">CH +</button>
+      </div>
+    </div>
+    <div class="remote" id="remote"></div>
+    <p class="note" id="chDesc"></p>
+  </section>
+
   <section class="card" aria-label="Brightness">
     <div class="row">
       <label class="slider grow"><span class="lab">Brightness</span><input type="range" id="brightness" min="5" max="100" step="1"><output id="brightnessOut"></output></label>
@@ -210,9 +231,37 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     </div>
     <input type="file" id="fileInput" accept="image/*,video/*" multiple hidden>
     <div class="uploads" id="uploads"></div>
+    <p class="note">Items switched to <b>In rotation</b> play on channel 1.</p>
     <p class="empty" id="libEmpty">Nothing here yet. Add a photo, a video, some text or a clock, then switch on <b>In rotation</b> to put it on the wall.</p>
     <ul class="lib" id="library"></ul>
   </section>
+
+  <details class="card" id="chSettings">
+    <summary>Channel settings</summary>
+    <div class="set-group" style="border-top:0;padding-top:0">
+      <label class="field"><span class="lab">Bar name</span><input type="text" id="barName" maxlength="24" placeholder="THE BAR"></label>
+      <p class="note">Shown on the neon sign and when you change channel.</p>
+    </div>
+    <div class="set-group">
+      <span class="lab">2 · Scores: leagues</span>
+      <div class="chips" id="leagues"></div>
+    </div>
+    <div class="set-group">
+      <label class="field"><span class="lab">3 · News: section</span><select id="newsFeed"></select></label>
+      <p class="note">Headlines from BBC News.</p>
+    </div>
+    <div class="set-group">
+      <span class="lab">4 · Weather: your town</span>
+      <div class="row">
+        <input type="text" id="wxPlace" class="grow" style="flex:1 1 160px" placeholder="e.g. Glasgow" aria-label="Town or city">
+        <button type="button" class="btn small" id="wxSet">Set</button>
+      </div>
+      <p class="note" id="wxNote"></p>
+    </div>
+    <div class="set-group">
+      <label class="field"><span class="lab">5 · Visuals: style</span><select id="visStyle"></select></label>
+    </div>
+  </details>
 
   <details class="card" id="setup">
     <summary>Screen setup</summary>
@@ -250,11 +299,20 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  const SWATCHES = [['#ffb000', 'Amber'], ['#ffffff', 'White'], ['#ff2d2d', 'Red'], ['#2dff6e', 'Green'], ['#2ad4ff', 'Cyan'], ['#ff3fd2', 'Pink']];
-  const FONTS = [['Anton', 'Anton (tall and bold)'], ['Bebas Neue', 'Bebas Neue (clean capitals)'], ['Barlow Condensed', 'Barlow Condensed (easy to read)'], ['Silkscreen', 'Silkscreen (pixel font)'], ['VT323', 'VT323 (retro terminal)']];
-  const FONT_CSS = { 'Anton': '400 1em "Anton"', 'Bebas Neue': '400 1em "Bebas Neue"', 'Barlow Condensed': '700 1em "Barlow Condensed"', 'Silkscreen': '400 1em "Silkscreen"', 'VT323': '400 1.2em "VT323"' };
+  const SWATCHES = [['#e8b84a', 'Gold'], ['#ffb000', 'Amber'], ['#ffffff', 'White'], ['#ff2d2d', 'Red'], ['#2dff6e', 'Green'], ['#2ad4ff', 'Cyan'], ['#ff3fd2', 'Pink']];
+  const FONTS = [['Anton', 'Anton (tall and bold)'], ['Limelight', 'Limelight (art deco)'], ['Bebas Neue', 'Bebas Neue (clean capitals)'], ['Barlow Condensed', 'Barlow Condensed (easy to read)'], ['Silkscreen', 'Silkscreen (pixel font)'], ['VT323', 'VT323 (retro terminal)']];
+  const FONT_CSS = { 'Anton': '400 1em "Anton"', 'Limelight': '400 1em "Limelight"', 'Bebas Neue': '400 1em "Bebas Neue"', 'Barlow Condensed': '700 1em "Barlow Condensed"', 'Silkscreen': '400 1em "Silkscreen"', 'VT323': '400 1.2em "VT323"' };
   const TYPE_LABEL = { image: 'Photo', video: 'Video', text: 'Text', clock: 'Clock' };
   const EXT_FOR = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/gif': '.gif', 'image/webp': '.webp', 'image/heic': '.heic', 'video/mp4': '.mp4', 'video/quicktime': '.mov', 'video/webm': '.webm' };
+
+  const CHANNELS = [
+    ['rotation', 1, 'Bar', 'Your own photos, videos and text from the library below.', '#e8b84a'],
+    ['scores', 2, 'Scores', 'Live scores and this week\'s fixtures for your leagues.', '#22e08f'],
+    ['news', 3, 'News', 'Headlines with a scrolling ticker.', '#ff3d5a'],
+    ['weather', 4, 'Weather', 'Conditions now, the next few hours and the next few days.', '#3aa8ff'],
+    ['visuals', 5, 'Visuals', 'Art deco sign and fans, neon sign, champagne bubbles, lava lamp and more.', '#c77dff'],
+  ];
+  const STYLE_NAMES = { mix: 'Mix (changes every 45 seconds)', deco: 'Art deco sign', fans: 'Art deco fans', neon: 'Neon sign', bubbles: 'Champagne bubbles', lava: 'Lava lamp', beams: 'Club lights', fire: 'Fire', plasma: 'Plasma', warp: 'Warp speed' };
 
   let state = null;
   let cur = 's1';
@@ -351,15 +409,24 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     sizePreview($('livePv'), screen);
     $('testNote').hidden = !state.settings.testPattern;
 
-    const liveId = state.live[cur] && state.live[cur].slide;
+    const liveInfo = state.live[cur] || {};
+    const liveId = liveInfo.slide;
     const live = liveId && slideById(liveId);
     const rotation = screen.playlist.filter((id) => slideById(id));
-    $('nowName').textContent = live ? live.name : 'Nothing yet';
+    const channel = CHANNELS.find((c) => c[0] === screen.channel) || CHANNELS[0];
+    const onChannel = screen.channel && screen.channel !== 'rotation';
+    $('nowName').textContent = live ? live.name : liveInfo.channel ? `CH ${channel[1]} · ${channel[2]}` : 'Nothing yet';
     $('nowMode').textContent = screen.pinned
-      ? 'Pinned. It stays up until you go back to the rotation.'
-      : rotation.length ? `Rotating through ${rotation.length} item${rotation.length === 1 ? '' : 's'}.` : 'Nothing is in rotation for this screen.';
-    $('nextBtn').hidden = !screen.pinned && rotation.length < 2;
+      ? `Pinned. It stays up until you go back to the ${onChannel ? 'channel' : 'rotation'}.`
+      : onChannel ? 'Live channel. Change it with the channel buttons.'
+      : rotation.length ? `Rotating through ${rotation.length} item${rotation.length === 1 ? '' : 's'}.` : 'Nothing is in rotation for this screen yet.';
+    $('nextBtn').hidden = onChannel || (!screen.pinned && rotation.length < 2);
     $('resumeBtn').hidden = !screen.pinned;
+    $('resumeBtn').textContent = onChannel ? 'Back to channel' : 'Back to rotation';
+    $('remote').innerHTML = CHANNELS.map(([key, n, name, , color]) =>
+      `<button type="button" class="ch" data-ch="${key}" style="--c:${color}" aria-pressed="${key === channel[0]}" aria-label="Channel ${n}, ${name}"><span class="ch-n">${n}</span><span class="ch-name">${name}</span></button>`).join('');
+    $('chDesc').textContent = `CH ${channel[1]} · ${channel[2]}: ${channel[3]}`;
+    renderChannelSettings();
 
     const b = $('brightness');
     if (document.activeElement !== b) b.value = state.settings.brightness;
@@ -455,7 +522,68 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     }
   }
 
+  function renderChannelSettings() {
+    const conf = state.channels;
+    const keep = (el, value) => { if (el !== document.activeElement) el.value = value; };
+    keep($('barName'), state.settings.barName || '');
+    const leagues = $('leagues');
+    if (!leagues.childElementCount) {
+      leagues.innerHTML = state.catalog.leagues.map(([k, name]) => `<button type="button" class="chip" data-league="${k}">${esc(name)}</button>`).join('');
+      $('newsFeed').innerHTML = state.catalog.feeds.map(([k, name]) => `<option value="${k}">${esc(name)}</option>`).join('');
+      $('visStyle').innerHTML = state.catalog.styles.map((k) => `<option value="${k}">${esc(STYLE_NAMES[k] || k)}</option>`).join('');
+    }
+    leagues.querySelectorAll('[data-league]').forEach((b) => b.setAttribute('aria-pressed', String(conf.scores.leagues.includes(b.dataset.league))));
+    keep($('newsFeed'), conf.news.feed);
+    keep($('visStyle'), conf.visuals.style);
+    const wx = conf.weather;
+    $('wxNote').textContent = wx.lat != null ? `Showing weather for ${wx.label}${wx.region ? ', ' + wx.region : ''}.` : 'Not set yet. Type your town and press Set.';
+  }
+
+  function patchChannels(patch) { return run(api('PATCH', '/api/channels', patch)); }
+
   // ------------------------------------------------------------ actions
+
+  function tuneTo(key) {
+    patchScreen(cur, { channel: key, pinned: null });
+    if (key === 'weather' && state.channels.weather.lat == null) {
+      $('chSettings').open = true;
+      $('wxPlace').focus();
+      toast('Set your town to see the weather.');
+    }
+  }
+  $('remote').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ch]');
+    if (b) tuneTo(b.dataset.ch);
+  });
+  for (const [id, step] of [['chUp', 1], ['chDown', -1]]) {
+    $(id).addEventListener('click', () => {
+      const i = CHANNELS.findIndex((c) => c[0] === screenById(cur).channel);
+      tuneTo(CHANNELS[(Math.max(0, i) + step + CHANNELS.length) % CHANNELS.length][0]);
+    });
+  }
+  $('barName').addEventListener('change', (e) => run(api('PATCH', '/api/settings', { barName: e.target.value.trim() })));
+  $('leagues').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-league]');
+    if (!b) return;
+    const list = state.channels.scores.leagues.filter((k) => k !== b.dataset.league);
+    if (b.getAttribute('aria-pressed') !== 'true') list.push(b.dataset.league);
+    patchChannels({ scores: { leagues: list } });
+  });
+  $('newsFeed').addEventListener('change', (e) => patchChannels({ news: { feed: e.target.value } }));
+  $('visStyle').addEventListener('change', (e) => patchChannels({ visuals: { style: e.target.value } }));
+  async function setPlace() {
+    const place = $('wxPlace').value.trim();
+    if (!place) { $('wxPlace').focus(); return; }
+    $('wxSet').disabled = true;
+    try {
+      const conf = await api('PATCH', '/api/channels', { weather: { place } });
+      $('wxPlace').value = '';
+      toast(`Weather set to ${conf.weather.label}.`);
+    } catch (e) { toast(e.message); }
+    $('wxSet').disabled = false;
+  }
+  $('wxSet').addEventListener('click', setPlace);
+  $('wxPlace').addEventListener('keydown', (e) => { if (e.key === 'Enter') setPlace(); });
 
   function patchScreen(id, patch) { return run(api('PATCH', `/api/screens/${id}`, patch)); }
 

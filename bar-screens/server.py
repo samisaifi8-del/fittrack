@@ -7,6 +7,7 @@ the walls. Standard library only, so it runs on a fresh Raspberry Pi OS.
 """
 
 import argparse
+import datetime
 import json
 import mimetypes
 import os
@@ -17,9 +18,11 @@ import socket
 import subprocess
 import threading
 import time
+import urllib.request
 import uuid
+import xml.etree.ElementTree as ET
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlencode, urlparse
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(ROOT, "static")
@@ -28,8 +31,34 @@ IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".avif"}
 VIDEO_EXT = {".mp4", ".mov", ".m4v", ".webm", ".mkv"}
 MAX_UPLOAD = 2 * 1024 ** 3
 MAX_JSON = 1024 ** 2
-FONTS = ["Anton", "Bebas Neue", "Barlow Condensed", "Silkscreen", "VT323"]
+FONTS = ["Anton", "Limelight", "Bebas Neue", "Barlow Condensed", "Silkscreen", "VT323"]
 FFMPEG = shutil.which("ffmpeg")
+
+# Channel 1 is your own rotation; the rest are live channels drawn on the Pi from free data feeds.
+CHANNELS = ["rotation", "scores", "news", "weather", "visuals"]
+LEAGUES = {  # ESPN's public scoreboard feed: no key needed, but it's unofficial and could change
+    "eng.1": ("soccer/eng.1", "Premier League"),
+    "eng.2": ("soccer/eng.2", "Championship"),
+    "sco.1": ("soccer/sco.1", "Scottish Premiership"),
+    "uefa.champions": ("soccer/uefa.champions", "Champions League"),
+    "uefa.europa": ("soccer/uefa.europa", "Europa League"),
+    "esp.1": ("soccer/esp.1", "La Liga"),
+    "ita.1": ("soccer/ita.1", "Serie A"),
+    "ger.1": ("soccer/ger.1", "Bundesliga"),
+    "nfl": ("football/nfl", "NFL"),
+    "nba": ("basketball/nba", "NBA"),
+}
+NEWS_FEEDS = {
+    "top": ("https://feeds.bbci.co.uk/news/rss.xml", "Top stories"),
+    "uk": ("https://feeds.bbci.co.uk/news/uk/rss.xml", "UK"),
+    "scotland": ("https://feeds.bbci.co.uk/news/scotland/rss.xml", "Scotland"),
+    "world": ("https://feeds.bbci.co.uk/news/world/rss.xml", "World"),
+    "business": ("https://feeds.bbci.co.uk/news/business/rss.xml", "Business"),
+    "tech": ("https://feeds.bbci.co.uk/news/technology/rss.xml", "Technology"),
+    "entertainment": ("https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml", "Entertainment"),
+    "sport": ("https://feeds.bbci.co.uk/sport/rss.xml", "Sport"),
+}
+VISUAL_STYLES = ["mix", "deco", "fans", "neon", "bubbles", "lava", "beams", "fire", "plasma", "warp"]
 
 for ext, ctype in ((".webp", "image/webp"), (".avif", "image/avif"), (".mp4", "video/mp4"),
                    (".m4v", "video/mp4"), (".webm", "video/webm"), (".mkv", "video/x-matroska")):
@@ -122,20 +151,31 @@ SCREEN_FIELDS = {"name": _str(40), "enabled": _bool,
                  "w": _num(8, 7680, True), "h": _num(8, 7680, True),
                  "x": _num(0, 7680, True), "y": _num(0, 7680, True),
                  "rw": _num(8, 7680, True), "rh": _num(8, 7680, True)}
-SETTINGS_FIELDS = {"brightness": _num(5, 100, True), "blackout": _bool, "testPattern": _bool}
+SETTINGS_FIELDS = {"brightness": _num(5, 100, True), "blackout": _bool, "testPattern": _bool, "barName": _str(24)}
+SCREEN_FIELDS["channel"] = _choice(*CHANNELS)
+
+
+def default_channels():
+    return {
+        "scores": {"leagues": ["eng.1", "sco.1"]},
+        "news": {"feed": "top"},
+        "weather": {"place": "", "label": "", "lat": None, "lon": None},
+        "visuals": {"style": "mix"},
+    }
 
 
 def default_screen(sid, name, enabled):
     # Screen 1 starts out covering the whole HDMI picture, so something always reaches the wall.
     return {"id": sid, "name": name, "enabled": enabled, "w": 1920, "h": 1080,
-            "x": 0, "y": 0, "rw": 1920, "rh": 1080, "playlist": [], "pinned": None}
+            "x": 0, "y": 0, "rw": 1920, "rh": 1080, "channel": "rotation", "playlist": [], "pinned": None}
 
 
 def default_state():
     return {
-        "settings": {"brightness": 100, "blackout": False, "testPattern": True},
+        "settings": {"brightness": 100, "blackout": False, "testPattern": True, "barName": "THE BAR"},
         "screens": [default_screen("s1", "Screen 1", True), default_screen("s2", "Screen 2", False)],
         "slides": [],
+        "channels": default_channels(),
     }
 
 
@@ -175,6 +215,10 @@ class Store:
         for screen in state["screens"]:
             screen.update({k: v for k, v in saved.get(screen["id"], {}).items() if k in screen})
         state["slides"] = [s for s in data.get("slides", []) if isinstance(s, dict) and s.get("type") in SLIDE_FIELDS]
+        for name, conf in state["channels"].items():
+            saved_conf = data.get("channels", {}).get(name)
+            if isinstance(saved_conf, dict):
+                conf.update({k: v for k, v in saved_conf.items() if k in conf})
         return state
 
     def save(self):
@@ -189,10 +233,15 @@ class Store:
         with self.lock:
             return json.dumps({
                 **self.state,
-                "live": {sid: {"slide": v["slide"]} for sid, v in self.live.items()},
+                "live": {sid: {"slide": v["slide"], "channel": v["channel"]} for sid, v in self.live.items()},
                 "display": self.display,
                 "displayOn": not os.path.exists(self.off_flag),
                 "ffmpeg": bool(FFMPEG),
+                "catalog": {
+                    "leagues": [[k, v[1]] for k, v in LEAGUES.items()],
+                    "feeds": [[k, v[1]] for k, v in NEWS_FEEDS.items()],
+                    "styles": VISUAL_STYLES,
+                },
             })
 
     def subscribe(self):
@@ -226,12 +275,20 @@ class Store:
         changed = False
         slides = {s["id"]: s for s in self.state["slides"]}
         for screen in self.state["screens"]:
-            live = self.live.setdefault(screen["id"], {"slide": None, "index": -1, "until": 0.0})
+            live = self.live.setdefault(screen["id"], {"slide": None, "channel": None, "index": -1, "until": 0.0})
             if screen["pinned"] in slides:
-                if live["slide"] != screen["pinned"]:
-                    live.update(slide=screen["pinned"], until=0.0)
+                if live["slide"] != screen["pinned"] or live["channel"]:
+                    live.update(slide=screen["pinned"], channel=None, until=0.0)
                     changed = True
                 continue
+            if screen.get("channel", "rotation") != "rotation":
+                if live["slide"] is not None or live["channel"] != screen["channel"]:
+                    live.update(slide=None, channel=screen["channel"], until=0.0)
+                    changed = True
+                continue
+            if live["channel"]:
+                live["channel"] = None
+                changed = True
             rotation = [i for i in screen["playlist"] if i in slides and not slides[i].get("processing")]
             if not rotation:
                 if live["slide"] is not None:
@@ -371,6 +428,30 @@ class Store:
             self.state["settings"].update(_clean(patch, SETTINGS_FIELDS))
             self._changed()
 
+    def update_channels(self, patch):
+        if not isinstance(patch, dict):
+            raise ApiError(400, "Expected a JSON object.")
+        found = None
+        weather = patch.get("weather")
+        if isinstance(weather, dict) and "place" in weather:
+            place = _str(80)(weather["place"]).strip()
+            found = geocode(place) if place else {"place": "", "label": "", "lat": None, "lon": None}
+        with self.lock:
+            conf = self.state["channels"]
+            scores = patch.get("scores")
+            if isinstance(scores, dict) and isinstance(scores.get("leagues"), list):
+                conf["scores"]["leagues"] = [k for k in LEAGUES if k in scores["leagues"]]
+            news = patch.get("news")
+            if isinstance(news, dict) and news.get("feed") in NEWS_FEEDS:
+                conf["news"]["feed"] = news["feed"]
+            visuals = patch.get("visuals")
+            if isinstance(visuals, dict) and visuals.get("style") in VISUAL_STYLES:
+                conf["visuals"]["style"] = visuals["style"]
+            if found is not None:
+                conf["weather"] = found
+            self._changed()
+            return conf
+
     def set_display(self, info):
         clean = _clean(info, {"w": _num(1, 16384, True), "h": _num(1, 16384, True)})
         if set(clean) != {"w", "h"}:
@@ -425,6 +506,146 @@ class Store:
             self._changed()
 
 
+# ---------------------------------------------------------------- live data feeds
+
+def fetch_url(url, timeout=8):
+    req = urllib.request.Request(url, headers={"User-Agent": "BarScreens/1.0 (home LED display)"})
+    with urllib.request.urlopen(req, timeout=timeout) as res:
+        return res.read(5 * 1024 * 1024)
+
+
+def geocode(place):
+    try:
+        data = json.loads(fetch_url("https://geocoding-api.open-meteo.com/v1/search?" +
+                                    urlencode({"name": place, "count": 1, "language": "en", "format": "json"})))
+    except Exception:
+        raise ApiError(502, "Couldn't look that place up. Check the Pi is connected to the internet.")
+    results = data.get("results") or []
+    if not results:
+        raise ApiError(404, f"Couldn't find \"{place}\". Try a nearby town or city.")
+    r = results[0]
+    region = r.get("admin1") or r.get("country") or ""
+    return {"place": place, "label": r.get("name", place), "region": region,
+            "lat": r["latitude"], "lon": r["longitude"]}
+
+
+def _team(competitor):
+    t = competitor.get("team") or {}
+    color = t.get("color") or ""
+    return {
+        "abbr": (t.get("abbreviation") or t.get("shortDisplayName") or "?")[:4].upper(),
+        "name": t.get("shortDisplayName") or t.get("displayName") or "",
+        "score": str(competitor.get("score") or ""),
+        "color": "#" + color if re.fullmatch(r"[0-9a-fA-F]{6}", color) else None,
+    }
+
+
+def fetch_scores(conf):
+    today = datetime.date.today()
+    span = f"{today - datetime.timedelta(days=1):%Y%m%d}-{today + datetime.timedelta(days=6):%Y%m%d}"
+    leagues, failures = [], 0
+    for key in conf.get("leagues", []):
+        if key not in LEAGUES:
+            continue
+        path, title = LEAGUES[key]
+        try:
+            data = json.loads(fetch_url(f"https://site.api.espn.com/apis/site/v2/sports/{path}/scoreboard?dates={span}&limit=200"))
+        except Exception:
+            failures += 1
+            continue
+        matches = []
+        for ev in data.get("events", []):
+            comp = (ev.get("competitions") or [{}])[0]
+            sides = {c.get("homeAway"): c for c in comp.get("competitors", [])}
+            if "home" not in sides or "away" not in sides:
+                continue
+            status = comp.get("status") or ev.get("status") or {}
+            kind = status.get("type") or {}
+            matches.append({
+                "date": ev.get("date") or comp.get("date"),
+                "state": kind.get("state", "pre"),
+                "detail": kind.get("shortDetail", ""),
+                "clock": status.get("displayClock", ""),
+                "home": _team(sides["home"]),
+                "away": _team(sides["away"]),
+            })
+        leagues.append({"key": key, "name": title, "matches": matches})
+    if failures and not leagues:
+        raise IOError("scores unavailable")
+    return {"leagues": leagues}
+
+
+def fetch_news(conf):
+    url, section = NEWS_FEEDS.get(conf.get("feed"), NEWS_FEEDS["top"])
+    root = ET.fromstring(fetch_url(url))
+    items = []
+    for item in root.iter("item"):
+        title = " ".join((item.findtext("title") or "").split())
+        if title and title not in (i["title"] for i in items):
+            items.append({"title": title})
+        if len(items) >= 20:
+            break
+    if not items:
+        raise IOError("no headlines")
+    return {"source": "BBC News", "section": section, "items": items}
+
+
+def fetch_weather(conf):
+    if conf.get("lat") is None:
+        return {"needsPlace": True}
+    query = urlencode({
+        "latitude": conf["lat"], "longitude": conf["lon"], "timezone": "auto", "forecast_days": 5,
+        "wind_speed_unit": "mph",
+        "current": "temperature_2m,apparent_temperature,weather_code,wind_speed_10m,is_day",
+        "hourly": "temperature_2m,weather_code,precipitation_probability",
+        "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+    })
+    d = json.loads(fetch_url("https://api.open-meteo.com/v1/forecast?" + query))
+    cur, hourly, daily = d["current"], d.get("hourly", {}), d.get("daily", {})
+    times = hourly.get("time", [])
+    start = next((i for i, t in enumerate(times) if t >= cur["time"][:13]), 0)
+    hours = [{"time": times[i][11:16], "temp": hourly["temperature_2m"][i], "code": hourly["weather_code"][i],
+              "rain": (hourly.get("precipitation_probability") or [None] * len(times))[i]}
+             for i in range(start + 3, min(start + 13, len(times)), 3)]
+    days = [{"date": day, "code": daily["weather_code"][i], "max": daily["temperature_2m_max"][i],
+             "min": daily["temperature_2m_min"][i]}
+            for i, day in enumerate(daily.get("time", []))]
+    return {"place": conf.get("label", ""),
+            "now": {"temp": cur["temperature_2m"], "feels": cur.get("apparent_temperature"),
+                    "code": cur["weather_code"], "wind": cur.get("wind_speed_10m"), "day": bool(cur.get("is_day", 1))},
+            "hours": hours, "days": days}
+
+
+class Feeds:
+    """Fetches live data for the channels on the Pi and caches it, so every screen and preview
+    shares one request and a dropped connection just keeps showing the last good data."""
+    SOURCES = {"scores": (fetch_scores, 60), "news": (fetch_news, 300), "weather": (fetch_weather, 600)}
+
+    def __init__(self, store):
+        self.store = store
+        self.cache = {}
+        self.locks = {name: threading.Lock() for name in self.SOURCES}
+
+    def get(self, name):
+        fetch, ttl = self.SOURCES[name]
+        with self.store.lock:
+            conf = json.loads(json.dumps(self.store.state["channels"][name]))
+        key = json.dumps(conf, sort_keys=True)
+        with self.locks[name]:
+            entry = self.cache.get(name)
+            if entry and entry["key"] == key and time.time() < entry["expires"]:
+                return entry["payload"]
+            try:
+                payload = {"ok": True, "updated": time.time(), "data": fetch(conf)}
+                expires = time.time() + ttl
+            except Exception:
+                old = entry["payload"]["data"] if entry and entry["key"] == key else None
+                payload = {"ok": False, "updated": entry["payload"]["updated"] if old else None, "data": old}
+                expires = time.time() + 30
+            self.cache[name] = {"key": key, "payload": payload, "expires": expires}
+            return payload
+
+
 # ---------------------------------------------------------------- HTTP
 
 def safe_join(base, rel):
@@ -438,6 +659,7 @@ def safe_join(base, rel):
 class Handler(BaseHTTPRequestHandler):
     server_version = "BarScreens/1.0"
     store = None
+    feeds = None
 
     def log_message(self, fmt, *args):
         pass
@@ -593,6 +815,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.wfile.write(body)
             if path == "/api/events":
                 return self._events()
+            m = re.fullmatch(r"/api/feed/(scores|news|weather)", path)
+            if m:
+                return self._json(200, self.feeds.get(m.group(1)))
 
         m = re.fullmatch(r"/api/slides/([0-9a-f]+)", path)
         if m and method == "PATCH":
@@ -613,6 +838,8 @@ class Handler(BaseHTTPRequestHandler):
         if method == "POST" and path == "/api/display":
             store.set_display(self._read_json())
             return self._json(200, {"ok": True})
+        if method == "PATCH" and path == "/api/channels":
+            return self._json(200, store.update_channels(self._read_json()))
         if method == "PATCH" and path == "/api/settings":
             store.update_settings(self._read_json())
             return self._json(200, {"ok": True})
@@ -638,6 +865,7 @@ def main():
 
     store = Store(args.data)
     Handler.store = store
+    Handler.feeds = Feeds(store)
 
     def ticker():
         while True:

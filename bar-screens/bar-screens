@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Switch Bar Screens on or off, so the Pi can be used for something else in between.
+#   bar-screens on      start the server and show the display on the HDMI output
+#   bar-screens off     stop everything and free the screen; stays off after restarts
+#   bar-screens status  show whether it's running
+set -euo pipefail
+APP_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+OFF_FLAG="$APP_DIR/data/display-off"
+UNIT=/etc/systemd/system/bar-screens.service
+PORT="$(grep -o -- '--port [0-9]*' "$UNIT" 2>/dev/null | awk '{print $2}')"
+URL="http://$(hostname).local$([ "${PORT:-80}" = 80 ] || echo ":$PORT")/control"
+mkdir -p "$APP_DIR/data"
+
+case "${1:-status}" in
+  on)
+    rm -f "$OFF_FLAG"
+    sudo systemctl enable --now bar-screens.service >/dev/null 2>&1
+    echo "Bar Screens is on. The display appears in a few seconds."
+    echo "Control it from $URL"
+    ;;
+  off)
+    touch "$OFF_FLAG"
+    sudo systemctl disable --now bar-screens.service >/dev/null 2>&1
+    echo "Bar Screens is off and the screen is free. It stays off after restarts until you run: bar-screens on"
+    ;;
+  status)
+    if systemctl is-active --quiet bar-screens.service; then
+      if [ -e "$OFF_FLAG" ]; then
+        echo "Server running, display off (the screen is free). Control page: $URL"
+      else
+        echo "On. Control page: $URL"
+      fi
+    else
+      echo "Off. Turn it on with: bar-screens on"
+    fi
+    ;;
+  *)
+    echo "Usage: bar-screens on | off | status"
+    exit 1
+    ;;
+esac

@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bar Screens display</title>
+<link id="fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;700&family=Bebas+Neue&family=Silkscreen:wght@400;700&family=VT323&display=swap">
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  body.kiosk { cursor: none; }
+  #pattern { position: fixed; inset: 0; display: block; }
+  .screen { position: absolute; overflow: hidden; transform-origin: 0 0; background: #000; }
+  .layer { position: absolute; inset: 0; opacity: 0; transition: opacity 0.5s ease; }
+  .layer.in { opacity: 1; }
+  .layer img, .layer video { display: block; width: 100%; height: 100%; }
+  .layer canvas, .grid { position: absolute; inset: 0; display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+  .grid { z-index: 2; }
+  body.testing .layer { visibility: hidden; }
+  body.testing.kiosk .screen { background: transparent; }
+  body.testing:not(.kiosk) .screen { background: #15181d; }
+  #dim { position: fixed; inset: 0; z-index: 5; background: #000; opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="pattern" hidden></canvas>
+<div id="stage"></div>
+<div id="dim"></div>
+<script>
+(() => {
+  'use strict';
+  // Modes:
+  //   /display                     the real output, shown full-screen on the Pi (kiosk)
+  //   /display?preview=s1          one screen scaled to fit, for previews on the control page
+  //   /display?preview=s1&slide=X  one item at that screen's size, for the editor
+  const params = new URLSearchParams(location.search);
+  const previewId = params.get('preview');
+  const soloSlide = params.get('slide');
+  const kiosk = !previewId;
+  const framed = window.parent !== window;
+  document.body.classList.toggle('kiosk', kiosk);
+
+  const FONTS = {
+    'Anton': [400, '"Anton"'],
+    'Bebas Neue': [400, '"Bebas Neue"'],
+    'Barlow Condensed': [700, '"Barlow Condensed"'],
+    'Silkscreen': [400, '"Silkscreen"'],
+    'VT323': [400, '"VT323"'],
+  };
+  const fontStr = (name, px) => {
+    const f = FONTS[name] || FONTS['Barlow Condensed'];
+    return `${f[0]} ${px}px ${f[1]}, "Arial Narrow", Arial, sans-serif`;
+  };
+
+  let state = null;
+  const stage = document.getElementById('stage');
+  const views = new Map(); // screen id -> { el, grid, key, visible, pending }
+
+  // ------------------------------------------------------------ text drawing
+
+  const measure = document.createElement('canvas').getContext('2d');
+
+  function layoutLines(lines, font, base) {
+    const rows = lines.map(({ t, scale }) => {
+      const size = Math.max(1, Math.round(base * scale));
+      if (!t.trim()) return { t, size, w: 0, left: 0, asc: size * 0.35, desc: 0 };
+      measure.font = fontStr(font, size);
+      const m = measure.measureText(t);
+      return { t, size, w: m.actualBoundingBoxLeft + m.actualBoundingBoxRight, left: m.actualBoundingBoxLeft,
+               asc: m.actualBoundingBoxAscent, desc: m.actualBoundingBoxDescent };
+    });
+    const gap = Math.round(base * 0.22);
+    const height = rows.reduce((sum, r) => sum + r.asc + r.desc, 0) + gap * Math.max(0, rows.length - 1);
+    const width = Math.max(0, ...rows.map((r) => r.w));
+    return { rows, gap, height, width };
+  }
+
+  function fitBase(lines, font, availW, availH) {
+    let lo = 4, hi = Math.max(4, Math.ceil(availH * 2)), best = 4;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const L = layoutLines(lines, font, mid);
+      if (L.width <= availW && L.height <= availH) { best = mid; lo = mid + 1; } else hi = mid - 1;
+    }
+    return best;
+  }
+
+  // Auto-sizes the lines to fill the screen. "crisp" turns each pixel fully on or off around the
+  // letters, which reads better than soft edges on a low-resolution LED wall.
+  function drawLines(canvas, W, H, lines, o) {
+    if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = o.bg || '#000000';
+    ctx.fillRect(0, 0, W, H);
+    if (!lines.some((l) => l.t.trim())) return;
+    const pad = Math.max(1, Math.round(Math.min(W, H) * 0.06));
+    const edge = o.outline ? 2 : 0;
+    let base = fitBase(lines, o.font, W - 2 * pad - 2 * edge, H - 2 * pad - 2 * edge);
+    base = Math.max(4, Math.round(base * (o.size || 100) / 100));
+    const L = layoutLines(lines, o.font, base);
+    const sw = o.outline ? Math.max(1, Math.round(base / 14)) : 0;
+    const layer = document.createElement('canvas');
+    layer.width = W; layer.height = H;
+    const tc = layer.getContext('2d');
+    tc.textAlign = 'left';
+    tc.textBaseline = 'alphabetic';
+    tc.lineJoin = 'round';
+    tc.strokeStyle = '#000000';
+    tc.fillStyle = o.color || '#ffffff';
+    let y = o.valign === 'top' ? pad + sw : o.valign === 'bottom' ? H - pad - sw - L.height : (H - L.height) / 2;
+    for (const r of L.rows) {
+      let x = o.align === 'left' ? pad + sw + r.left : o.align === 'right' ? W - pad - sw - r.w + r.left : (W - r.w) / 2 + r.left;
+      let by = y + r.asc;
+      if (o.crisp) { x = Math.round(x); by = Math.round(by); }
+      if (r.t.trim()) {
+        tc.font = fontStr(o.font, r.size);
+        if (sw) {
+          tc.lineWidth = Math.max(1, Math.round(sw * r.size / base)) * 2;
+          tc.strokeText(r.t, x, by);
+        }
+        tc.fillText(r.t, x, by);
+      }
+      y += r.asc + r.desc + L.gap;
+    }
+    if (o.crisp && Math.min(W, H) <= 512) {
+      const img = tc.getImageData(0, 0, W, H), d = img.data;
+      for (let i = 3; i < d.length; i += 4) d[i] = d[i] >= 112 ? 255 : 0;
+      tc.putImageData(img, 0, 0);
+    }
+    ctx.drawImage(layer, 0, 0);
+  }
+
+  function textLines(slide) {
+    const lines = (slide.text || '').replace(/\r/g, '').split('\n');
+    while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+    while (lines.length && !lines[0].trim()) lines.shift();
+    return lines.map((t) => ({ t, scale: 1 }));
+  }
+
+  function clockLines(slide) {
+    const now = new Date();
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const time = slide.hour24
+      ? `${String(now.getHours()).padStart(2, '0')}:${mm}`
+      : `${now.getHours() % 12 || 12}:${mm} ${now.getHours() < 12 ? 'AM' : 'PM'}`;
+    const lines = [{ t: time, scale: 1 }];
+    if (slide.showDate) {
+      const date = now.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+      lines.push({ t: date.replace(/,/g, '').toUpperCase(), scale: 0.42 });
+    }
+    return lines;
+  }
+
+  // ------------------------------------------------------------ slides
+
+  function buildLayer(slide, W, H, onReady) {
+    const layer = document.createElement('div');
+    layer.className = 'layer';
+    layer.style.background = slide.bg || '#000000';
+    layer._cleanup = () => {};
+    if (slide.type === 'image' || slide.type === 'video') {
+      const el = document.createElement(slide.type === 'image' ? 'img' : 'video');
+      el.style.objectFit = slide.fit || 'cover';
+      el.style.objectPosition = `${slide.posX ?? 50}% ${slide.posY ?? 50}%`;
+      const src = '/media/' + encodeURIComponent(slide.file || '');
+      if (slide.type === 'video') {
+        el.muted = true;
+        el.loop = true;
+        el.autoplay = true;
+        el.playsInline = true;
+        let done = false;
+        const ready = () => { if (!done) { done = true; onReady(); } };
+        el.addEventListener('canplay', ready, { once: true });
+        el.addEventListener('error', ready, { once: true });
+        setTimeout(ready, 4000);
+        el.src = src;
+        const play = el.play();
+        if (play) play.catch(() => {});
+        layer._cleanup = () => { el.pause(); el.removeAttribute('src'); el.load(); };
+      } else {
+        el.alt = '';
+        el.src = src;
+        (el.decode ? el.decode() : Promise.resolve()).then(onReady, onReady);
+      }
+      layer.appendChild(el);
+    } else {
+      const canvas = document.createElement('canvas');
+      layer.appendChild(canvas);
+      const lines = () => (slide.type === 'clock' ? clockLines(slide) : textLines(slide));
+      let shownText = '';
+      const draw = () => {
+        const L = lines();
+        shownText = L.map((l) => l.t).join('|');
+        drawLines(canvas, W, H, L, slide);
+      };
+      draw();
+      layer._redraw = draw;
+      if (slide.type === 'clock') {
+        const timer = setInterval(() => { if (lines().map((l) => l.t).join('|') !== shownText) draw(); }, 1000);
+        layer._cleanup = () => clearInterval(timer);
+      }
+      requestAnimationFrame(onReady);
+    }
+    return layer;
+  }
+
+  function retire(layer) {
+    if (!layer) return;
+    layer._cleanup();
+    layer.remove();
+  }
+
+  function swapLayer(view, slide, screen) {
+    retire(view.pending);
+    view.pending = null;
+    if (!slide) {
+      const old = view.visible;
+      view.visible = null;
+      if (old) { old.classList.remove('in'); setTimeout(() => retire(old), 550); }
+      return;
+    }
+    const layer = buildLayer(slide, screen.w, screen.h, () => {
+      if (view.pending !== layer) return;
+      view.pending = null;
+      const old = view.visible;
+      view.visible = layer;
+      requestAnimationFrame(() => {
+        layer.classList.add('in');
+        if (old) setTimeout(() => retire(old), 550);
+      });
+    });
+    view.pending = layer;
+    view.el.insertBefore(layer, view.grid);
+  }
+
+  // ------------------------------------------------------------ layout
+
+  function placeView(el, screen) {
+    el.style.width = screen.w + 'px';
+    el.style.height = screen.h + 'px';
+    if (kiosk) {
+      // x, y, rw, rh are in HDMI pixels; the content (w x h) is stretched to fill that area.
+      const dpr = window.devicePixelRatio || 1;
+      el.style.left = screen.x / dpr + 'px';
+      el.style.top = screen.y / dpr + 'px';
+      el.style.transform = `scale(${screen.rw / dpr / screen.w}, ${screen.rh / dpr / screen.h})`;
+    } else {
+      const k = Math.min(innerWidth / screen.w, innerHeight / screen.h);
+      el.style.left = (innerWidth - screen.w * k) / 2 + 'px';
+      el.style.top = (innerHeight - screen.h * k) / 2 + 'px';
+      el.style.transform = `scale(${k})`;
+    }
+  }
+
+  function ensureView(screen) {
+    let view = views.get(screen.id);
+    if (!view) {
+      const el = document.createElement('div');
+      el.className = 'screen';
+      const grid = document.createElement('canvas');
+      grid.className = 'grid';
+      grid.hidden = true;
+      el.appendChild(grid);
+      stage.appendChild(el);
+      view = { el, grid, key: '', gridKey: '', visible: null, pending: null };
+      views.set(screen.id, view);
+    }
+    return view;
+  }
+
+  // Per-screen test card: edges, a 16-pixel grid, diagonals and a circle. If the wall shows the
+  // green border on all four edges and the circle looks round, that screen's settings are right.
+  function drawScreenGrid(view, screen) {
+    const key = `${screen.name}|${screen.w}x${screen.h}`;
+    if (view.gridKey === key) return;
+    view.gridKey = key;
+    const { w: W, h: H } = screen;
+    const c = view.grid;
+    c.width = W; c.height = H;
+    const x = c.getContext('2d');
+    x.clearRect(0, 0, W, H);
+    x.strokeStyle = 'rgba(255,255,255,0.35)';
+    x.lineWidth = 1;
+    x.beginPath();
+    for (let i = 16; i < W; i += 16) { x.moveTo(i + 0.5, 0); x.lineTo(i + 0.5, H); }
+    for (let j = 16; j < H; j += 16) { x.moveTo(0, j + 0.5); x.lineTo(W, j + 0.5); }
+    x.stroke();
+    x.strokeStyle = '#00e5ff';
+    x.beginPath();
+    x.moveTo(0, 0); x.lineTo(W, H); x.moveTo(W, 0); x.lineTo(0, H);
+    x.stroke();
+    x.strokeStyle = '#ffb000';
+    x.lineWidth = Math.max(1, Math.round(Math.min(W, H) / 80));
+    x.beginPath();
+    x.arc(W / 2, H / 2, Math.min(W, H) * 0.4, 0, Math.PI * 2);
+    x.stroke();
+    x.strokeStyle = '#39ff14';
+    x.lineWidth = 2;
+    x.strokeRect(1, 1, W - 2, H - 2);
+    const label = [screen.name.toUpperCase(), `${W} x ${H}`];
+    const size = Math.max(8, Math.round(Math.min(W / 9, H / 6)));
+    x.font = fontStr('Barlow Condensed', size);
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    label.forEach((t, i) => {
+      const ty = H / 2 + (i - 0.5) * size * 1.1;
+      const tw = x.measureText(t).width;
+      x.fillStyle = 'rgba(0,0,0,0.75)';
+      x.fillRect(W / 2 - tw / 2 - 4, ty - size * 0.55, tw + 8, size * 1.1);
+      x.fillStyle = '#ffffff';
+      x.fillText(t, W / 2, ty);
+    });
+  }
+
+  // Whole-HDMI test card (kiosk only): coloured 128-pixel blocks labelled with their position,
+  // plus corner markers, so you can read off which part of the picture each wall shows.
+  let patternKey = '';
+  function drawWindowPattern(on) {
+    const c = document.getElementById('pattern');
+    c.hidden = !on;
+    if (!on) { patternKey = ''; return; }
+    const dpr = window.devicePixelRatio || 1;
+    const W = Math.round(innerWidth * dpr), H = Math.round(innerHeight * dpr);
+    const key = `${W}x${H}`;
+    if (key === patternKey) return;
+    patternKey = key;
+    c.width = W; c.height = H;
+    c.style.width = innerWidth + 'px';
+    c.style.height = innerHeight + 'px';
+    const x = c.getContext('2d');
+    const B = 128;
+    for (let row = 0; row * B < H; row++) {
+      for (let col = 0; col * B < W; col++) {
+        x.fillStyle = `hsl(${(col * 47 + row * 97) % 360} 70% 22%)`;
+        x.fillRect(col * B, row * B, B, B);
+      }
+    }
+    x.strokeStyle = 'rgba(255,255,255,0.18)';
+    x.lineWidth = 1;
+    x.beginPath();
+    for (let i = 32; i < W; i += 32) { x.moveTo(i + 0.5, 0); x.lineTo(i + 0.5, H); }
+    for (let j = 32; j < H; j += 32) { x.moveTo(0, j + 0.5); x.lineTo(W, j + 0.5); }
+    x.stroke();
+    x.strokeStyle = 'rgba(255,255,255,0.7)';
+    x.beginPath();
+    for (let i = B; i < W; i += B) { x.moveTo(i + 0.5, 0); x.lineTo(i + 0.5, H); }
+    for (let j = B; j < H; j += B) { x.moveTo(0, j + 0.5); x.lineTo(W, j + 0.5); }
+    x.stroke();
+    x.font = fontStr('Barlow Condensed', 18);
+    x.textBaseline = 'top';
+    x.textAlign = 'left';
+    for (let j = 0; j < H; j += B) {
+      for (let i = 0; i < W; i += B) {
+        const t = `${i},${j}`;
+        const tw = x.measureText(t).width;
+        x.fillStyle = '#000000';
+        x.fillRect(i + 3, j + 3, tw + 6, 20);
+        x.fillStyle = '#ffffff';
+        x.fillText(t, i + 6, j + 4);
+      }
+    }
+    const m = 64;
+    x.fillStyle = '#ff2d2d';
+    [[0, 0, 1, 1], [W, 0, -1, 1], [0, H, 1, -1], [W, H, -1, -1]].forEach(([cx, cy, sx, sy]) => {
+      x.beginPath();
+      x.moveTo(cx, cy); x.lineTo(cx + sx * m, cy); x.lineTo(cx, cy + sy * m);
+      x.closePath();
+      x.fill();
+    });
+    const big = Math.round(Math.min(W, H) / 9);
+    x.font = fontStr('Anton', big);
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    const title = `HDMI ${W} x ${H}`;
+    const tw = x.measureText(title).width;
+    x.fillStyle = 'rgba(0,0,0,0.8)';
+    x.fillRect(W / 2 - tw / 2 - 20, H / 2 - big * 0.7, tw + 40, big * 1.4);
+    x.fillStyle = '#ffffff';
+    x.fillText(title, W / 2, H / 2);
+  }
+
+  function render() {
+    if (!state) return;
+    const settings = state.settings;
+    const testing = settings.testPattern && !soloSlide;
+    document.body.classList.toggle('testing', testing);
+    const screens = state.screens.filter((s) => (previewId ? s.id === previewId : s.enabled));
+    for (const [id, view] of views) {
+      if (!screens.some((s) => s.id === id)) {
+        retire(view.pending);
+        retire(view.visible);
+        view.el.remove();
+        views.delete(id);
+      }
+    }
+    for (const screen of screens) {
+      const view = ensureView(screen);
+      placeView(view.el, screen);
+      const slideId = soloSlide || (state.live[screen.id] && state.live[screen.id].slide);
+      const slide = state.slides.find((s) => s.id === slideId) || null;
+      const key = slide ? JSON.stringify([slide, screen.w, screen.h]) : `none:${screen.w}x${screen.h}`;
+      if (key !== view.key) {
+        view.key = key;
+        swapLayer(view, slide, screen);
+      }
+      view.grid.hidden = !testing;
+      if (testing) drawScreenGrid(view, screen);
+    }
+    const dim = soloSlide ? 0 : settings.blackout ? 1 : 1 - settings.brightness / 100;
+    document.getElementById('dim').style.opacity = String(dim);
+    if (kiosk) drawWindowPattern(testing);
+  }
+
+  function redrawText() {
+    patternKey = '';
+    for (const view of views.values()) {
+      view.gridKey = '';
+      if (view.visible && view.visible._redraw) view.visible._redraw();
+      if (view.pending && view.pending._redraw) view.pending._redraw();
+    }
+    render();
+  }
+
+  // ------------------------------------------------------------ wiring
+
+  function reportSize() {
+    if (!kiosk) return;
+    const dpr = window.devicePixelRatio || 1;
+    fetch('/api/display', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ w: Math.round(innerWidth * dpr), h: Math.round(innerHeight * dpr) }),
+    }).catch(() => {});
+  }
+
+  function connect() {
+    const es = new EventSource('/api/events');
+    es.onopen = reportSize;
+    es.onmessage = (e) => {
+      try { state = JSON.parse(e.data); } catch (err) { return; }
+      render();
+    };
+    // Keep showing the last picture if the server goes away, and reconnect when it's back.
+    es.onerror = () => { if (es.readyState === EventSource.CLOSED) setTimeout(connect, 3000); };
+  }
+
+  if (previewId && framed) {
+    window.addEventListener('message', (e) => {
+      if (e.origin !== location.origin || !e.data || e.data.type !== 'state') return;
+      state = e.data.state;
+      render();
+    });
+    window.parent.postMessage({ type: 'preview-ready' }, location.origin);
+  } else {
+    connect();
+  }
+
+  let resizeTimer = 0;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { patternKey = ''; render(); reportSize(); }, 100);
+  });
+
+  function loadFonts() {
+    Promise.all(Object.keys(FONTS).map((f) => document.fonts.load(fontStr(f, 40)).catch(() => {}))).then(redrawText);
+  }
+  if (document.fonts) {
+    const link = document.getElementById('fonts');
+    if (link.sheet) loadFonts(); else link.addEventListener('load', loadFonts);
+    document.fonts.addEventListener('loadingdone', redrawText);
+  }
+
+  if (kiosk && navigator.wakeLock) {
+    const lock = () => navigator.wakeLock.request('screen').catch(() => {});
+    lock();
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') lock(); });
+  }
+})();
+</script>
+</body>
+</html>

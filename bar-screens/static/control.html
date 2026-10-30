@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e1014">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Bar Screens</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Bebas+Neue&family=Silkscreen:wght@400;700&family=VT323&display=swap">
+<style>
+/* Layout: one phone-width column — live preview, quick controls, library, then setup */
+:root {
+  --bg: #0e1014; --surface: #171a20; --raise: #20242c; --line: #2b303a;
+  --fg: #eef0f4; --muted: #98a1b0;
+  --accent: #ffb000; --accent-ink: #1d1300; --accent-text: #ffbe3d;
+  --live: #39d98a; --danger: #ff6b6b;
+  --f-display: "Silkscreen", ui-monospace, Menlo, monospace;
+  --f-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-label: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+  --r: 12px;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f1f2f5; --surface: #ffffff; --raise: #f5f6f8; --line: #d8dce3;
+    --fg: #15181e; --muted: #5a6372;
+    --accent: #f0a000; --accent-ink: #1d1300; --accent-text: #8f4f00;
+    --live: #10934f; --danger: #c92a2a;
+    color-scheme: light;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 400 16px/1.45 var(--f-body); }
+button, input, select, textarea { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+
+.top {
+  position: sticky; top: 0; z-index: 10; background: var(--bg);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px));
+  border-bottom: 1px solid var(--line);
+}
+.brand { font: 700 18px/1 var(--f-display); letter-spacing: 0.02em; }
+.brand b { color: var(--accent-text); font-weight: 700; }
+.conn { display: inline-flex; align-items: center; gap: 6px; font: 600 14px var(--f-label); color: var(--muted); }
+.conn::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.conn.ok { color: var(--live); }
+.conn.ok::before { background: var(--live); box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 25%, transparent); }
+
+.wrap {
+  max-width: 720px; margin: 0 auto; display: grid; gap: 16px;
+  padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 40px) max(16px, env(safe-area-inset-left, 0px));
+}
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 12px; min-width: 0; }
+h2 { margin: 0; font: 600 13px/1.2 var(--f-label); text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); }
+.muted { color: var(--muted); }
+.note { margin: 0; font-size: 14px; color: var(--muted); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.grow { flex: 1 1 auto; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 40px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--raise); cursor: pointer; font: 600 16px/1.1 var(--f-label); letter-spacing: 0.02em;
+}
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn.small { min-height: 34px; padding: 6px 10px; font-size: 15px; }
+.btn.danger { color: var(--danger); }
+.btn.on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible, .switch input:focus-visible + span {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
+.tabs { display: flex; gap: 8px; }
+.tab { flex: 1; min-height: 40px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font: 600 16px var(--f-label); }
+.tab[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+.pv { position: relative; background: #000; border-radius: 8px; overflow: hidden; width: 100%; max-height: 46vh; margin: 0 auto; }
+.pv iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; pointer-events: none; }
+.now { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.now-text { display: grid; gap: 2px; min-width: 0; }
+.now-text b { font: 600 20px/1.15 var(--f-label); overflow-wrap: anywhere; }
+.eyebrow { font: 600 12px/1 var(--f-label); text-transform: uppercase; letter-spacing: 0.09em; color: var(--live); }
+.banner { margin: 0; padding: 10px 12px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--fg); font-size: 14px; }
+
+.slider { display: grid; grid-template-columns: auto minmax(0, 1fr) 3.2em; gap: 10px; align-items: center; }
+.slider output { text-align: right; font: 600 15px var(--f-label); font-variant-numeric: tabular-nums; color: var(--muted); }
+input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
+.lab { font: 600 15px/1.2 var(--f-label); }
+
+textarea, input[type="text"], input[type="number"], select {
+  width: 100%; background: var(--raise); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; min-width: 0;
+}
+textarea { resize: vertical; font-size: 18px; line-height: 1.3; }
+input[type="number"] { font-variant-numeric: tabular-nums; }
+input[type="color"] { width: 44px; height: 36px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--raise); cursor: pointer; }
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.sw { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--line); padding: 0; cursor: pointer; box-shadow: inset 0 0 0 2px var(--surface); }
+.sw[aria-pressed="true"] { border-color: var(--fg); }
+
+.seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.seg button { flex: 1 1 0; min-width: 0; min-height: 38px; border: 0; border-right: 1px solid var(--line); background: var(--raise); cursor: pointer; font: 600 15px var(--f-label); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+
+.switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font: 600 15px var(--f-label); user-select: none; }
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch span { position: relative; width: 40px; height: 24px; border-radius: 999px; background: var(--line); transition: background 0.15s; flex: none; }
+.switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform 0.15s; }
+.switch input:checked + span { background: var(--live); }
+.switch input:checked + span::after { transform: translateX(16px); }
+.check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.check input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--accent); flex: none; }
+.check small { display: block; font-size: 14px; color: var(--muted); }
+
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.lib { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.item { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; padding: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.item.is-live { border-color: var(--live); }
+.thumb { width: 92px; max-height: 120px; border-radius: 6px; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center; align-self: start; }
+.thumb img, .thumb video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb .tx { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; padding: 4px; font-size: 13px; line-height: 1.05; overflow: hidden; white-space: pre-line; word-break: break-word; }
+.info { display: grid; gap: 8px; min-width: 0; }
+.info b { font: 600 18px/1.15 var(--f-label); overflow-wrap: anywhere; }
+.meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 14px; color: var(--muted); }
+.pill { font: 700 12px/1 var(--f-label); letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 7px; border-radius: 999px; }
+.pill.live { background: var(--live); color: #04140b; }
+.pill.warn { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent-text); }
+.pill.err { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
+.empty { margin: 0; padding: 18px; border: 1px dashed var(--line); border-radius: var(--r); color: var(--muted); text-align: center; }
+
+.uploads { display: grid; gap: 8px; }
+.up { display: grid; gap: 4px; font-size: 14px; }
+.up progress { width: 100%; height: 6px; accent-color: var(--accent); }
+
+details.card > summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font: 600 17px var(--f-label); }
+details.card > summary::-webkit-details-marker { display: none; }
+details.card > summary::after { content: "Show"; font: 600 14px var(--f-label); color: var(--muted); }
+details.card[open] > summary::after { content: "Hide"; }
+.scr { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--raise); }
+.scr input[type="number"], .scr input[type="text"] { background: var(--surface); }
+.quad { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field > span { font: 600 13px var(--f-label); color: var(--muted); }
+ol.steps { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; font-size: 15px; }
+
+dialog { padding: 0; border: 0; background: transparent; color: var(--fg); max-width: 720px; width: 100%; max-height: 100%; height: 100%; margin: 0 auto; }
+dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+.ed { min-height: 100%; background: var(--bg); display: grid; align-content: start; gap: 14px; padding: calc(env(safe-area-inset-top, 0px) + 12px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 24px) max(16px, env(safe-area-inset-left, 0px)); }
+.ed-head { display: flex; gap: 8px; align-items: center; position: sticky; top: 0; background: var(--bg); padding-block: 4px; z-index: 2; }
+.ed-head input { font: 600 18px var(--f-label); }
+.ed-fields { display: grid; gap: 14px; }
+
+.toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); transform: translateX(-50%); z-index: 50; max-width: calc(100% - 32px); padding: 10px 14px; border-radius: 10px; background: var(--fg); color: var(--bg); font: 600 15px var(--f-label); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">BAR <b>SCREENS</b></div>
+  <span class="conn" id="conn" role="status">Connecting…</span>
+</header>
+
+<main class="wrap">
+  <nav class="tabs" id="tabs" aria-label="Choose a screen" hidden></nav>
+
+  <section class="card" aria-label="On screen now">
+    <div class="pv" id="livePv"><iframe id="liveFrame" title="Live preview"></iframe></div>
+    <p class="banner" id="testNote" hidden>The test pattern is on, so your content is hidden. Turn it off in Screen setup below.</p>
+    <div class="now">
+      <div class="now-text">
+        <span class="eyebrow">On screen now</span>
+        <b id="nowName">Nothing yet</b>
+        <span class="note" id="nowMode"></span>
+      </div>
+      <div class="row">
+        <button type="button" class="btn small" id="nextBtn">Next</button>
+        <button type="button" class="btn small" id="resumeBtn">Back to rotation</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" aria-label="Brightness">
+    <div class="row">
+      <label class="slider grow"><span class="lab">Brightness</span><input type="range" id="brightness" min="5" max="100" step="1"><output id="brightnessOut"></output></label>
+      <button type="button" class="btn" id="blackoutBtn" aria-pressed="false">Blackout</button>
+    </div>
+    <label class="switch"><input type="checkbox" id="displayOn"><span></span>Use the Pi's screen output</label>
+    <p class="note" id="displayNote" hidden>Off: the Pi's HDMI output is free for your other project. Switch this back on to bring Bar Screens back.</p>
+  </section>
+
+  <section class="card" aria-labelledby="hQuick">
+    <h2 id="hQuick">Quick message</h2>
+    <textarea id="qmText" rows="2" placeholder="LAST ORDERS" aria-label="Message text"></textarea>
+    <div class="swatches" id="qmSwatches" role="group" aria-label="Message color"></div>
+    <button type="button" class="btn primary" id="qmBtn">Show now</button>
+  </section>
+
+  <section class="grid-gap" aria-labelledby="hLib" style="display:grid;gap:12px">
+    <div class="section-head">
+      <h2 id="hLib">Library</h2>
+      <div class="row">
+        <button type="button" class="btn small primary" id="addMedia">+ Photo or video</button>
+        <button type="button" class="btn small" id="addText">+ Text</button>
+        <button type="button" class="btn small" id="addClock">+ Clock</button>
+      </div>
+    </div>
+    <input type="file" id="fileInput" accept="image/*,video/*" multiple hidden>
+    <div class="uploads" id="uploads"></div>
+    <p class="empty" id="libEmpty">Nothing here yet. Add a photo, a video, some text or a clock, then switch on <b>In rotation</b> to put it on the wall.</p>
+    <ul class="lib" id="library"></ul>
+  </section>
+
+  <details class="card" id="setup">
+    <summary>Screen setup</summary>
+    <label class="switch"><input type="checkbox" id="testPattern"><span></span>Show test pattern</label>
+    <p class="note" id="hdmiInfo"></p>
+    <ol class="steps">
+      <li>Turn on the test pattern and look at the wall.</li>
+      <li><b>All four red corners are on the wall</b> (the whole pattern is squeezed on)? Press <b>Whole HDMI picture</b>.</li>
+      <li><b>Only part of the pattern shows?</b> Read the numbers at the wall's top-left and bottom-right and type that area in, then press <b>1:1</b>.</li>
+      <li>Set <b>LED pixels</b> to the wall's resolution (ViPlex Handy shows it). When the green border sits on the wall's edges and the circle looks round, you're done.</li>
+    </ol>
+    <div id="screenSetup" style="display:grid;gap:12px"></div>
+  </details>
+</main>
+
+<dialog id="editor" aria-labelledby="edName">
+  <div class="ed">
+    <div class="ed-head">
+      <input type="text" id="edName" aria-label="Name" maxlength="80">
+      <button type="button" class="btn primary" id="edDone">Done</button>
+    </div>
+    <div class="pv" id="edPv"><iframe id="edFrame" title="Preview"></iframe></div>
+    <div class="ed-fields" id="edFields"></div>
+    <div class="row">
+      <button type="button" class="btn danger" id="edDelete">Delete</button>
+    </div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  const SWATCHES = [['#ffb000', 'Amber'], ['#ffffff', 'White'], ['#ff2d2d', 'Red'], ['#2dff6e', 'Green'], ['#2ad4ff', 'Cyan'], ['#ff3fd2', 'Pink']];
+  const FONTS = [['Anton', 'Anton (tall and bold)'], ['Bebas Neue', 'Bebas Neue (clean capitals)'], ['Barlow Condensed', 'Barlow Condensed (easy to read)'], ['Silkscreen', 'Silkscreen (pixel font)'], ['VT323', 'VT323 (retro terminal)']];
+  const FONT_CSS = { 'Anton': '400 1em "Anton"', 'Bebas Neue': '400 1em "Bebas Neue"', 'Barlow Condensed': '700 1em "Barlow Condensed"', 'Silkscreen': '400 1em "Silkscreen"', 'VT323': '400 1.2em "VT323"' };
+  const TYPE_LABEL = { image: 'Photo', video: 'Video', text: 'Text', clock: 'Clock' };
+  const EXT_FOR = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/gif': '.gif', 'image/webp': '.webp', 'image/heic': '.heic', 'video/mp4': '.mp4', 'video/quicktime': '.mov', 'video/webm': '.webm' };
+
+  let state = null;
+  let cur = 's1';
+  try { cur = localStorage.getItem('bar-screens:screen') || 's1'; } catch (e) {}
+
+  // ------------------------------------------------------------ helpers
+
+  let toastTimer = 0;
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, 4000);
+  }
+
+  async function api(method, path, body) {
+    let res;
+    try {
+      res = await fetch(path, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+    } catch (e) {
+      throw new Error("Can't reach the Pi. Check it's on and you're on the same Wi-Fi.");
+    }
+    let data = null;
+    try { data = await res.json(); } catch (e) {}
+    if (!res.ok) throw new Error((data && data.error) || `Something went wrong (${res.status}).`);
+    return data;
+  }
+  const run = (p) => p.catch((e) => toast(e.message));
+
+  const screenById = (id) => state.screens.find((s) => s.id === id);
+  const slideById = (id) => state.slides.find((s) => s.id === id);
+  const enabledScreens = () => state.screens.filter((s) => s.enabled);
+
+  function swatchesHTML(selected) {
+    return SWATCHES.map(([hex, name]) => `<button type="button" class="sw" data-hex="${hex}" style="background:${hex}" aria-label="${name}" title="${name}" aria-pressed="${hex === selected}"></button>`).join('');
+  }
+
+  function debounce(fn, ms) {
+    let t = 0;
+    const d = (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+    d.flush = (...a) => { clearTimeout(t); fn(...a); };
+    return d;
+  }
+
+  // ------------------------------------------------------------ previews
+
+  // Preview frames run display.html and get state from this page, so the phone keeps a single
+  // connection to the Pi. The editor frame gets the slide being edited before it's saved.
+  let editing = null; // { id, local }
+  function stateFor(win) {
+    if (editing && win === $('edFrame').contentWindow) {
+      return { ...state, slides: state.slides.map((s) => (s.id === editing.id ? { ...s, ...editing.local } : s)) };
+    }
+    return state;
+  }
+  function pushPreviews() {
+    if (!state) return;
+    for (const f of [$('liveFrame'), $('edFrame')]) {
+      if (f.contentWindow && f.dataset.ready === '1') f.contentWindow.postMessage({ type: 'state', state: stateFor(f.contentWindow) }, location.origin);
+    }
+  }
+  window.addEventListener('message', (e) => {
+    if (e.origin !== location.origin || !e.data || e.data.type !== 'preview-ready') return;
+    for (const f of [$('liveFrame'), $('edFrame')]) {
+      if (f.contentWindow === e.source) f.dataset.ready = '1';
+    }
+    if (state) e.source.postMessage({ type: 'state', state: stateFor(e.source) }, location.origin);
+  });
+  function setFrame(frame, src) {
+    if (frame.dataset.src === src) return;
+    frame.dataset.src = src;
+    frame.dataset.ready = '0';
+    frame.src = src;
+  }
+  function sizePreview(box, screen) {
+    box.style.aspectRatio = `${screen.w} / ${screen.h}`;
+    box.style.maxWidth = `calc(46vh * ${screen.w / screen.h})`;
+  }
+
+  // ------------------------------------------------------------ rendering
+
+  function render() {
+    if (!state) return;
+    const enabled = enabledScreens();
+    if (!enabled.some((s) => s.id === cur)) cur = (enabled[0] || state.screens[0]).id;
+    const screen = screenById(cur);
+
+    const tabs = $('tabs');
+    tabs.hidden = enabled.length < 2;
+    tabs.innerHTML = enabled.map((s) => `<button type="button" class="tab" data-screen="${s.id}" aria-pressed="${s.id === cur}">${esc(s.name)}</button>`).join('');
+
+    setFrame($('liveFrame'), `/display?preview=${cur}`);
+    sizePreview($('livePv'), screen);
+    $('testNote').hidden = !state.settings.testPattern;
+
+    const liveId = state.live[cur] && state.live[cur].slide;
+    const live = liveId && slideById(liveId);
+    const rotation = screen.playlist.filter((id) => slideById(id));
+    $('nowName').textContent = live ? live.name : 'Nothing yet';
+    $('nowMode').textContent = screen.pinned
+      ? 'Pinned. It stays up until you go back to the rotation.'
+      : rotation.length ? `Rotating through ${rotation.length} item${rotation.length === 1 ? '' : 's'}.` : 'Nothing is in rotation for this screen.';
+    $('nextBtn').hidden = !screen.pinned && rotation.length < 2;
+    $('resumeBtn').hidden = !screen.pinned;
+
+    const b = $('brightness');
+    if (document.activeElement !== b) b.value = state.settings.brightness;
+    $('brightnessOut').textContent = `${b.value}%`;
+    $('blackoutBtn').classList.toggle('on', state.settings.blackout);
+    $('blackoutBtn').setAttribute('aria-pressed', String(state.settings.blackout));
+    $('blackoutBtn').textContent = state.settings.blackout ? 'Blacked out' : 'Blackout';
+    $('displayOn').checked = state.displayOn;
+    $('displayNote').hidden = state.displayOn;
+
+    renderLibrary(screen, liveId);
+    renderSetup();
+    pushPreviews();
+  }
+
+  function thumbHTML(s, screen) {
+    if (s.type === 'image' && s.file) return `<img src="/media/${encodeURIComponent(s.file)}" alt="" loading="lazy">`;
+    if (s.type === 'video' && s.file && !s.processing) return `<video src="/media/${encodeURIComponent(s.file)}#t=0.5" muted playsinline preload="metadata"></video>`;
+    if (s.type === 'video') return `<div class="tx" style="color:var(--muted)">Converting…</div>`;
+    const text = s.type === 'clock' ? (s.hour24 ? '21:30' : '9:30 PM') : (s.text || '').trim();
+    return `<div class="tx" style="background:${esc(s.bg)};color:${esc(s.color)};font:${FONT_CSS[s.font] || FONT_CSS['Barlow Condensed']}">${esc(text)}</div>`;
+  }
+
+  let libHTML = '';
+  function renderLibrary(screen, liveId) {
+    const slides = state.slides.slice().reverse();
+    $('libEmpty').hidden = slides.length > 0;
+    const html = slides.map((s) => {
+      const inRot = screen.playlist.includes(s.id);
+      const isLive = s.id === liveId;
+      const secs = Math.round(s.duration || 10);
+      return `<li class="item${isLive ? ' is-live' : ''}" data-id="${s.id}">
+        <div class="thumb" style="aspect-ratio:${screen.w} / ${screen.h}">${thumbHTML(s, screen)}</div>
+        <div class="info">
+          <b>${esc(s.name)}</b>
+          <div class="meta">
+            ${isLive ? '<span class="pill live">On now</span>' : ''}
+            ${s.processing ? '<span class="pill warn">Converting video</span>' : ''}
+            ${s.error ? `<span class="pill err">${esc(s.error)}</span>` : ''}
+            <span>${TYPE_LABEL[s.type]} · ${secs} s</span>
+          </div>
+          <div class="row">
+            <label class="switch"><input type="checkbox" data-act="rotate" ${inRot ? 'checked' : ''}><span></span>In rotation</label>
+            <span class="grow"></span>
+            <button type="button" class="btn small" data-act="show" ${s.processing ? 'disabled' : ''}>Show now</button>
+            <button type="button" class="btn small" data-act="edit">Edit</button>
+          </div>
+        </div>
+      </li>`;
+    }).join('');
+    if (html !== libHTML) {
+      libHTML = html;
+      $('library').innerHTML = html;
+    }
+  }
+
+  function renderSetup() {
+    const d = state.display;
+    $('hdmiInfo').innerHTML = d
+      ? `The Pi is sending a <b>${d.w} × ${d.h}</b> HDMI picture.`
+      : "The Pi's display page hasn't connected yet. It reports the HDMI picture size once it's running on the Pi.";
+    const tp = $('testPattern');
+    tp.checked = state.settings.testPattern;
+    const box = $('screenSetup');
+    for (const s of state.screens) {
+      let el = box.querySelector(`[data-setup="${s.id}"]`);
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'scr';
+        el.dataset.setup = s.id;
+        el.innerHTML = `
+          <div class="row">
+            <input type="text" data-k="name" class="grow" style="flex:1 1 140px" aria-label="Screen name" maxlength="40">
+            <label class="switch"><input type="checkbox" data-k="enabled"><span></span>In use</label>
+          </div>
+          <div class="field"><span>LED pixels (width × height)</span>
+            <div class="pair"><input type="number" inputmode="numeric" data-k="w" aria-label="LED width"><input type="number" inputmode="numeric" data-k="h" aria-label="LED height"></div>
+          </div>
+          <div class="field"><span>Area of the HDMI picture this wall shows (x, y, width, height)</span>
+            <div class="quad"><input type="number" inputmode="numeric" data-k="x" aria-label="X"><input type="number" inputmode="numeric" data-k="y" aria-label="Y"><input type="number" inputmode="numeric" data-k="rw" aria-label="Area width"><input type="number" inputmode="numeric" data-k="rh" aria-label="Area height"></div>
+          </div>
+          <div class="row">
+            <button type="button" class="btn small" data-preset="whole">Whole HDMI picture</button>
+            <button type="button" class="btn small" data-preset="one">1:1 (area = LED pixels)</button>
+          </div>`;
+        box.appendChild(el);
+      }
+      for (const input of el.querySelectorAll('[data-k]')) {
+        if (input === document.activeElement) continue;
+        if (input.type === 'checkbox') input.checked = !!s[input.dataset.k];
+        else input.value = s[input.dataset.k];
+      }
+    }
+  }
+
+  // ------------------------------------------------------------ actions
+
+  function patchScreen(id, patch) { return run(api('PATCH', `/api/screens/${id}`, patch)); }
+
+  $('tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-screen]');
+    if (!b) return;
+    cur = b.dataset.screen;
+    try { localStorage.setItem('bar-screens:screen', cur); } catch (err) {}
+    libHTML = '';
+    render();
+  });
+  $('nextBtn').addEventListener('click', () => run(api('POST', `/api/screens/${cur}/next`)));
+  $('resumeBtn').addEventListener('click', () => patchScreen(cur, { pinned: null }));
+
+  const sendBrightness = debounce((v) => run(api('PATCH', '/api/settings', { brightness: v })), 150);
+  $('brightness').addEventListener('input', (e) => { $('brightnessOut').textContent = `${e.target.value}%`; sendBrightness(Number(e.target.value)); });
+  $('blackoutBtn').addEventListener('click', () => run(api('PATCH', '/api/settings', { blackout: !state.settings.blackout })));
+  $('displayOn').addEventListener('change', (e) => run(api('PATCH', '/api/settings', { displayOn: e.target.checked })));
+
+  let qmColor = SWATCHES[0][0];
+  $('qmSwatches').innerHTML = swatchesHTML(qmColor);
+  $('qmSwatches').addEventListener('click', (e) => {
+    const b = e.target.closest('.sw');
+    if (!b) return;
+    qmColor = b.dataset.hex;
+    $('qmSwatches').querySelectorAll('.sw').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.hex === qmColor)));
+  });
+  $('qmBtn').addEventListener('click', async () => {
+    const text = $('qmText').value.trim();
+    if (!text) { $('qmText').focus(); toast('Type a message first.'); return; }
+    $('qmBtn').disabled = true;
+    try {
+      await api('POST', '/api/slides', { type: 'text', text, color: qmColor, name: `Message: ${text.split('\n')[0].slice(0, 40)}`, pinTo: cur });
+      toast('On the wall now. Press "Back to rotation" when you\'re done.');
+    } catch (e) { toast(e.message); }
+    $('qmBtn').disabled = false;
+  });
+
+  $('library').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-act]');
+    const item = e.target.closest('[data-id]');
+    if (!btn || !item || btn.tagName === 'INPUT') return;
+    const id = item.dataset.id;
+    if (btn.dataset.act === 'show') patchScreen(cur, { pinned: id });
+    if (btn.dataset.act === 'edit') openEditor(id);
+  });
+  $('library').addEventListener('change', (e) => {
+    if (e.target.dataset.act !== 'rotate') return;
+    const id = e.target.closest('[data-id]').dataset.id;
+    const list = screenById(cur).playlist.filter((x) => x !== id);
+    if (e.target.checked) list.push(id);
+    patchScreen(cur, { playlist: list });
+  });
+
+  $('addText').addEventListener('click', async () => {
+    try {
+      const s = await api('POST', '/api/slides', { type: 'text', text: 'TONIGHT\nCOCKTAILS £8', name: 'New text' });
+      openEditor(s.id, s);
+    } catch (e) { toast(e.message); }
+  });
+  $('addClock').addEventListener('click', async () => {
+    try {
+      const s = await api('POST', '/api/slides', { type: 'clock', addTo: cur });
+      toast('Clock added to the rotation.');
+      openEditor(s.id, s);
+    } catch (e) { toast(e.message); }
+  });
+
+  // Uploads: one at a time, with progress. Each lands in this screen's rotation.
+  $('addMedia').addEventListener('click', () => $('fileInput').click());
+  $('fileInput').addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    for (const f of files) await upload(f);
+  });
+  function uploadName(f) {
+    let name = f.name || 'upload';
+    if (!/\.[a-z0-9]{2,5}$/i.test(name)) name += EXT_FOR[f.type] || '';
+    return name;
+  }
+  function upload(file) {
+    return new Promise((resolve) => {
+      const row = document.createElement('div');
+      row.className = 'up';
+      row.innerHTML = `<span>${esc(file.name || 'Upload')}</span><progress max="100" value="0"></progress>`;
+      $('uploads').appendChild(row);
+      const bar = row.querySelector('progress');
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `/api/upload?name=${encodeURIComponent(uploadName(file))}&addTo=${cur}`);
+      xhr.upload.onprogress = (ev) => { if (ev.lengthComputable) bar.value = (ev.loaded / ev.total) * 100; };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          row.remove();
+        } else {
+          let msg = 'Upload failed.';
+          try { msg = JSON.parse(xhr.responseText).error || msg; } catch (err) {}
+          row.innerHTML = `<span class="pill err">${esc(msg)}</span>`;
+          setTimeout(() => row.remove(), 6000);
+        }
+        resolve();
+      };
+      xhr.onerror = () => {
+        row.innerHTML = '<span class="pill err">Upload failed. Check you\'re on the same Wi-Fi as the Pi.</span>';
+        setTimeout(() => row.remove(), 6000);
+        resolve();
+      };
+      xhr.send(file);
+    });
+  }
+
+  // Setup
+  $('testPattern').addEventListener('change', (e) => run(api('PATCH', '/api/settings', { testPattern: e.target.checked })));
+  $('screenSetup').addEventListener('change', (e) => {
+    const input = e.target.closest('[data-k]');
+    const box = e.target.closest('[data-setup]');
+    if (!input || !box) return;
+    const k = input.dataset.k;
+    let v = input.type === 'checkbox' ? input.checked : input.type === 'number' ? Number(input.value) : input.value.trim();
+    if (input.type === 'number' && !Number.isFinite(v)) return;
+    if (k === 'name' && !v) return;
+    patchScreen(box.dataset.setup, { [k]: v });
+  });
+  $('screenSetup').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-preset]');
+    if (!b) return;
+    const id = b.closest('[data-setup]').dataset.setup;
+    const s = screenById(id);
+    if (b.dataset.preset === 'whole') {
+      if (!state.display) { toast("The Pi's display hasn't reported its size yet."); return; }
+      patchScreen(id, { x: 0, y: 0, rw: state.display.w, rh: state.display.h });
+    } else {
+      patchScreen(id, { rw: s.w, rh: s.h });
+    }
+  });
+
+  // ------------------------------------------------------------ editor
+
+  const FIELD_SETS = {
+    text: ['text', 'font', 'color', 'bg', 'size', 'align', 'valign', 'outline', 'crisp', 'duration'],
+    clock: ['font', 'color', 'bg', 'size', 'hour24', 'showDate', 'crisp', 'duration'],
+    image: ['fit', 'posX', 'posY', 'bg', 'duration'],
+    video: ['fit', 'posX', 'posY', 'bg', 'duration'],
+  };
+  const FIELDS = {
+    text: { label: 'Message', kind: 'textarea', hint: 'One line per row. It sizes itself to fill the screen.' },
+    font: { label: 'Font', kind: 'select', options: FONTS },
+    color: { label: 'Text color', kind: 'color', swatches: true },
+    bg: { label: 'Background', kind: 'color', hint: 'Black means those LEDs stay off.' },
+    size: { label: 'Size', kind: 'range', min: 20, max: 100, unit: '%' },
+    align: { label: 'Across', kind: 'seg', options: [['left', 'Left'], ['center', 'Center'], ['right', 'Right']] },
+    valign: { label: 'Up and down', kind: 'seg', options: [['top', 'Top'], ['middle', 'Middle'], ['bottom', 'Bottom']] },
+    outline: { label: 'Black outline', kind: 'check', hint: 'Helps text stand out.' },
+    crisp: { label: 'Sharp pixel edges', kind: 'check', hint: 'Cleaner small text on a low-resolution wall.' },
+    hour24: { label: '24-hour time', kind: 'check' },
+    showDate: { label: 'Show the date', kind: 'check' },
+    fit: { label: 'Fit', kind: 'seg', options: [['cover', 'Fill & crop'], ['contain', 'Whole'], ['fill', 'Stretch']] },
+    posX: { label: 'Crop left/right', kind: 'range', min: 0, max: 100, unit: '%' },
+    posY: { label: 'Crop up/down', kind: 'range', min: 0, max: 100, unit: '%' },
+    duration: { label: 'Time on screen', kind: 'range', min: 3, max: 120, unit: ' s' },
+  };
+
+  function fieldHTML(key, value) {
+    const f = FIELDS[key];
+    const hint = f.hint ? `<small class="note">${esc(f.hint)}</small>` : '';
+    switch (f.kind) {
+      case 'textarea':
+        return `<label class="field"><span class="lab">${f.label}</span><textarea rows="3" data-f="${key}">${esc(value)}</textarea>${hint}</label>`;
+      case 'select':
+        return `<label class="field"><span class="lab">${f.label}</span><select data-f="${key}">${f.options.map(([v, l]) => `<option value="${esc(v)}" ${v === value ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`;
+      case 'color':
+        return `<div class="field"><span class="lab">${f.label}</span><div class="swatches" data-sw="${key}">${f.swatches ? swatchesHTML(value) : ''}<input type="color" data-f="${key}" value="${esc(value)}" aria-label="${f.label}"></div>${hint}</div>`;
+      case 'range':
+        return `<label class="slider"><span class="lab">${f.label}</span><input type="range" data-f="${key}" min="${f.min}" max="${f.max}" step="1" value="${Number(value)}"><output>${Math.round(value)}${f.unit}</output></label>`;
+      case 'seg':
+        return `<div class="field"><span class="lab">${f.label}</span><div class="seg" data-seg="${key}">${f.options.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${v === value}">${l}</button>`).join('')}</div></div>`;
+      case 'check':
+        return `<label class="check"><input type="checkbox" data-f="${key}" ${value ? 'checked' : ''}><span><b class="lab">${f.label}</b>${f.hint ? `<small>${esc(f.hint)}</small>` : ''}</span></label>`;
+    }
+    return '';
+  }
+
+  const savePatch = debounce(() => {
+    if (!editing || !Object.keys(editing.dirty).length) return;
+    const { id, dirty } = editing;
+    editing.dirty = {};
+    run(api('PATCH', `/api/slides/${id}`, dirty));
+  }, 350);
+
+  function setField(key, value) {
+    if (!editing) return;
+    editing.local[key] = value;
+    editing.dirty[key] = value;
+    pushPreviews();
+    savePatch();
+  }
+
+  function openEditor(id, fresh) {
+    const slide = fresh || slideById(id);
+    if (!slide) return;
+    editing = { id, local: { ...slide }, dirty: {} };
+    $('edName').value = slide.name;
+    $('edFields').innerHTML = FIELD_SETS[slide.type].map((k) => fieldHTML(k, slide[k])).join('');
+    const screen = screenById(cur);
+    sizePreview($('edPv'), screen);
+    setFrame($('edFrame'), `/display?preview=${cur}&slide=${id}`);
+    $('edDelete').textContent = 'Delete';
+    $('edDelete').dataset.armed = '';
+    const dlg = $('editor');
+    if (!dlg.open) dlg.showModal();
+  }
+
+  function closeEditor() {
+    if (editing) savePatch.flush();
+    editing = null;
+    if ($('editor').open) $('editor').close();
+    setFrame($('edFrame'), 'about:blank');
+  }
+
+  $('edFields').addEventListener('input', (e) => {
+    const el = e.target.closest('[data-f]');
+    if (!el) return;
+    const key = el.dataset.f;
+    let v = el.type === 'checkbox' ? el.checked : el.type === 'range' ? Number(el.value) : el.value;
+    if (el.type === 'range') el.parentElement.querySelector('output').textContent = `${v}${FIELDS[key].unit}`;
+    if (el.type === 'color') el.parentElement.querySelectorAll('.sw').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.hex === v)));
+    setField(key, v);
+  });
+  $('edFields').addEventListener('change', (e) => {
+    if (e.target.type === 'checkbox' || e.target.tagName === 'SELECT') e.target.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  $('edFields').addEventListener('click', (e) => {
+    const seg = e.target.closest('[data-seg] button');
+    if (seg) {
+      const box = seg.parentElement;
+      box.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b === seg)));
+      setField(box.dataset.seg, seg.dataset.v);
+      return;
+    }
+    const sw = e.target.closest('[data-sw] .sw');
+    if (sw) {
+      const box = sw.parentElement;
+      box.querySelectorAll('.sw').forEach((b) => b.setAttribute('aria-pressed', String(b === sw)));
+      box.querySelector('input[type="color"]').value = sw.dataset.hex;
+      setField(box.dataset.sw, sw.dataset.hex);
+    }
+  });
+  $('edName').addEventListener('input', (e) => { if (e.target.value.trim()) setField('name', e.target.value.trim()); });
+  $('edDone').addEventListener('click', closeEditor);
+  $('editor').addEventListener('cancel', (e) => { e.preventDefault(); closeEditor(); });
+  $('edDelete').addEventListener('click', async () => {
+    const b = $('edDelete');
+    if (!b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'Tap again to delete'; return; }
+    const id = editing && editing.id;
+    editing = null;
+    $('editor').close();
+    setFrame($('edFrame'), 'about:blank');
+    if (id) run(api('DELETE', `/api/slides/${id}`));
+  });
+
+  // ------------------------------------------------------------ live connection
+
+  function connect() {
+    const es = new EventSource('/api/events');
+    es.onopen = () => { $('conn').textContent = 'Live'; $('conn').classList.add('ok'); };
+    es.onmessage = (e) => {
+      try { state = JSON.parse(e.data); } catch (err) { return; }
+      if (editing && !slideById(editing.id)) closeEditor();
+      render();
+    };
+    es.onerror = () => {
+      $('conn').textContent = 'Reconnecting…';
+      $('conn').classList.remove('ok');
+      if (es.readyState === EventSource.CLOSED) setTimeout(connect, 3000);
+    };
+  }
+  connect();
+})();
+</script>
+</body>
+</html>

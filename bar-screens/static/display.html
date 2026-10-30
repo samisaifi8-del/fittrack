@@ -170,7 +170,26 @@
     layer.className = 'layer';
     layer.style.background = slide.bg || '#000000';
     layer._cleanup = () => {};
-    if (slide.type === 'image' && !/\.gif$/i.test(slide.file || '')) {
+    if (slide.type === 'mirror') {
+      if (kiosk) {
+        const img = document.createElement('img');
+        img.alt = '';
+        img.style.objectFit = slide.fit;
+        let done = false;
+        const ready = () => { if (!done) { done = true; onReady(); } };
+        img.addEventListener('load', ready);
+        setTimeout(ready, 1500);
+        img.src = '/live.mjpg?' + Date.now();
+        layer.appendChild(img);
+        layer._cleanup = () => img.removeAttribute('src');
+      } else {
+        // Previews on phones show a note instead of pulling the whole video stream.
+        const canvas = document.createElement('canvas');
+        layer.appendChild(canvas);
+        drawLines(canvas, W, H, [{ t: 'LIVE FROM', scale: 0.45 }, { t: 'A PHONE', scale: 1 }], { font: 'Josefin Sans', color: '#b89a63', bg: '#000000', align: 'center', valign: 'middle', size: 55 });
+        requestAnimationFrame(onReady);
+      }
+    } else if (slide.type === 'image' && !/\.gif$/i.test(slide.file || '')) {
       const canvas = document.createElement('canvas');
       layer.appendChild(canvas);
       const img = new Image();
@@ -537,6 +556,11 @@
       let slide = state.slides.find((s) => s.id === (soloSlide || live.slide)) || null;
       if (!soloSlide && !live.slide && live.channel) {
         slide = { type: 'channel', channel: live.channel, conf: (state.channels || {})[live.channel], barName: state.settings.barName };
+      }
+      const mirror = state.mirror, st = state.settings;
+      if (!soloSlide && mirror && mirror.live && (st.mirrorScreen === 'all' || st.mirrorScreen === screen.id)) {
+        slide = { type: 'mirror', fit: st.mirrorFit || 'contain' };
+        if (view.identEl) view.identEl.classList.remove('show');
       }
       if (!soloSlide && !screen.pinned) {
         const channel = live.channel || 'rotation';

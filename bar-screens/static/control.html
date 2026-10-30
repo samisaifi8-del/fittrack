@@ -205,6 +205,16 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     <p class="note" id="chDesc"></p>
   </section>
 
+  <section class="card" aria-labelledby="hLive">
+    <h2 id="hLive">Live from your phone</h2>
+    <p class="eyebrow" id="mirrorLive" hidden>Live on the wall now</p>
+    <p class="note" id="mirrorNote"></p>
+    <div class="row">
+      <label class="field" style="flex:1 1 140px"><span class="lab">Show it on</span><select id="mirrorScreen"></select></label>
+      <label class="field" style="flex:1 1 140px"><span class="lab">Fit</span><select id="mirrorFit"><option value="contain">Whole picture</option><option value="cover">Fill the wall</option></select></label>
+    </div>
+  </section>
+
   <section class="card" aria-label="Brightness">
     <div class="row">
       <label class="slider grow"><span class="lab">Brightness</span><input type="range" id="brightness" min="5" max="100" step="1"><output id="brightnessOut"></output></label>
@@ -433,6 +443,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
       `<button type="button" class="ch" data-ch="${key}" style="--c:${color}" aria-pressed="${key === channel[0]}" aria-label="Channel ${n}, ${name}"><span class="ch-n">${n}</span><span class="ch-name">${name}</span></button>`).join('');
     $('chDesc').textContent = `CH ${channel[1]} · ${channel[2]}: ${channel[3]}`;
     renderChannelSettings();
+    renderMirror();
 
     const b = $('brightness');
     if (document.activeElement !== b) b.value = state.settings.brightness;
@@ -548,6 +559,25 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     const wx = conf.weather;
     $('wxNote').textContent = wx.lat != null ? `Showing weather for ${wx.label}${wx.region ? ', ' + wx.region : ''}.` : 'Not set yet. Type your town and press Set.';
   }
+
+  function renderMirror() {
+    const m = state.mirror || {};
+    const name = state.settings.barName || 'THE BASEMENT';
+    $('mirrorLive').hidden = !m.live;
+    $('mirrorNote').innerHTML = !m.available
+      ? 'AirPlay isn\'t set up on the Pi yet. Run <b>install.sh</b> again to add it.'
+      : m.live
+        ? 'Stop mirroring on your phone to go back to the channel.'
+        : `On an iPhone, open Control Centre, tap <b>Screen Mirroring</b> and choose <b>${esc(name.replace(/\b\w+/g, (w) => w[0] + w.slice(1).toLowerCase()))}</b>. Your screen shows on the wall until you stop.`;
+    const sel = $('mirrorScreen');
+    const opts = [['all', 'Every screen'], ...state.screens.filter((s) => s.enabled).map((s) => [s.id, s.name])];
+    const html = opts.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('');
+    if (sel.dataset.html !== html) { sel.innerHTML = html; sel.dataset.html = html; }
+    if (document.activeElement !== sel) sel.value = state.settings.mirrorScreen || 'all';
+    if (document.activeElement !== $('mirrorFit')) $('mirrorFit').value = state.settings.mirrorFit || 'contain';
+  }
+  $('mirrorScreen').addEventListener('change', (e) => run(api('PATCH', '/api/settings', { mirrorScreen: e.target.value })));
+  $('mirrorFit').addEventListener('change', (e) => run(api('PATCH', '/api/settings', { mirrorFit: e.target.value })));
 
   function patchChannels(patch) { return run(api('PATCH', '/api/channels', patch)); }
 

@@ -50,6 +50,31 @@ WantedBy=multi-user.target
 UNIT
 sudo systemctl daemon-reload
 
+echo "==> Installing the AirPlay receiver, so phones can mirror to the wall"
+AIRPLAY_NAME="${AIRPLAY_NAME:-The Basement}"
+if sudo apt-get install -y -qq uxplay gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav; then
+  # UxPlay decodes the phone's picture and hands it to Bar Screens as JPEG frames on a local port,
+  # so the display can fit it inside each wall's area.
+  sudo tee /etc/systemd/system/bar-screens-airplay.service >/dev/null <<UNIT
+[Unit]
+Description=Bar Screens AirPlay receiver
+After=network-online.target avahi-daemon.service
+Wants=network-online.target
+
+[Service]
+User=$USER_NAME
+ExecStart=$(command -v uxplay) -n "$AIRPLAY_NAME" -nh -s 1280x720 -vs "jpegenc quality=85 ! multipartmux boundary=frame ! tcpserversink host=127.0.0.1 port=7100"
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+  sudo systemctl daemon-reload
+else
+  echo "    Couldn't install UxPlay, so phone mirroring is skipped. Everything else still works."
+fi
+
 echo "==> Adding the display to the desktop's startup apps"
 chmod +x "$APP_DIR/kiosk.sh" "$APP_DIR/bar-screens"
 mkdir -p "$HOME/.config/autostart" "$APP_DIR/data"
@@ -79,4 +104,5 @@ echo
 echo "All set, and Bar Screens is switched on."
 echo "  Restart the Pi once so the display starts:  sudo reboot"
 echo "  Then open this on your phone (same Wi-Fi):  $("$APP_DIR/bar-screens" status | grep -o 'http[^ ]*')"
+echo "  Mirror your iPhone: Control Centre > Screen Mirroring > $AIRPLAY_NAME"
 echo "  Switch to your other project:  bar-screens off     Switch back:  bar-screens on"

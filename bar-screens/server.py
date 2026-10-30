@@ -33,6 +33,8 @@ MAX_UPLOAD = 2 * 1024 ** 3
 MAX_JSON = 1024 ** 2
 FONTS = ["Anton", "Poiret One", "Josefin Sans", "Bebas Neue", "Barlow Condensed", "Silkscreen", "VT323"]
 FFMPEG = shutil.which("ffmpeg")
+UXPLAY = shutil.which("uxplay")
+MIRROR_PORT = 7100  # where the AirPlay receiver sends its frames (see install.sh)
 
 # Channel 1 is your own rotation; the rest are live channels drawn on the Pi from free data feeds.
 CHANNELS = ["rotation", "scores", "news", "weather", "visuals", "games"]
@@ -152,7 +154,8 @@ SCREEN_FIELDS = {"name": _str(40), "enabled": _bool,
                  "w": _num(8, 7680, True), "h": _num(8, 7680, True),
                  "x": _num(0, 7680, True), "y": _num(0, 7680, True),
                  "rw": _num(8, 7680, True), "rh": _num(8, 7680, True)}
-SETTINGS_FIELDS = {"brightness": _num(5, 100, True), "blackout": _bool, "testPattern": _bool, "barName": _str(24)}
+SETTINGS_FIELDS = {"brightness": _num(5, 100, True), "blackout": _bool, "testPattern": _bool, "barName": _str(24),
+                   "mirrorScreen": _choice("all", "s1", "s2"), "mirrorFit": _choice("contain", "cover")}
 SCREEN_FIELDS["channel"] = _choice(*CHANNELS)
 
 
@@ -174,7 +177,8 @@ def default_screen(sid, name, enabled):
 
 def default_state():
     return {
-        "settings": {"brightness": 100, "blackout": False, "testPattern": True, "barName": "THE BASEMENT"},
+        "settings": {"brightness": 100, "blackout": False, "testPattern": True, "barName": "THE BASEMENT",
+                     "mirrorScreen": "all", "mirrorFit": "contain"},
         "screens": [default_screen("s1", "Screen 1", True), default_screen("s2", "Screen 2", False)],
         "slides": [],
         "channels": default_channels(),
@@ -196,6 +200,7 @@ class Store:
         self.clients = set()
         self.live = {}       # screen id -> {"slide", "index", "until"}; not saved
         self.display = None  # HDMI picture size reported by the display page
+        self.mirroring = False  # a phone is mirroring to the wall over AirPlay
         self.state = self._load()
         for slide in self.state["slides"]:
             if slide.get("processing"):
@@ -238,6 +243,7 @@ class Store:
                 "live": {sid: {"slide": v["slide"], "channel": v["channel"]} for sid, v in self.live.items()},
                 "display": self.display,
                 "displayOn": not os.path.exists(self.off_flag),
+                "mirror": {"available": bool(UXPLAY), "live": self.mirroring},
                 "ffmpeg": bool(FFMPEG),
                 "catalog": {
                     "leagues": [[k, v[1]] for k, v in LEAGUES.items()],
@@ -458,6 +464,12 @@ class Store:
             self._changed()
             return conf
 
+    def set_mirroring(self, live):
+        with self.lock:
+            if self.mirroring != live:
+                self.mirroring = live
+                self._broadcast()
+
     def set_display(self, info):
         clean = _clean(info, {"w": _num(1, 16384, True), "h": _num(1, 16384, True)})
         if set(clean) != {"w", "h"}:
@@ -652,6 +664,64 @@ class Feeds:
             return payload
 
 
+# ---------------------------------------------------------------- live from a phone
+
+class Mirror:
+    """Frames from the AirPlay receiver. UxPlay (installed by install.sh) decodes what a phone
+    mirrors and sends it here as a stream of JPEGs; the display shows them inside each wall's own
+    area, which a full-screen AirPlay window couldn't do."""
+
+    def __init__(self, port):
+        self.port = port
+        self.frame = None
+        self.at = 0.0
+        self.cond = threading.Condition()
+        threading.Thread(target=self._read, daemon=True).start()
+
+    def _read(self):
+        while True:
+            try:
+                with socket.create_connection(("127.0.0.1", self.port), timeout=5) as sock:
+                    sock.settimeout(5)
+                    buf = b""
+                    while True:
+                        try:
+                            chunk = sock.recv(256 * 1024)
+                        except socket.timeout:
+                            continue
+                        if not chunk:
+                            break
+                        buf += chunk
+                        while True:
+                            start = buf.find(b"\xff\xd8")
+                            if start < 0:
+                                buf = buf[-1:]
+                                break
+                            end = buf.find(b"\xff\xd9", start + 2)
+                            if end < 0:
+                                buf = buf[start:]
+                                break
+                            with self.cond:
+                                self.frame = buf[start:end + 2]
+                                self.at = time.time()
+                                self.cond.notify_all()
+                            buf = buf[end + 2:]
+                        if len(buf) > 16 * 1024 * 1024:
+                            buf = b""
+            except OSError:
+                pass
+            time.sleep(2)
+
+    @property
+    def live(self):
+        return self.frame is not None and time.time() - self.at < 2.5
+
+    def next_frame(self, after, timeout=5):
+        with self.cond:
+            self.cond.wait_for(lambda: self.at != after, timeout=timeout)
+            return self.frame, self.at
+
+
 # ---------------------------------------------------------------- games
 
 class GameHub:
@@ -791,6 +861,7 @@ class Handler(BaseHTTPRequestHandler):
     store = None
     feeds = None
     hub = None
+    mirror = None
 
     def log_message(self, fmt, *args):
         pass
@@ -889,6 +960,26 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             unsubscribe(q)
 
+    def _mirror_stream(self):
+        """The phone's picture as MJPEG, which an <img> on the display plays directly."""
+        self.close_connection = True
+        self.send_response(200)
+        self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "close")
+        self.end_headers()
+        last = 0.0
+        try:
+            while True:
+                frame, at = self.mirror.next_frame(last)
+                if frame is None or at == last:
+                    continue
+                last = at
+                self.wfile.write(b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: " + str(len(frame)).encode() + b"\r\n\r\n" + frame + b"\r\n")
+                self.wfile.flush()
+        except OSError:
+            pass
+
     def _events(self):
         self._stream(self.store.subscribe(), self.store.unsubscribe, self.store.snapshot())
 
@@ -952,6 +1043,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.wfile.write(body)
             if path == "/api/events":
                 return self._events()
+            if path == "/live.mjpg":
+                return self._mirror_stream()
             if path == "/api/game/stream":
                 role = "pad" if qs.get("role", [""])[0] == "pad" else "display"
                 return self._stream(self.hub.subscribe(role, qs.get("pid", [None])[0]), self.hub.unsubscribe)
@@ -1018,6 +1111,7 @@ def main():
     Handler.store = store
     Handler.feeds = Feeds(store)
     hub = Handler.hub = GameHub(store)
+    mirror = Handler.mirror = Mirror(MIRROR_PORT)
     host = f"{socket.gethostname()}.local" + ("" if args.port == 80 else f":{args.port}")
     hub.join_url = f"{host}/play"
 
@@ -1027,6 +1121,7 @@ def main():
             time.sleep(0.25)
             store.tick()
             beats += 1
+            store.set_mirroring(mirror.live)
             if beats % 4 == 0:
                 hub.prune()
 

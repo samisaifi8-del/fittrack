@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Shows the display page full-screen on the HDMI output. The desktop starts this at login (see
-# install.sh) and it keeps running quietly in the background. Chromium is only open while Bar
+# Shows the display page full-screen on the HDMI output. The desktop starts this at login, or on
+# a Pi without a desktop the bar-screens-kiosk service runs it (see install.sh). It keeps running
+# quietly in the background. Chromium is only open while Bar
 # Screens is switched on, so the screen is free for other things the rest of the time.
 APP_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 URL="${BAR_SCREENS_URL:-http://localhost/display}"
@@ -16,7 +17,7 @@ while true; do
     "$BROWSER" --kiosk --noerrdialogs --disable-infobars --no-first-run \
       --disable-session-crashed-bubble --disable-features=Translate,TranslateUI \
       --autoplay-policy=no-user-gesture-required --check-for-update-interval=31536000 \
-      --password-store=basic --user-data-dir="$PROFILE" "$URL" &
+      --password-store=basic --ozone-platform-hint=auto --user-data-dir="$PROFILE" "$URL" &
     pid=$!
     while kill -0 "$pid" 2>/dev/null; do
       if [ -e "$OFF_FLAG" ]; then

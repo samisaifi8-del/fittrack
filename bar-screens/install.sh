@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sets up Bar Screens on a Raspberry Pi running Raspberry Pi OS (with desktop).
+# Sets up Bar Screens on a Raspberry Pi running Raspberry Pi OS, with or without the desktop.
 # Run it from this folder as your normal user:  ./install.sh
 # Safe to run again after updating. It leaves your other projects alone; switch between them with
 # `bar-screens on` and `bar-screens off`.
@@ -30,6 +30,13 @@ if ! command -v chromium >/dev/null && ! command -v chromium-browser >/dev/null;
   echo "==> Installing Chromium"
   sudo apt-get install -y -qq chromium || sudo apt-get install -y -qq chromium-browser
 fi
+
+# With the desktop, the display opens as a startup app. Without it (Raspberry Pi OS Lite), a
+# minimal full-screen kiosk (cage) runs Chromium straight on the HDMI output instead.
+HAS_DESKTOP=0
+for c in labwc wayfire lxsession startlxde-pi; do
+  if command -v "$c" >/dev/null; then HAS_DESKTOP=1; fi
+done
 
 echo "==> Setting up the Bar Screens server"
 sudo tee /etc/systemd/system/bar-screens.service >/dev/null <<UNIT
@@ -75,23 +82,58 @@ else
   echo "    Couldn't install UxPlay, so phone mirroring is skipped. Everything else still works."
 fi
 
-echo "==> Adding the display to the desktop's startup apps"
 chmod +x "$APP_DIR/kiosk.sh" "$APP_DIR/bar-screens"
-mkdir -p "$HOME/.config/autostart" "$APP_DIR/data"
-cat > "$HOME/.config/autostart/bar-screens-kiosk.desktop" <<DESKTOP
+mkdir -p "$APP_DIR/data"
+if [ "$HAS_DESKTOP" = 1 ]; then
+  echo "==> Adding the display to the desktop's startup apps"
+  mkdir -p "$HOME/.config/autostart"
+  cat > "$HOME/.config/autostart/bar-screens-kiosk.desktop" <<DESKTOP
 [Desktop Entry]
 Type=Application
 Name=Bar Screens display
 Exec=env BAR_SCREENS_URL=http://localhost:$PORT/display $APP_DIR/kiosk.sh
 X-GNOME-Autostart-enabled=true
 DESKTOP
+else
+  echo "==> No desktop on this Pi, so setting up a minimal full-screen display (cage)"
+  sudo apt-get install -y -qq cage
+  printf 'auth required pam_unix.so nullok\naccount required pam_unix.so\nsession required pam_unix.so\nsession required pam_systemd.so\n' \
+    | sudo tee /etc/pam.d/bar-screens-kiosk >/dev/null
+  sudo tee /etc/systemd/system/bar-screens-kiosk.service >/dev/null <<UNIT
+[Unit]
+Description=Bar Screens display (full-screen on the HDMI output)
+After=systemd-user-sessions.service bar-screens.service dbus.socket systemd-logind.service getty@tty1.service
+Wants=dbus.socket systemd-logind.service
+Conflicts=getty@tty1.service
+
+[Service]
+User=$USER_NAME
+PAMName=bar-screens-kiosk
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty-fail
+UtmpIdentifier=tty1
+UtmpMode=user
+Environment=BAR_SCREENS_URL=http://localhost:$PORT/display
+ExecStart=$(command -v cage) -s -- $APP_DIR/kiosk.sh
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=graphical.target
+UNIT
+  sudo systemctl daemon-reload
+  sudo systemctl set-default graphical.target
+fi
 
 echo "==> Adding the bar-screens on/off command"
 sudo ln -sf "$APP_DIR/bar-screens" /usr/local/bin/bar-screens
 
 if command -v raspi-config >/dev/null; then
   # The display needs the desktop running after boot, and the wall shouldn't go dark after 10 minutes.
-  if [ "$(sudo raspi-config nonint get_autologin 2>/dev/null || echo 1)" != "0" ] || [ "$(sudo raspi-config nonint get_boot_cli 2>/dev/null || echo 1)" = "0" ]; then
+  if [ "$HAS_DESKTOP" = 1 ] && { [ "$(sudo raspi-config nonint get_autologin 2>/dev/null || echo 1)" != "0" ] || [ "$(sudo raspi-config nonint get_boot_cli 2>/dev/null || echo 1)" = "0" ]; }; then
     echo "==> Booting to the desktop and logging in automatically (needed for the display)"
     sudo raspi-config nonint do_boot_behaviour B4 || true
   fi

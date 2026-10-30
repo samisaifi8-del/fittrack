@@ -135,9 +135,10 @@ input[type="color"] { width: 44px; height: 36px; padding: 2px; border: 1px solid
 .up { display: grid; gap: 4px; font-size: 14px; }
 .up progress { width: 100%; height: 6px; accent-color: var(--accent); }
 
-.remote { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.remote { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+@media (min-width: 560px) { .remote { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 .ch { display: grid; justify-items: center; gap: 6px; padding: 8px 2px 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--raise); cursor: pointer; min-width: 0; }
-.ch-n { display: grid; place-items: center; width: 38px; height: 30px; border-radius: 6px; background: #000; color: var(--c); font: 400 20px/1 "Anton", var(--f-label); text-shadow: 0 0 8px var(--c); }
+.ch-n { display: grid; place-items: center; width: 38px; height: 30px; border-radius: 3px; background: #000; color: var(--c); font: 400 22px/1 var(--f-display); }
 .ch-name { font: 600 14px/1 var(--f-label); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ch[aria-pressed="true"] { border-color: var(--c); box-shadow: 0 0 0 1px var(--c), 0 0 16px -6px var(--c); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -261,6 +262,10 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     <div class="set-group">
       <label class="field"><span class="lab">5 · Visuals: style</span><select id="visStyle"></select></label>
     </div>
+    <div class="set-group">
+      <label class="field"><span class="lab">6 · Games: which game</span><select id="gamePick"></select></label>
+      <p class="note" id="playUrl">Guests join from their phones at /play.</p>
+    </div>
   </details>
 
   <details class="card" id="setup">
@@ -306,11 +311,12 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
   const EXT_FOR = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/gif': '.gif', 'image/webp': '.webp', 'image/heic': '.heic', 'video/mp4': '.mp4', 'video/quicktime': '.mov', 'video/webm': '.webm' };
 
   const CHANNELS = [
-    ['rotation', 1, 'Bar', 'Your own photos, videos and text from the library below.', '#e8b84a'],
-    ['scores', 2, 'Scores', 'Live scores and this week\'s fixtures for your leagues.', '#22e08f'],
-    ['news', 3, 'News', 'Headlines with a scrolling ticker.', '#ff3d5a'],
-    ['weather', 4, 'Weather', 'Conditions now, the next few hours and the next few days.', '#3aa8ff'],
-    ['visuals', 5, 'Visuals', 'Dark deco city, The Basement sign, the lift dial, a deco clock and more.', '#c77dff'],
+    ['rotation', 1, 'Bar', 'Your own photos, videos and text from the library below.', '#b89a63'],
+    ['scores', 2, 'Scores', 'Live scores and this week\'s fixtures for your leagues.', '#b89a63'],
+    ['news', 3, 'News', 'Headlines with a slow ticker.', '#b89a63'],
+    ['weather', 4, 'Weather', 'Conditions now, the next few hours and the next few days.', '#b89a63'],
+    ['visuals', 5, 'Visuals', 'The Basement sign, the lift dial, a deco clock, the city at dusk and more.', '#b89a63'],
+    ['games', 6, 'Games', 'Party games on the wall. Guests use their phones as controllers.', '#b89a63'],
   ];
   const STYLE_NAMES = { mix: 'Mix (changes every 45 seconds)', skyline: 'Dark deco city', deco: 'The Basement sign', lift: 'Lift floor indicator', clockface: 'Deco wall clock', fans: 'Art deco fans', bubbles: 'Champagne bubbles' };
 
@@ -532,10 +538,13 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
       leagues.innerHTML = state.catalog.leagues.map(([k, name]) => `<button type="button" class="chip" data-league="${k}">${esc(name)}</button>`).join('');
       $('newsFeed').innerHTML = state.catalog.feeds.map(([k, name]) => `<option value="${k}">${esc(name)}</option>`).join('');
       $('visStyle').innerHTML = state.catalog.styles.map((k) => `<option value="${k}">${esc(STYLE_NAMES[k] || k)}</option>`).join('');
+      $('gamePick').innerHTML = state.catalog.games.map(([k, name]) => `<option value="${k}">${esc(name)}</option>`).join('');
     }
     leagues.querySelectorAll('[data-league]').forEach((b) => b.setAttribute('aria-pressed', String(conf.scores.leagues.includes(b.dataset.league))));
     keep($('newsFeed'), conf.news.feed);
     keep($('visStyle'), conf.visuals.style);
+    keep($('gamePick'), conf.games.game);
+    $('playUrl').innerHTML = `Guests join from their phones at <b>${esc(location.host)}/play</b> (same Wi-Fi).`;
     const wx = conf.weather;
     $('wxNote').textContent = wx.lat != null ? `Showing weather for ${wx.label}${wx.region ? ', ' + wx.region : ''}.` : 'Not set yet. Type your town and press Set.';
   }
@@ -572,6 +581,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
   });
   $('newsFeed').addEventListener('change', (e) => patchChannels({ news: { feed: e.target.value } }));
   $('visStyle').addEventListener('change', (e) => patchChannels({ visuals: { style: e.target.value } }));
+  $('gamePick').addEventListener('change', (e) => patchChannels({ games: { game: e.target.value } }));
   async function setPlace() {
     const place = $('wxPlace').value.trim();
     if (!place) { $('wxPlace').focus(); return; }

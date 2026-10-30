@@ -265,9 +265,9 @@
       const geo = physics(dt);
       draw(geo);
       if (banner && t < banner.until) card(g, { x: area.x, y: area.y + area.h * 0.35, w: area.w, h: area.h * 0.25 }, banner.text, [], 0.9);
-      if (phase === 'attract') card(g, area, 'BRICK BREAKER', ['Slide your finger on your phone to move', 'Tap Start to play', ...joinLines(g)], 0.82);
+      if (phase === 'attract') card(g, area, 'BRICK BREAKER', ['Slide your finger on your phone to move', 'Tap Start to play', ...joinLines(g)], 0.96);
       if (phase === 'over') {
-        card(g, area, 'GAME OVER', [[`SCORE ${score}`, k.GOLD_LIGHT], `Level ${level}`, '', 'Tap Start to play again'], 0.85);
+        card(g, area, 'GAME OVER', [[`SCORE ${score}`, k.GOLD_LIGHT], `Level ${level}`, '', 'Tap Start to play again'], 0.96);
         if (t - overAt > 30) phase = 'attract';
       }
       g.report({
@@ -401,9 +401,9 @@
       k.glow(ctx, '#fff3cf', r * 2, () => { ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.fill(); });
 
       const names = [seated[0] ? seated[0].name : 'THE HOUSE', seated[1] ? seated[1].name : 'THE HOUSE'];
-      if (phase === 'attract') card(g, area, 'DECO DUEL', ['Two players, one ball. First to 7.', 'Slide on your phone to move your paddle', 'Play alone and the house plays you', ...joinLines(g)], 0.82);
+      if (phase === 'attract') card(g, area, 'DECO DUEL', ['Two players, one ball. First to 7.', 'Slide on your phone to move your paddle', 'Play alone and the house plays you', ...joinLines(g)], 0.96);
       if (phase === 'over') {
-        card(g, area, `${names[winner]} WINS`, [[`${score[0]} – ${score[1]}`, k.GOLD_LIGHT], '', 'Tap Start for a rematch'], 0.85);
+        card(g, area, `${names[winner]} WINS`, [[`${score[0]} – ${score[1]}`, k.GOLD_LIGHT], '', 'Tap Start for a rematch'], 0.96);
         if (now - overAt > 30) phase = 'attract';
       }
       const where = tall ? ['bottom', 'top'] : ['left', 'right'];
@@ -543,7 +543,7 @@
       }
       const list = playing.map((sn) => ({ name: g.name(sn.slot), color: g.color(sn.slot), score: sn.alive ? sn.score : `${sn.score} ✕` }));
       if (list.length) scores(g, area, list, area.y);
-      if (!playing.length) card(g, area, 'SERPENTINE', ['Everyone gets a snake. Eat cherries to grow.', 'Gold coins are worth three.', "Don't hit the walls or anyone else", ...joinLines(g)], 0.78);
+      if (!playing.length) card(g, area, 'SERPENTINE', ['Everyone gets a snake. Eat cherries to grow.', 'Gold coins are worth three.', "Don't hit the walls or anyone else", ...joinLines(g)], 0.96);
       for (const p of g.players) {
         const sn = snakes.get(p.slot);
         if (sn && !sn.alive && sn.body.length) {
@@ -630,8 +630,8 @@
           ctx.fillStyle = k.GOLD_LIGHT;
           ctx.fillText(result.text, mid.x + mid.w / 2, mid.y + mid.h * 0.62);
         }
-        if (phase === 'attract') card(g, area, 'QUICK DRAW', ['Wait for DRAW, then tap first.', 'Too early is a false start.', `First to ${TO_WIN} wins.`, ...joinLines(g)], 0.8);
-        if (phase === 'over' && champion) card(g, area, `${champion.name} WINS`, [['FASTEST HANDS IN THE BASEMENT', k.GOLD_LIGHT], '', 'Tap to play again'], 0.85);
+        if (phase === 'attract') card(g, area, 'QUICK DRAW', ['Wait for DRAW, then tap first.', 'Too early is a false start.', `First to ${TO_WIN} wins.`, ...joinLines(g)], 0.96);
+        if (phase === 'over' && champion) card(g, area, `${champion.name} WINS`, [['FASTEST HANDS IN THE BASEMENT', k.GOLD_LIGHT], '', 'Tap to play again'], 0.96);
       }
       g.report({
         game: 'quickdraw', phase,

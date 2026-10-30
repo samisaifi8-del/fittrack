@@ -170,9 +170,10 @@ def default_channels():
 
 
 def default_screen(sid, name, enabled):
-    # Screen 1 starts out covering the whole HDMI picture, so something always reaches the wall.
-    return {"id": sid, "name": name, "enabled": enabled, "w": 1920, "h": 1080,
-            "x": 0, "y": 0, "rw": 1920, "rh": 1080, "channel": "rotation", "playlist": [], "pinned": None}
+    # The Basement's TB6 is set up as one 256 x 384 screen (both walls show it). Start with that
+    # area 1:1 at the top-left of the HDMI picture; Screen setup on the phone adjusts it.
+    return {"id": sid, "name": name, "enabled": enabled, "w": 256, "h": 384,
+            "x": 0, "y": 0, "rw": 256, "rh": 384, "channel": "rotation", "playlist": [], "pinned": None}
 
 
 def default_state():

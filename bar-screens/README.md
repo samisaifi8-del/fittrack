@@ -51,19 +51,22 @@ The installer prints the address of the control page when it finishes. It's usua
 
 ## 3. Line it up with the wall
 
-Open **Screen setup** at the bottom of the control page and follow the four steps there. In
-short:
+The Basement's TB6 (Taurus T6) is set up as one **256 × 384** screen, so Bar Screens starts
+with exactly that: 256 × 384 LED pixels, taken 1:1 from the top-left corner of the HDMI picture.
+If the TB6 shows the HDMI picture pixel for pixel, that's already right.
 
-- **All four red corners are on the wall** (the whole pattern is squeezed on)? Press
-  **Whole HDMI picture**.
-- **Only part of the pattern shows?** The numbers on the coloured squares are HDMI pixel
-  positions. Type in the area the wall shows (x, y, width, height), then press **1:1**.
-- Set **LED pixels** to the wall's resolution (ViPlex Handy shows it under Screen Management).
-- When the green border sits on the wall's edges and the circle looks round, turn the test
-  pattern off.
+To check, open **Screen setup** at the bottom of the control page with the test pattern on:
 
-If the second wall runs off the same TB6, switch **Screen 2** to "In use" and set its area the
-same way.
+- **The green border sits on the wall's edges and the circle looks round?** You're done. Turn
+  the test pattern off.
+- **All four red corners are on the wall** (the whole pattern is squeezed on)? The TB6 is
+  scaling the picture. Press **Whole HDMI picture**.
+- **Something else?** The numbers on the coloured squares are HDMI pixel positions. Type in the
+  area the wall shows (x, y, width, height).
+
+Both walls almost certainly show the same picture (one TB6, one 256 × 384 screen). If they do,
+leave **Right screen** switched off. If the test pattern shows different parts on each wall,
+switch it on and give it its own area.
 
 ## 4. Use it
 

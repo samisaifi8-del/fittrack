@@ -91,6 +91,9 @@
   }
 
   const hair = (s) => Math.max(1, Math.round(s * 0.003));
+  // The smallest text the walls can show legibly: at 256 x 384, anything under 7 LEDs tall blurs.
+  const MIN_TEXT = 7;
+  const small = (s) => Math.max(MIN_TEXT, Math.round(s * 0.03));
 
   function sunburst(ctx, cx, cy, r, rays, color, alpha, turn) {
     ctx.save();
@@ -152,7 +155,7 @@
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     tracking(ctx, s * 0.012);
-    ctx.font = font('Josefin Sans', fitSize(ctx, text, 'Josefin Sans', W * 0.8, Math.max(7, s * 0.034)));
+    ctx.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(ctx, text, 'Josefin Sans', W * 0.86, Math.max(MIN_TEXT, s * 0.034))));
     ctx.fillStyle = GOLD;
     ctx.fillText(text, W / 2, hh * 0.5);
     tracking(ctx, 0);
@@ -275,7 +278,7 @@
     const d = new Date(dateStr);
     if (Number.isNaN(d.getTime())) return '';
     if (d.toDateString() === new Date().toDateString()) return timeStr(d);
-    return `${d.toLocaleDateString([], { weekday: 'short' }).toUpperCase()} ${timeStr(d)}`;
+    return d.toLocaleDateString([], { weekday: 'short' }).toUpperCase();
   }
 
   function orderMatches(matches) {
@@ -363,7 +366,7 @@
         ctx.fillText(m.state === 'pre' ? '·' : `${m.home.score} – ${m.away.score}`, pad + teamsW / 2, cy + 1);
         const status = m.state === 'pre' ? kickoff(m.date) : (m.detail || m.clock || '').toUpperCase();
         tracking(ctx, s * 0.004);
-        ctx.font = font('Josefin Sans', fitSize(ctx, status, 'Josefin Sans', statusW * 0.95, rowH * 0.3));
+        ctx.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(ctx, status, 'Josefin Sans', statusW * 0.95, rowH * 0.3)));
         ctx.textAlign = 'right';
         ctx.fillStyle = live ? GOLD : MUTED;
         ctx.fillText(status, W - pad, cy + 1);
@@ -379,7 +382,7 @@
       ctx.globalAlpha = fade;
       if (pages.length > 1) {
         tracking(ctx, s * 0.01);
-        ctx.font = font('Josefin Sans', Math.max(6, s * 0.022));
+        ctx.font = font('Josefin Sans', small(s));
         ctx.fillStyle = MUTED;
         ctx.textAlign = 'center';
         ctx.fillText(`${pageIndex + 1} / ${pages.length}`, W / 2, H - footH * 0.7);
@@ -441,7 +444,7 @@
       const ry = y0 + (box.lines.length - 0.35) * box.size * 1.12;
       decoRule(ctx, W / 2 - W * 0.12, ry, W * 0.24, s);
       tracking(ctx, s * 0.012);
-      ctx.font = font('Josefin Sans', Math.max(6, s * 0.022));
+      ctx.font = font('Josefin Sans', small(s));
       ctx.fillStyle = MUTED;
       ctx.fillText((payload.source || '').toUpperCase(), W / 2, ry + s * 0.045);
       tracking(ctx, 0);
@@ -601,9 +604,10 @@
       ctx.font = font('Cormorant Italic', fitSize(ctx, desc, 'Cormorant Italic', W - pad * 2, nowH * 0.16));
       ctx.fillStyle = GOLD_LIGHT;
       ctx.fillText(desc, W / 2, top + nowH * 0.8);
-      const extra = `FEELS ${Math.round(now.feels)}°   ·   WIND ${Math.round(now.wind)} MPH`;
+      let extra = `FEELS ${Math.round(now.feels)}°   ·   WIND ${Math.round(now.wind)} MPH`;
       tracking(ctx, s * 0.008);
-      ctx.font = font('Josefin Sans', fitSize(ctx, extra, 'Josefin Sans', W - pad * 2, Math.max(6, s * 0.024)));
+      if (fitSize(ctx, extra, 'Josefin Sans', W - pad * 2, small(s)) < MIN_TEXT) extra = `FEELS ${Math.round(now.feels)}°`;
+      ctx.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(ctx, extra, 'Josefin Sans', W - pad * 2, small(s))));
       ctx.fillStyle = MUTED;
       ctx.fillText(extra, W / 2, top + nowH * 0.95);
       tracking(ctx, 0);
@@ -628,7 +632,7 @@
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         tracking(ctx, s * 0.008);
-        ctx.font = font('Josefin Sans', fitSize(ctx, name, 'Josefin Sans', cw * 0.85, Math.max(6, fh * 0.12)));
+        ctx.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(ctx, name, 'Josefin Sans', cw * 0.85, Math.max(MIN_TEXT, fh * 0.12))));
         ctx.fillStyle = MUTED;
         ctx.fillText(name, cx, fy + fh * 0.2);
         tracking(ctx, 0);
@@ -664,7 +668,7 @@
     decoRule(ctx, box.x + box.w * 0.25, ry, box.w * 0.5, s);
     if (sub) {
       tracking(ctx, s * 0.016);
-      ctx.font = font('Josefin Sans', fitSize(ctx, sub, 'Josefin Sans', box.w * 0.8, Math.max(6, b.size * 0.24)));
+      ctx.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(ctx, sub, 'Josefin Sans', box.w * 0.9, Math.max(MIN_TEXT, b.size * 0.24))));
       ctx.fillStyle = GOLD;
       ctx.fillText(sub, box.x + box.w / 2, ry + b.size * 0.5);
     }
@@ -1093,7 +1097,7 @@
     ctx.textBaseline = 'middle';
     const cy = H / 2;
     tracking(ctx, s * 0.016);
-    ctx.font = font('Josefin Sans', Math.max(6, s * 0.026));
+    ctx.font = font('Josefin Sans', small(s));
     ctx.fillStyle = MUTED;
     ctx.fillText(`CHANNEL ${theme.n}`, W / 2, cy - s * 0.14);
     tracking(ctx, s * 0.014);
@@ -1104,7 +1108,7 @@
     const sub = (barName || '').toUpperCase();
     if (sub) {
       tracking(ctx, s * 0.016);
-      ctx.font = font('Josefin Sans', fitSize(ctx, sub, 'Josefin Sans', W * 0.7, Math.max(6, s * 0.026)));
+      ctx.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(ctx, sub, 'Josefin Sans', W * 0.8, small(s))));
       ctx.fillStyle = GOLD;
       ctx.fillText(sub, W / 2, cy + s * 0.17);
     }

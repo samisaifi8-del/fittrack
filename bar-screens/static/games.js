@@ -60,7 +60,7 @@
     const { ctx, k, s } = g;
     ctx.save();
     ctx.globalAlpha = alpha == null ? 1 : alpha;
-    ctx.fillStyle = 'rgba(0,0,0,0.9)';
+    ctx.fillStyle = '#000';
     ctx.fillRect(area.x, area.y, area.w, area.h);
     const pad = area.w * 0.06;
     let y = area.y + area.h * 0.1;

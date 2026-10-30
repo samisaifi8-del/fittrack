@@ -35,7 +35,7 @@ FONTS = ["Anton", "Poiret One", "Josefin Sans", "Bebas Neue", "Barlow Condensed"
 FFMPEG = shutil.which("ffmpeg")
 
 # Channel 1 is your own rotation; the rest are live channels drawn on the Pi from free data feeds.
-CHANNELS = ["rotation", "scores", "news", "weather", "visuals"]
+CHANNELS = ["rotation", "scores", "news", "weather", "visuals", "games"]
 LEAGUES = {  # ESPN's public scoreboard feed: no key needed, but it's unofficial and could change
     "eng.1": ("soccer/eng.1", "Premier League"),
     "eng.2": ("soccer/eng.2", "Championship"),
@@ -59,6 +59,7 @@ NEWS_FEEDS = {
     "sport": ("https://feeds.bbci.co.uk/sport/rss.xml", "Sport"),
 }
 VISUAL_STYLES = ["mix", "skyline", "deco", "lift", "clockface", "fans", "bubbles"]
+GAMES = [["breaker", "Brick Breaker"], ["duel", "Deco Duel"], ["snake", "Serpentine"], ["quickdraw", "Quick Draw"]]
 
 for ext, ctype in ((".webp", "image/webp"), (".avif", "image/avif"), (".mp4", "video/mp4"),
                    (".m4v", "video/mp4"), (".webm", "video/webm"), (".mkv", "video/x-matroska")):
@@ -161,6 +162,7 @@ def default_channels():
         "news": {"feed": "top"},
         "weather": {"place": "", "label": "", "lat": None, "lon": None},
         "visuals": {"style": "mix"},
+        "games": {"game": "breaker"},
     }
 
 
@@ -241,6 +243,7 @@ class Store:
                     "leagues": [[k, v[1]] for k, v in LEAGUES.items()],
                     "feeds": [[k, v[1]] for k, v in NEWS_FEEDS.items()],
                     "styles": VISUAL_STYLES,
+                    "games": GAMES,
                 },
             })
 
@@ -447,6 +450,9 @@ class Store:
             visuals = patch.get("visuals")
             if isinstance(visuals, dict) and visuals.get("style") in VISUAL_STYLES:
                 conf["visuals"]["style"] = visuals["style"]
+            games = patch.get("games")
+            if isinstance(games, dict) and games.get("game") in [g[0] for g in GAMES]:
+                conf["games"]["game"] = games["game"]
             if found is not None:
                 conf["weather"] = found
             self._changed()
@@ -646,6 +652,129 @@ class Feeds:
             return payload
 
 
+# ---------------------------------------------------------------- games
+
+class GameHub:
+    """Phones join the current game and send controller input; the wall runs the game and reports
+    the score back. Players are kept while their phone stays connected (with a short grace period
+    for flaky Wi-Fi), so nothing here is saved to disk."""
+    COLORS = ["#e9c46a", "#2fd39a", "#5aa2ff", "#ff4d6a", "#b98aff", "#ffa94d", "#efe6d2", "#5ef0ff"]
+
+    def __init__(self, store):
+        self.store = store
+        self.lock = threading.Lock()
+        self.players = {}  # pid -> {"slot", "name", "color", "gone"}
+        self.subs = []     # [queue, role, pid]
+        self.status = None
+        self.kiosk_at = 0.0
+        self.join_url = ""
+
+    def _roster(self):
+        game = self.store.state["channels"]["games"]["game"]
+        players = sorted(self.players.values(), key=lambda p: p["slot"])
+        on_wall = any(s["enabled"] and s.get("channel") == "games" for s in self.store.state["screens"])
+        return {"type": "roster", "game": game, "joinUrl": self.join_url, "onWall": on_wall,
+                "players": [{"slot": p["slot"], "name": p["name"], "color": p["color"]} for p in players]}
+
+    def _send(self, msg, role=None):
+        data = json.dumps(msg)
+        for q, r, _ in list(self.subs):
+            if role is None or r == role:
+                try:
+                    q.put_nowait(data)
+                except queue.Full:
+                    pass
+
+    def roster_changed(self):
+        with self.lock:
+            self._send(self._roster())
+
+    def subscribe(self, role, pid):
+        q = queue.Queue(maxsize=300)
+        with self.lock:
+            self.subs.append([q, role, pid])
+            if pid in self.players:
+                self.players[pid]["gone"] = None
+            q.put_nowait(json.dumps(self._roster()))
+            if role == "pad" and self.status:
+                q.put_nowait(json.dumps(self.status))
+        return q
+
+    def unsubscribe(self, q):
+        with self.lock:
+            entry = next((e for e in self.subs if e[0] is q), None)
+            if not entry:
+                return
+            self.subs.remove(entry)
+            pid = entry[2]
+            if pid in self.players and not any(e[2] == pid for e in self.subs):
+                self.players[pid]["gone"] = time.time()
+
+    def prune(self):
+        with self.lock:
+            stale = [pid for pid, p in self.players.items() if p["gone"] and time.time() - p["gone"] > 20]
+            for pid in stale:
+                del self.players[pid]
+            if stale:
+                self._send(self._roster())
+
+    def join(self, body):
+        pid = body.get("pid")
+        if not isinstance(pid, str) or not re.fullmatch(r"[A-Za-z0-9_-]{6,40}", pid):
+            raise ApiError(400, "Bad player id.")
+        name = " ".join(_str(16)(body.get("name") or "").split()).upper()
+        with self.lock:
+            player = self.players.get(pid)
+            if not player:
+                used = {p["slot"] for p in self.players.values()}
+                slot = next((i for i in range(8) if i not in used), None)
+                if slot is None:
+                    raise ApiError(409, "This game is full: eight players already.")
+                player = {"slot": slot, "color": self.COLORS[slot], "gone": None}
+                self.players[pid] = player
+            player["name"] = name or f"PLAYER {player['slot'] + 1}"
+            player["gone"] = None
+            self._send(self._roster())
+            return {"slot": player["slot"], "name": player["name"], "color": player["color"]}
+
+    def leave(self, body):
+        with self.lock:
+            if self.players.pop(body.get("pid"), None):
+                self._send(self._roster())
+
+    def input(self, body):
+        with self.lock:
+            player = self.players.get(body.get("pid"))
+            if not player:
+                raise ApiError(403, "Join the game first.")
+            kind = body.get("kind")
+            msg = {"type": "input", "slot": player["slot"], "kind": kind}
+            try:
+                if kind == "move":
+                    msg["x"] = _num(0, 1)(body.get("x", 0.5))
+                elif kind == "dir":
+                    msg["dir"] = _choice("up", "down", "left", "right")(body.get("dir"))
+                elif kind not in ("tap", "start"):
+                    raise ValueError
+            except ValueError:
+                raise ApiError(400, "Unknown input.")
+            self._send(msg, role="display")
+
+    def report(self, body):
+        # The wall on the Pi is the referee; previews on phones only count when it isn't running.
+        source = body.get("source")
+        if source == "kiosk":
+            self.kiosk_at = time.time()
+        elif time.time() - self.kiosk_at < 5:
+            return
+        status = {"type": "status", **{k: body[k] for k in ("game", "phase", "message", "players", "seats") if k in body}}
+        if len(json.dumps(status)) > 8000:
+            raise ApiError(413, "Status too large.")
+        with self.lock:
+            self.status = status
+            self._send(status, role="pad")
+
+
 # ---------------------------------------------------------------- HTTP
 
 def safe_join(base, rel):
@@ -658,8 +787,10 @@ def safe_join(base, rel):
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "BarScreens/1.0"
+    protocol_version = "HTTP/1.1"  # keep-alive, so game controllers can send input quickly
     store = None
     feeds = None
+    hub = None
 
     def log_message(self, fmt, *args):
         pass
@@ -733,16 +864,19 @@ class Handler(BaseHTTPRequestHandler):
             raise ApiError(400, "Expected a JSON object.")
         return data
 
-    def _events(self):
+    def _stream(self, q, unsubscribe, first=None):
+        """Server-sent events: one message per line from `q`, with a ping every 15 seconds."""
+        self.close_connection = True
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "close")
         self.send_header("X-Accel-Buffering", "no")
         self.end_headers()
-        q = self.store.subscribe()
         try:
-            self.wfile.write(f"data: {self.store.snapshot()}\n\n".encode())
-            self.wfile.flush()
+            if first:
+                self.wfile.write(f"data: {first}\n\n".encode())
+                self.wfile.flush()
             while True:
                 try:
                     msg = q.get(timeout=15)
@@ -753,7 +887,10 @@ class Handler(BaseHTTPRequestHandler):
         except OSError:
             pass
         finally:
-            self.store.unsubscribe(q)
+            unsubscribe(q)
+
+    def _events(self):
+        self._stream(self.store.subscribe(), self.store.unsubscribe, self.store.snapshot())
 
     def _upload(self, qs):
         name = os.path.basename(qs.get("name", ["upload"])[0]) or "upload"
@@ -797,7 +934,7 @@ class Handler(BaseHTTPRequestHandler):
         if method in ("GET", "HEAD"):
             if path == "/":
                 return self._redirect("/control")
-            if path in ("/control", "/display"):
+            if path in ("/control", "/display", "/play"):
                 return self._file(os.path.join(STATIC, path[1:] + ".html"), cache=False)
             if path.startswith("/static/"):
                 full = safe_join(STATIC, path[len("/static/"):])
@@ -815,6 +952,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.wfile.write(body)
             if path == "/api/events":
                 return self._events()
+            if path == "/api/game/stream":
+                role = "pad" if qs.get("role", [""])[0] == "pad" else "display"
+                return self._stream(self.hub.subscribe(role, qs.get("pid", [None])[0]), self.hub.unsubscribe)
             m = re.fullmatch(r"/api/feed/(scores|news|weather)", path)
             if m:
                 return self._json(200, self.feeds.get(m.group(1)))
@@ -827,7 +967,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, {"ok": True})
         m = re.fullmatch(r"/api/screens/(s[12])(/next)?", path)
         if m and method == "PATCH" and not m.group(2):
-            return self._json(200, store.update_screen(m.group(1), self._read_json()))
+            screen = store.update_screen(m.group(1), self._read_json())
+            self.hub.roster_changed()
+            return self._json(200, screen)
         if m and method == "POST" and m.group(2):
             store.next_slide(m.group(1))
             return self._json(200, {"ok": True})
@@ -839,16 +981,25 @@ class Handler(BaseHTTPRequestHandler):
             store.set_display(self._read_json())
             return self._json(200, {"ok": True})
         if method == "PATCH" and path == "/api/channels":
-            return self._json(200, store.update_channels(self._read_json()))
+            conf = store.update_channels(self._read_json())
+            self.hub.roster_changed()
+            return self._json(200, conf)
+        m = re.fullmatch(r"/api/game/(join|leave|input|report)", path)
+        if m and method == "POST":
+            result = getattr(self.hub, m.group(1))(self._read_json())
+            return self._json(200, result or {"ok": True})
         if method == "PATCH" and path == "/api/settings":
             store.update_settings(self._read_json())
             return self._json(200, {"ok": True})
         return self._json(404, {"error": "Not found."})
 
     def _handle(self):
+        if self.command == "HEAD":
+            self.close_connection = True
         try:
             self._route()
         except ApiError as e:
+            self.close_connection = True  # the request body may not have been read
             self._json(e.status, {"error": e.message})
         except (BrokenPipeError, ConnectionResetError):
             pass
@@ -866,17 +1017,23 @@ def main():
     store = Store(args.data)
     Handler.store = store
     Handler.feeds = Feeds(store)
+    hub = Handler.hub = GameHub(store)
+    host = f"{socket.gethostname()}.local" + ("" if args.port == 80 else f":{args.port}")
+    hub.join_url = f"{host}/play"
 
     def ticker():
+        beats = 0
         while True:
             time.sleep(0.25)
             store.tick()
+            beats += 1
+            if beats % 4 == 0:
+                hub.prune()
 
     threading.Thread(target=ticker, daemon=True).start()
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     server.daemon_threads = True
-    port = "" if args.port == 80 else f":{args.port}"
-    print(f"Bar Screens is running. Control it from http://{socket.gethostname()}.local{port}/control", flush=True)
+    print(f"Bar Screens is running. Control it from http://{host}/control (games: http://{host}/play)", flush=True)
     if not FFMPEG:
         print("ffmpeg not found: videos will be played as uploaded, without conversion.", flush=True)
     try:

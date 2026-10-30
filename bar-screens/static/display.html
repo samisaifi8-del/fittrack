@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Bar Screens display</title>
-<link id="fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Poiret+One&family=Josefin+Sans:wght@300;600;700&family=Barlow+Condensed:wght@500;700&family=Bebas+Neue&family=Silkscreen:wght@400;700&family=VT323&display=swap">
+<link id="fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Poiret+One&family=Josefin+Sans:wght@300;600;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Barlow+Condensed:wght@500;700&family=Bebas+Neue&family=Silkscreen:wght@400;700&family=VT323&display=swap">
 <style>
   html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
   body.kiosk { cursor: none; }
@@ -29,6 +29,7 @@
 <div id="stage"></div>
 <div id="dim"></div>
 <script src="/static/channels.js"></script>
+<script src="/static/games.js"></script>
 <script>
 (() => {
   'use strict';
@@ -48,6 +49,8 @@
     'Poiret One': [400, '"Poiret One"'],
     'Josefin Sans': [600, '"Josefin Sans"'],
     'Josefin Light': [300, '"Josefin Sans"'],
+    'Cormorant': [600, '"Cormorant Garamond"'],
+    'Cormorant Italic': ['italic 500', '"Cormorant Garamond"'],
     'Barlow Medium': [500, '"Barlow Condensed"'],
     'Bebas Neue': [400, '"Bebas Neue"'],
     'Barlow Condensed': [700, '"Barlow Condensed"'],
@@ -195,10 +198,14 @@
     } else if (slide.type === 'channel') {
       const canvas = document.createElement('canvas');
       layer.appendChild(canvas);
-      const channel = window.BarChannels
-        ? window.BarChannels.create(slide.channel, canvas, W, H, { conf: slide.conf, barName: slide.barName })
-        : null;
-      layer._cleanup = () => { if (channel) channel.stop(); };
+      let channel = null, bus = null;
+      if (slide.channel === 'games' && window.BarGames) {
+        bus = gameBus();
+        channel = window.BarGames.create(slide.conf && slide.conf.game, canvas, W, H, { bus, barName: slide.barName });
+      } else if (window.BarChannels) {
+        channel = window.BarChannels.create(slide.channel, canvas, W, H, { conf: slide.conf, barName: slide.barName });
+      }
+      layer._cleanup = () => { if (channel) channel.stop(); if (bus) bus.release(); };
       requestAnimationFrame(onReady);
     } else {
       const canvas = document.createElement('canvas');
@@ -219,6 +226,45 @@
       requestAnimationFrame(onReady);
     }
     return layer;
+  }
+
+  // One connection to the game server, shared by every game on this page. Phones' controller
+  // input arrives here; the game reports scores back for the phones to show.
+  let sharedBus = null;
+  function gameBus() {
+    if (sharedBus) { sharedBus.refs++; return sharedBus; }
+    const listeners = new Set();
+    let roster = { type: 'roster', players: [], joinUrl: '' };
+    let es = null, closed = false;
+    const open = () => {
+      es = new EventSource('/api/game/stream?role=display');
+      es.onmessage = (e) => {
+        let m;
+        try { m = JSON.parse(e.data); } catch (err) { return; }
+        if (m.type === 'roster') roster = m;
+        listeners.forEach((fn) => fn(m));
+      };
+      es.onerror = () => { if (es.readyState === EventSource.CLOSED && !closed) setTimeout(open, 3000); };
+    };
+    open();
+    sharedBus = {
+      refs: 1,
+      on(fn) { listeners.add(fn); fn(roster); return () => listeners.delete(fn); },
+      report(status) {
+        fetch('/api/game/report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...status, source: kiosk ? 'kiosk' : 'preview' }),
+        }).catch(() => {});
+      },
+      release() {
+        if (--this.refs > 0) return;
+        closed = true;
+        es.close();
+        sharedBus = null;
+      },
+    };
+    return sharedBus;
   }
 
   function retire(layer) {

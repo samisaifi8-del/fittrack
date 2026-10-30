@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0b0a08">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>The Basement · Games</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poiret+One&family=Josefin+Sans:wght@300;600;700&family=Barlow+Condensed:wght@500;600&display=swap">
+<style>
+/* Layout: a full-height phone controller. Header, who you are, the game list, then the pad. */
+:root {
+  --bg: #0b0a08; --surface: #15130f; --raise: #1e1b15; --line: #332d22;
+  --fg: #efe6d2; --muted: #a59a84; --gold: #c5a467; --gold-ink: #15100a;
+  --me: #c5a467;
+  --f-display: "Poiret One", Georgia, serif;
+  --f-label: "Josefin Sans", system-ui, sans-serif;
+  --f-body: "Barlow Condensed", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg); font: 500 18px/1.35 var(--f-body);
+  display: flex; flex-direction: column; overscroll-behavior: none; user-select: none; -webkit-user-select: none;
+  padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(16px, env(safe-area-inset-left, 0px));
+}
+[hidden] { display: none !important; }
+button, input { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-block: 14px 10px; border-bottom: 3px double var(--gold); }
+.brand { font: 400 24px/1 var(--f-display); letter-spacing: 0.1em; }
+.sub { font: 700 11px/1 var(--f-label); letter-spacing: 0.3em; color: var(--gold); }
+
+main { flex: 1; display: flex; flex-direction: column; gap: 14px; padding-block: 16px; min-height: 0; }
+.eyebrow { margin: 0; font: 700 12px/1.2 var(--f-label); letter-spacing: 0.24em; text-transform: uppercase; color: var(--gold); }
+.note { margin: 0; color: var(--muted); font-size: 16px; }
+
+.btn {
+  min-height: 48px; padding: 10px 18px; border-radius: 4px; border: 1px solid var(--gold);
+  background: transparent; color: var(--fg); cursor: pointer; font: 700 14px/1 var(--f-label); letter-spacing: 0.2em; text-transform: uppercase;
+}
+.btn.primary { background: var(--gold); color: var(--gold-ink); }
+.btn.small { min-height: 36px; padding: 8px 12px; font-size: 12px; }
+
+#joinView { display: grid; gap: 14px; align-content: start; }
+#joinView h1 { margin: 0; font: 400 34px/1.1 var(--f-display); letter-spacing: 0.06em; }
+input[type="text"] {
+  width: 100%; min-height: 54px; padding: 10px 14px; border-radius: 4px; border: 1px solid var(--line);
+  background: var(--surface); font: 600 24px var(--f-body); letter-spacing: 0.04em; text-transform: uppercase; user-select: text; -webkit-user-select: text;
+}
+
+.me { display: flex; align-items: center; gap: 12px; }
+.me .dot { width: 18px; height: 18px; transform: rotate(45deg); background: var(--me); flex: none; }
+.me b { font: 700 16px/1.1 var(--f-label); letter-spacing: 0.14em; }
+.me span { color: var(--muted); font-size: 15px; }
+.me .grow { flex: 1; min-width: 0; }
+
+.games { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.game { min-height: 44px; border-radius: 4px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font: 700 12px/1.1 var(--f-label); letter-spacing: 0.16em; text-transform: uppercase; padding: 8px; }
+.game[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
+
+.banner { margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 4px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-size: 16px; }
+.status { margin: 0; min-height: 1.4em; font: 600 20px/1.3 var(--f-body); text-align: center; }
+.scores { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; font-size: 16px; color: var(--muted); }
+.scores b { color: var(--fg); }
+
+/* controllers */
+.pad { flex: 1; min-height: 220px; display: flex; touch-action: none; }
+.slider {
+  position: relative; flex: 1; border: 1px solid var(--gold); border-radius: 6px; overflow: hidden;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), rgba(197,164,103,0.15) calc(10% - 1px) 10%);
+}
+.slider.vertical { background: repeating-linear-gradient(0deg, transparent 0 calc(10% - 1px), rgba(197,164,103,0.15) calc(10% - 1px) 10%); }
+.slider .knob { position: absolute; top: 0; bottom: 0; left: 50%; width: 22%; transform: translateX(-50%); background: var(--me); opacity: 0.85; border-radius: 4px; }
+.slider.vertical .knob { left: 0; right: 0; top: 50%; bottom: auto; width: auto; height: 22%; transform: translateY(-50%); }
+.slider .hint { position: absolute; inset: auto 0 12px; text-align: center; font: 700 11px var(--f-label); letter-spacing: 0.24em; color: var(--muted); pointer-events: none; }
+.dpad { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 10px; max-height: 420px; }
+.dpad button { border: 1px solid var(--gold); border-radius: 6px; background: var(--surface); font-size: 34px; color: var(--gold); cursor: pointer; }
+.dpad button:active { background: var(--gold); color: var(--gold-ink); }
+.dpad .up { grid-area: 1 / 2; } .dpad .left { grid-area: 2 / 1; } .dpad .right { grid-area: 2 / 3; } .dpad .down { grid-area: 3 / 2; }
+.tapper { flex: 1; display: grid; place-items: center; }
+.tapper button {
+  width: min(78vw, 46vh); aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--gold); background: radial-gradient(circle, #241d10, #0b0a08);
+  font: 400 54px/1 var(--f-display); letter-spacing: 0.1em; color: var(--fg); cursor: pointer;
+}
+.tapper button:active { background: var(--gold); color: var(--gold-ink); }
+.foot { display: flex; gap: 10px; }
+.foot .btn { flex: 1; }
+.toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 14px; border-radius: 4px; background: var(--fg); color: var(--bg); font: 600 16px var(--f-body); }
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="brand" id="brand">THE BASEMENT</span>
+  <span class="sub">GAMES</span>
+</header>
+
+<main>
+  <section id="joinView">
+    <p class="eyebrow">Join the game</p>
+    <h1>What should we call you?</h1>
+    <input type="text" id="name" maxlength="16" autocomplete="nickname" placeholder="YOUR NAME" aria-label="Your name">
+    <button type="button" class="btn primary" id="joinBtn">Join</button>
+    <p class="note">Your phone becomes the controller. The game plays out on the wall.</p>
+  </section>
+
+  <section id="padView" hidden style="display:flex;flex-direction:column;gap:14px;flex:1;min-height:0">
+    <div class="me">
+      <span class="dot" aria-hidden="true"></span>
+      <div class="grow"><b id="meName"></b><br><span id="meSlot"></span></div>
+      <button type="button" class="btn small" id="leaveBtn">Leave</button>
+    </div>
+    <div class="games" id="games" role="group" aria-label="Choose the game"></div>
+    <p class="banner" id="offWall" hidden><span>Games aren't on the wall right now.</span><button type="button" class="btn small" id="toWall">Put them on</button></p>
+    <p class="status" id="status" role="status">Tap Start to play.</p>
+    <div class="scores" id="scores"></div>
+    <div class="pad" id="pad"></div>
+    <div class="foot"><button type="button" class="btn primary" id="startBtn">Start</button></div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const store = {
+    get(k) { try { return localStorage.getItem('basement:' + k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem('basement:' + k, v); } catch (e) {} },
+  };
+  let pid = store.get('pid');
+  if (!pid) {
+    const bytes = new Uint8Array(12);
+    crypto.getRandomValues(bytes);
+    pid = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    store.set('pid', pid);
+  }
+
+  const CONTROLS = { breaker: 'slider', duel: 'slider', snake: 'dpad', quickdraw: 'tap' };
+  let me = null, roster = { players: [], game: 'breaker', games: [] }, status = null, games = [], built = '';
+
+  let toastTimer = 0;
+  function toast(msg) {
+    $('toast').textContent = msg;
+    $('toast').hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { $('toast').hidden = true; }, 3500);
+  }
+
+  // ------------------------------------------------------------ talking to the Pi
+
+  async function post(path, body) {
+    const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    let data = null;
+    try { data = await res.json(); } catch (e) {}
+    if (!res.ok) throw Object.assign(new Error((data && data.error) || 'Something went wrong.'), { status: res.status });
+    return data;
+  }
+
+  // Slider moves are "latest wins": while one is on its way, only the newest position waits.
+  let inflight = false, queued = null;
+  function send(input) {
+    if (input.kind === 'move') {
+      queued = input;
+      if (!inflight) flushMoves();
+      return;
+    }
+    post('/api/game/input', { pid, ...input }).catch(onInputError);
+  }
+  function flushMoves() {
+    if (!queued) return;
+    const input = queued;
+    queued = null;
+    inflight = true;
+    post('/api/game/input', { pid, ...input }).catch(onInputError).finally(() => { inflight = false; flushMoves(); });
+  }
+  function onInputError(e) { if (e.status === 403) join(true); }
+
+  async function join(quiet) {
+    const name = $('name').value.trim() || store.get('name') || '';
+    try {
+      me = await post('/api/game/join', { pid, name });
+      store.set('name', me.name);
+      document.documentElement.style.setProperty('--me', me.color);
+      $('meName').textContent = me.name;
+      $('meSlot').textContent = `Player ${me.slot + 1}`;
+      $('joinView').hidden = true;
+      $('padView').hidden = false;
+      render();
+    } catch (e) {
+      if (!quiet) toast(e.message === 'Failed to fetch' ? "Can't reach the bar's Pi. Check you're on the Wi-Fi." : e.message);
+    }
+  }
+
+  function connect() {
+    const es = new EventSource(`/api/game/stream?role=pad&pid=${encodeURIComponent(pid)}`);
+    es.onmessage = (e) => {
+      let m;
+      try { m = JSON.parse(e.data); } catch (err) { return; }
+      if (m.type === 'roster') {
+        roster = m;
+        if (me && !m.players.some((p) => p.slot === me.slot && p.name === me.name)) join(true);
+      }
+      if (m.type === 'status') status = m;
+      render();
+    };
+    es.onerror = () => { if (es.readyState === EventSource.CLOSED) setTimeout(connect, 3000); };
+  }
+
+  async function loadState() {
+    try {
+      const st = await (await fetch('/api/state')).json();
+      games = st.catalog.games;
+      $('brand').textContent = st.settings.barName || 'THE BASEMENT';
+      render();
+    } catch (e) {}
+  }
+
+  // ------------------------------------------------------------ controllers
+
+  function buildSlider(pad, vertical) {
+    pad.innerHTML = `<div class="slider${vertical ? ' vertical' : ''}"><div class="knob"></div><div class="hint">SLIDE TO MOVE</div></div>`;
+    const track = pad.firstElementChild, knob = track.querySelector('.knob');
+    const move = (e) => {
+      const r = track.getBoundingClientRect();
+      let x = vertical ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width;
+      x = Math.max(0, Math.min(1, x));
+      if (vertical) knob.style.top = `${x * 100}%`; else knob.style.left = `${x * 100}%`;
+      send({ kind: 'move', x });
+    };
+    track.addEventListener('pointerdown', (e) => { track.setPointerCapture(e.pointerId); move(e); });
+    track.addEventListener('pointermove', (e) => { if (e.buttons || e.pointerType === 'touch') move(e); });
+  }
+
+  function buildDpad(pad) {
+    pad.innerHTML = `<div class="dpad">
+      <button type="button" class="up" data-dir="up" aria-label="Up">▲</button>
+      <button type="button" class="left" data-dir="left" aria-label="Left">◀</button>
+      <button type="button" class="right" data-dir="right" aria-label="Right">▶</button>
+      <button type="button" class="down" data-dir="down" aria-label="Down">▼</button></div>`;
+    pad.querySelectorAll('[data-dir]').forEach((b) => b.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      send({ kind: 'dir', dir: b.dataset.dir });
+      if (navigator.vibrate) navigator.vibrate(10);
+    }));
+    // swipes anywhere on the pad work too
+    let start = null;
+    pad.addEventListener('pointerdown', (e) => { start = [e.clientX, e.clientY]; });
+    pad.addEventListener('pointerup', (e) => {
+      if (!start) return;
+      const dx = e.clientX - start[0], dy = e.clientY - start[1];
+      start = null;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < 30) return;
+      send({ kind: 'dir', dir: Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up') });
+    });
+  }
+
+  function buildTapper(pad) {
+    pad.innerHTML = '<div class="tapper"><button type="button" aria-label="Tap">TAP</button></div>';
+    pad.querySelector('button').addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      send({ kind: 'tap' });
+      if (navigator.vibrate) navigator.vibrate(15);
+    });
+  }
+
+  // ------------------------------------------------------------ screen
+
+  function render() {
+    const game = roster.game || 'breaker';
+    $('games').innerHTML = games.map(([key, name]) => `<button type="button" class="game" data-game="${key}" aria-pressed="${key === game}">${esc(name)}</button>`).join('');
+    $('offWall').hidden = roster.onWall !== false;
+    const seat = status && status.game === 'duel' && me && (status.seats || []).find((s) => s.slot === me.slot);
+    const kind = `${CONTROLS[game] || 'slider'}${seat && (seat.side === 'left' || seat.side === 'right') ? '-v' : ''}`;
+    if (kind !== built && me) {
+      built = kind;
+      const pad = $('pad');
+      if (kind.startsWith('slider')) buildSlider(pad, kind.endsWith('-v'));
+      else if (kind === 'dpad') buildDpad(pad);
+      else buildTapper(pad);
+    }
+    const st = status && status.game === game ? status : null;
+    $('status').textContent = st ? st.message : 'Tap Start to play.';
+    const scores = st && st.players ? st.players : [];
+    $('scores').innerHTML = scores.map((p) => {
+      const who = roster.players.find((x) => x.slot === p.slot);
+      return who ? `<span>${esc(who.name)} <b>${p.score}</b>${p.alive === false && p.wait ? ` · back in ${p.wait}` : ''}</span>` : '';
+    }).join('');
+    $('startBtn').textContent = st && st.phase === 'play' && game === 'snake' && !(scores.find((p) => me && p.slot === me.slot) || {}).alive === false ? 'Start' : st && st.phase === 'play' ? (game === 'breaker' ? 'Launch' : 'Start') : 'Start';
+  }
+
+  $('joinBtn').addEventListener('click', () => join(false));
+  $('name').addEventListener('keydown', (e) => { if (e.key === 'Enter') join(false); });
+  $('leaveBtn').addEventListener('click', async () => {
+    try { await post('/api/game/leave', { pid }); } catch (e) {}
+    me = null;
+    built = '';
+    $('padView').hidden = true;
+    $('joinView').hidden = false;
+  });
+  $('startBtn').addEventListener('click', () => send({ kind: 'start' }));
+  $('games').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-game]');
+    if (!b) return;
+    try {
+      await fetch('/api/channels', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ games: { game: b.dataset.game } }) });
+    } catch (err) { toast("Can't reach the bar's Pi."); }
+  });
+  $('toWall').addEventListener('click', async () => {
+    try {
+      await fetch('/api/screens/s1', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: 'games', pinned: null }) });
+    } catch (err) { toast("Can't reach the bar's Pi."); }
+  });
+
+  $('name').value = store.get('name') || '';
+  loadState();
+  connect();
+  if (store.get('name')) join(true);
+})();
+</script>
+</body>
+</html>

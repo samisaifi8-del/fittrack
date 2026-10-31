@@ -136,7 +136,7 @@ input[type="color"] { width: 44px; height: 36px; padding: 2px; border: 1px solid
 .up progress { width: 100%; height: 6px; accent-color: var(--accent); }
 
 .remote { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-@media (min-width: 600px) { .remote { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+@media (min-width: 600px) { .remote { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
 .ch { display: grid; justify-items: center; gap: 6px; padding: 8px 2px 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--raise); cursor: pointer; min-width: 0; }
 .ch-n { display: grid; place-items: center; width: 38px; height: 30px; border-radius: 3px; background: #000; color: var(--c); font: 400 22px/1 var(--f-display); }
 .ch-name { font: 600 14px/1 var(--f-label); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -159,6 +159,22 @@ details.card[open] > summary::after { content: "Hide"; }
 .golive img { width: 132px; height: 132px; display: block; border-radius: 6px; background: #fff; padding: 6px; image-rendering: pixelated; }
 .golive .link { font: 600 16px/1.3 var(--f-label); overflow-wrap: anywhere; user-select: all; }
 @media (max-width: 360px) { .golive { grid-template-columns: 1fr; } }
+.film { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; align-items: center; }
+.film img, .film .ph { width: 64px; aspect-ratio: 2 / 3; border-radius: 4px; object-fit: cover; display: block; background: #000; border: 1px solid var(--line); }
+.film .ph { display: grid; place-items: center; font: 400 22px/1 var(--f-display); color: var(--accent-text); }
+.film b { font: 600 20px/1.15 var(--f-label); overflow-wrap: anywhere; }
+.film-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.film-list button { width: 100%; display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 10px; align-items: center; text-align: left; padding: 6px; border-radius: 10px; border: 1px solid var(--line); background: var(--raise); cursor: pointer; }
+.film-list img, .film-list .ph { width: 36px; aspect-ratio: 2 / 3; border-radius: 3px; object-fit: cover; display: block; background: #000; }
+.film-list b { display: block; font: 600 17px/1.15 var(--f-label); }
+.film-list small { display: block; font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cine { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.cine .btn { min-height: 64px; font-size: 18px; }
+.cine-break { display: grid; gap: 6px; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--raise); }
+.cine-break > span { font: 600 16px/1 var(--f-label); text-align: center; }
+.cine-break .seg button { min-height: 32px; background: var(--surface); }
+.cine-break .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.cine-break.off { opacity: 0.5; }
 ol.steps { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; font-size: 15px; }
 
 dialog { padding: 0; border: 0; background: transparent; color: var(--fg); max-width: 720px; width: 100%; max-height: 100%; height: 100%; margin: 0 auto; }
@@ -207,6 +223,36 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     </div>
     <div class="remote" id="remote"></div>
     <p class="note" id="chDesc"></p>
+  </section>
+
+  <section class="card" aria-labelledby="hFilm">
+    <h2 id="hFilm">Now Showing: movie night</h2>
+    <div class="film" id="filmNow" hidden>
+      <span id="filmArt"></span>
+      <div class="now-text">
+        <span class="eyebrow" id="filmPhase"></span>
+        <b id="filmTitle"></b>
+        <span class="note" id="filmMeta"></span>
+      </div>
+    </div>
+    <div id="filmFind" style="display:grid;gap:8px">
+      <div class="row">
+        <input type="text" id="filmQuery" class="grow" style="flex:1 1 160px" placeholder="Type tonight's film" aria-label="Film title" autocomplete="off" enterkeyhint="search">
+        <button type="button" class="btn small" id="filmSearch">Find</button>
+      </div>
+      <ul class="film-list" id="filmResults"></ul>
+      <div class="field" id="filmRecentBox" hidden><span>Shown before (these work offline)</span><div class="chips" id="filmRecent"></div></div>
+    </div>
+    <div class="cine">
+      <button type="button" class="btn primary" id="filmStart">Start the feature</button>
+      <div class="cine-break" id="filmBreak">
+        <span>Intermission</span>
+        <div class="seg"><button type="button" data-mins="5">5 min</button><button type="button" data-mins="10">10</button><button type="button" data-mins="15">15</button></div>
+      </div>
+      <button type="button" class="btn" id="filmResume">Resume</button>
+      <button type="button" class="btn" id="filmEnd">The End</button>
+    </div>
+    <p class="note" id="filmNote"></p>
   </section>
 
   <section class="card" aria-labelledby="hLive">
@@ -348,6 +394,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     ['visuals', 5, 'Visuals', 'Banana leaves in gold, The Basement sign, the lift dial, a deco clock and more.', '#b89a63'],
     ['games', 6, 'Games', 'Party games on the wall. Guests use their phones as controllers.', '#b89a63'],
     ['live', 7, 'Live', 'Guests\' phone cameras on the wall, up to four, cut together automatically.', '#b89a63'],
+    ['nowshowing', 8, 'Cinema', 'Movie night: tonight\'s poster, a two-minute countdown, then the wall goes dark for the film.', '#b89a63'],
   ];
   const STYLE_NAMES = { mix: 'Mix (changes every 45 seconds)', botanical: 'Banana leaves in gold', skyline: 'Dark deco city', deco: 'The Basement sign', lift: 'Lift floor indicator', clockface: 'Deco wall clock', fans: 'Art deco fans', bubbles: 'Champagne bubbles' };
 
@@ -466,6 +513,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     renderChannelSettings();
     renderMirror();
     renderGoLive();
+    renderCinema();
 
     const b = $('brightness');
     if (document.activeElement !== b) b.value = state.settings.brightness;
@@ -628,6 +676,118 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     const url = (state.golive || {}).url;
     if (!url) return;
     try { await navigator.clipboard.writeText(url); toast('Link copied.'); } catch (e) { toast(url); }
+  });
+
+  // Now Showing: find tonight's film, then run the night with four buttons. The wall follows by
+  // itself; anyone on the Wi-Fi can also call an intermission from /film.
+  const RUNNING = ['countdown', 'film', 'intermission'];
+  function filmMeta(f) {
+    const parts = [];
+    if (f.year) parts.push(f.year);
+    if (f.runtime) parts.push(`${Math.floor(f.runtime / 60)} h ${f.runtime % 60} min`.replace(/^0 h /, '').replace(/ 0 min$/, ''));
+    if (f.director) parts.push(f.director);
+    return parts.join(' · ');
+  }
+  const artHTML = (src, title) => (src ? `<img src="${esc(src)}" alt="" loading="lazy">` : `<span class="ph">${esc((title || '?').replace(/^the\s+/i, '')[0] || '?')}</span>`);
+  const cinemaNow = () => Date.now() / 1000 + ((state.cinema && state.cinema.clock) || 0);
+  const mmss = (secs) => { const n = Math.max(0, Math.ceil(secs)); return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`; };
+  function cinemaPhase(c) {
+    const T = cinemaNow();
+    if (c.phase === 'countdown') return c.until > T ? `Starting in ${mmss(c.until - T)}` : 'The curtains are closing';
+    if (c.phase === 'film') return 'The film is on: the wall is dark';
+    if (c.phase === 'intermission') return `Intermission: back in ${mmss(c.until - T)}`;
+    if (c.phase === 'end') return 'The End: then back to The Bar';
+    return 'Tonight\'s film';
+  }
+  function renderCinema() {
+    const c = state.cinema;
+    if (!c) return;
+    const f = c.film, running = RUNNING.includes(c.phase);
+    $('filmNow').hidden = !f;
+    if (f) {
+      const art = artHTML(f.poster, f.title);
+      if ($('filmArt').dataset.html !== art) { $('filmArt').dataset.html = art; $('filmArt').innerHTML = art; }
+      $('filmTitle').textContent = f.title;
+      $('filmMeta').textContent = filmMeta(f) + (f.poster ? '' : (filmMeta(f) ? ' · ' : '') + 'No poster: the wall shows a type card');
+      $('filmPhase').textContent = cinemaPhase(c);
+    }
+    $('filmFind').hidden = running;
+    const recent = (c.recent || []).filter((r) => !f || r.key !== f.key).slice(0, 5);
+    const chips = recent.map((r) => `<button type="button" class="chip" data-film="${esc(r.key)}">${esc(r.title)}${r.year ? ` (${r.year})` : ''}</button>`).join('');
+    if ($('filmRecent').dataset.html !== chips) { $('filmRecent').dataset.html = chips; $('filmRecent').innerHTML = chips; }
+    $('filmRecentBox').hidden = !recent.length;
+    $('filmStart').disabled = !f || running;
+    $('filmBreak').classList.toggle('off', !['film', 'intermission'].includes(c.phase));
+    $('filmBreak').querySelectorAll('button').forEach((b) => {
+      b.disabled = !['film', 'intermission'].includes(c.phase);
+      b.setAttribute('aria-pressed', String(c.phase === 'intermission' && c.mins === Number(b.dataset.mins)));
+    });
+    $('filmResume').disabled = !['countdown', 'intermission'].includes(c.phase);
+    $('filmEnd').disabled = !f || c.phase === 'end' || c.phase === 'idle';
+    const onWall = state.screens.some((s) => s.enabled && s.channel === 'nowshowing');
+    $('filmNote').innerHTML = !f
+      ? 'Type the film and pick it: the poster goes on the wall. Films you\'ve shown before work without internet.'
+      : running
+        ? `Guests can call an intermission from <b>${esc(location.host)}/film</b> (same Wi-Fi).`
+        : `Start the feature gives everyone two minutes, then the wall goes dark for the film.${onWall ? '' : ' The buttons put every wall on channel 8.'}`;
+  }
+  setInterval(() => { if (state && state.cinema && ['countdown', 'intermission'].includes(state.cinema.phase)) $('filmPhase').textContent = cinemaPhase(state.cinema); }, 1000);
+
+  let filmAsk = 0;
+  async function findFilms(now) {
+    const q = $('filmQuery').value.trim();
+    const ask = ++filmAsk;
+    if (q.length < (now ? 2 : 3)) { if (!q) $('filmResults').innerHTML = ''; return; }
+    try {
+      const res = await api('GET', `/api/cinema/search?q=${encodeURIComponent(q)}`);
+      if (ask !== filmAsk) return;
+      $('filmResults').innerHTML = res.results.length
+        ? res.results.map((r) => `<li><button type="button" data-film="${esc(r.key)}">${artHTML(r.poster, r.title)}<span style="min-width:0"><b>${esc(r.title)}${r.year ? ` (${r.year})` : ''}</b><small>${r.cached ? 'Shown before · ' : ''}${esc(r.desc || '')}</small></span></button></li>`).join('')
+        : '<li class="note">No films found. Try the full title, or add the year.</li>';
+      if (res.offline) toast('No internet: showing films you\'ve shown before.');
+    } catch (e) { if (ask === filmAsk) toast(e.message); }
+  }
+  const findSoon = debounce((now) => findFilms(!!now), 700);
+  $('filmQuery').addEventListener('input', findSoon);
+  $('filmQuery').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); findSoon.flush(true); } });
+  $('filmSearch').addEventListener('click', () => findSoon.flush(true));
+  async function chooseFilm(key, btn) {
+    if (btn) btn.disabled = true;
+    toast('Fetching the poster…');
+    try {
+      const film = await api('POST', '/api/cinema/film', { key });
+      $('filmQuery').value = '';
+      $('filmResults').innerHTML = '';
+      filmAsk++;
+      toast(`${film.title} is on the wall.`);
+    } catch (e) { toast(e.message); }
+    if (btn) btn.disabled = false;
+  }
+  for (const id of ['filmResults', 'filmRecent']) {
+    $(id).addEventListener('click', (e) => {
+      const b = e.target.closest('[data-film]');
+      if (b) chooseFilm(b.dataset.film, b);
+    });
+  }
+  $('filmStart').addEventListener('click', () => run(api('POST', '/api/cinema/start')));
+  $('filmBreak').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-mins]');
+    if (b) run(api('POST', '/api/cinema/intermission', { mins: Number(b.dataset.mins) }));
+  });
+  $('filmResume').addEventListener('click', () => run(api('POST', '/api/cinema/resume')));
+  // The End lights the room up, so mid-film it takes a second tap.
+  let endArmed = 0;
+  $('filmEnd').addEventListener('click', () => {
+    const b = $('filmEnd');
+    if (RUNNING.includes(state.cinema.phase) && !endArmed) {
+      b.textContent = 'Tap again to end';
+      endArmed = setTimeout(() => { endArmed = 0; b.textContent = 'The End'; }, 3000);
+      return;
+    }
+    clearTimeout(endArmed);
+    endArmed = 0;
+    b.textContent = 'The End';
+    run(api('POST', '/api/cinema/end'));
   });
 
   $('mirrorScreen').addEventListener('change', (e) => run(api('PATCH', '/api/settings', { mirrorScreen: e.target.value })));
@@ -945,6 +1105,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     es.onopen = () => { $('conn').textContent = 'Live'; $('conn').classList.add('ok'); };
     es.onmessage = (e) => {
       try { state = JSON.parse(e.data); } catch (err) { return; }
+      if (state.cinema) state.cinema.clock = state.cinema.now - Date.now() / 1000; // for the countdowns
       if (editing && !slideById(editing.id)) closeEditor();
       render();
     };

@@ -43,7 +43,7 @@ TUNNEL_METRICS = "127.0.0.1:3998"
 TUNNEL_UNIT = "bar-screens-tunnel"
 
 # Channel 1 is your own rotation; the rest are live channels drawn on the Pi from free data feeds.
-CHANNELS = ["rotation", "scores", "news", "weather", "visuals", "games", "live"]
+CHANNELS = ["rotation", "scores", "news", "weather", "visuals", "games", "live", "nowshowing"]
 LEAGUES = {  # ESPN's public scoreboard feed: no key needed, but it's unofficial and could change
     "eng.1": ("soccer/eng.1", "Premier League"),
     "eng.2": ("soccer/eng.2", "Championship"),
@@ -68,6 +68,16 @@ NEWS_FEEDS = {
 }
 VISUAL_STYLES = ["mix", "botanical", "deco", "lift", "clockface", "skyline", "bubbles", "fans"]
 GAMES = [["breaker", "Brick Breaker"], ["duel", "Deco Duel"], ["snake", "Serpentine"], ["quickdraw", "Quick Draw"]]
+# Now Showing (channel 8): film posters and details come from Wikipedia and Wikidata (free, no key).
+# Wikimedia asks every client for a User-Agent that says what it is (one naming a bare HTTP library
+# is throttled hard), and answers 429 to quick bursts, so searches are cached.
+WIKI_UA = "BarScreens/1.0 (home cinema LED wall; Now Showing film posters)"
+CINEMA_PHASES = ("idle", "poster", "countdown", "film", "intermission", "end")
+COUNTDOWN = 120     # "Start the feature": two minutes to settle in
+DIM_DOWN = 6        # then the curtains close and the wall goes dark (the wall times its own fades)
+END_HOLD = 15       # THE END stays up this long, then the walls go back to The Bar
+INTERMISSIONS = (5, 10, 15)
+FILM_KEY = re.compile(r"[0-9]{1,12}")  # a Wikipedia page id
 
 for ext, ctype in ((".webp", "image/webp"), (".avif", "image/avif"), (".mp4", "video/mp4"),
                    (".m4v", "video/mp4"), (".webm", "video/webm"), (".mkv", "video/x-matroska")):
@@ -182,6 +192,11 @@ def default_screen(sid, name, enabled):
             "x": 0, "y": 0, "rw": 256, "rh": 384, "channel": "rotation", "playlist": [], "pinned": None}
 
 
+def default_cinema():
+    # Now Showing: tonight's film (a key into the film cache) and where the night has got to.
+    return {"film": None, "phase": "idle", "at": 0.0, "until": 0.0, "mins": 0}
+
+
 def default_state():
     return {
         "settings": {"brightness": 100, "blackout": False, "testPattern": True, "barName": "THE BASEMENT",
@@ -189,6 +204,7 @@ def default_state():
         "screens": [default_screen("s1", "Left screen", True), default_screen("s2", "Right screen", False)],
         "slides": [],
         "channels": default_channels(),
+        "cinema": default_cinema(),
     }
 
 
@@ -209,6 +225,7 @@ class Store:
         self.display = None  # HDMI picture size reported by the display page
         self.mirroring = False  # a phone is mirroring to the wall over AirPlay
         self.live_info = dict   # Basement Live's link and cameras (set up in main)
+        self.cinema_info = lambda: None  # Now Showing's film and phase, for phones and the wall
         self.state = self._load()
         for slide in self.state["slides"]:
             if slide.get("processing"):
@@ -234,6 +251,14 @@ class Store:
             saved_conf = data.get("channels", {}).get(name)
             if isinstance(saved_conf, dict):
                 conf.update({k: v for k, v in saved_conf.items() if k in conf})
+        cinema = data.get("cinema")
+        if isinstance(cinema, dict) and cinema.get("phase") in CINEMA_PHASES:
+            film = cinema.get("film")
+            state["cinema"] = {"film": film if isinstance(film, str) and FILM_KEY.fullmatch(film) else None,
+                               "phase": cinema["phase"], "mins": cinema.get("mins") if cinema.get("mins") in INTERMISSIONS else 0,
+                               **{k: float(cinema[k]) if isinstance(cinema.get(k), (int, float)) else 0.0 for k in ("at", "until")}}
+            if not state["cinema"]["film"]:
+                state["cinema"]["phase"] = "idle"
         return state
 
     def save(self):
@@ -253,6 +278,7 @@ class Store:
                 "displayOn": not os.path.exists(self.off_flag),
                 "mirror": {"available": bool(UXPLAY), "live": self.mirroring},
                 "golive": self.live_info(),
+                "cinema": self.cinema_info(),
                 "ffmpeg": bool(FFMPEG),
                 "catalog": {
                     "leagues": [[k, v[1]] for k, v in LEAGUES.items()],
@@ -539,8 +565,8 @@ class Store:
 
 # ---------------------------------------------------------------- live data feeds
 
-def fetch_url(url, timeout=8):
-    req = urllib.request.Request(url, headers={"User-Agent": "BarScreens/1.0 (home LED display)"})
+def fetch_url(url, timeout=8, ua="BarScreens/1.0 (home LED display)"):
+    req = urllib.request.Request(url, headers={"User-Agent": ua})
     with urllib.request.urlopen(req, timeout=timeout) as res:
         return res.read(5 * 1024 * 1024)
 
@@ -1148,6 +1174,312 @@ def qr_svg(rows, margin=4):
             f'<rect width="{n}" height="{n}" fill="#fff"/><path d="{path}" fill="#000"/></svg>')
 
 
+# ---------------------------------------------------------------- now showing
+
+def film_title(title):
+    """The film's name without Wikipedia's disambiguation: "Heat (1995 film)" -> "Heat"."""
+    return re.sub(r"\s*\([^()]*\b(?:film|movie)\)$", "", title or "").strip()
+
+
+def film_year(text):
+    m = re.search(r"\b(1[89]\d\d|20\d\d)\b", text or "")
+    return int(m.group(1)) if m else None
+
+
+def film_director(desc):
+    """Wikipedia's short descriptions read "1974 film by Francis Ford Coppola" for most films."""
+    m = re.search(r"\bfilm (?:directed )?by (.+)$", desc or "")
+    name = m.group(1).strip() if m else ""
+    return name if 0 < len(name) <= 40 and " and " not in name and "," not in name else ""
+
+
+def parse_film_pages(data):
+    """Films from a Wikipedia query (a search, or pages by id), in the search's order. A film
+    series, a TV miniseries and the like have the film infobox too, but aren't one film."""
+    pages = (data.get("query") or {}).get("pages") or []
+    if isinstance(pages, dict):
+        pages = list(pages.values())
+    films = []
+    for p in sorted(pages, key=lambda p: p.get("index", 0)):
+        if not isinstance(p, dict) or p.get("missing") or "pageid" not in p:
+            continue
+        desc = p.get("description") or ""
+        if re.search(r"\b(?:series|miniseries|franchise|trilogy|soundtrack|novel|television)\b", desc, re.I):
+            continue
+        thumb = p.get("thumbnail") or {}
+        films.append({
+            "key": str(p["pageid"]),
+            "title": film_title(p.get("title")),
+            "year": film_year(desc),
+            "desc": desc[:120],
+            "director": film_director(desc),
+            "qid": (p.get("pageprops") or {}).get("wikibase_item") or "",
+            "thumb": thumb.get("source") or "",
+            "tw": thumb.get("width") or 0,
+            "th": thumb.get("height") or 0,
+        })
+    return films
+
+
+def wiki_films(params):
+    query = {"action": "query", "format": "json", "formatversion": 2,
+             "prop": "pageimages|pageprops|description", "piprop": "thumbnail", "pithumbsize": 500,
+             "pilicense": "any", "ppprop": "wikibase_item", **params}
+    return parse_film_pages(json.loads(fetch_url("https://en.wikipedia.org/w/api.php?" + urlencode(query), ua=WIKI_UA)))
+
+
+def search_films(text):
+    return wiki_films({"generator": "search", "gsrsearch": f'{text} hastemplate:"Infobox film"',
+                       "gsrnamespace": 0, "gsrlimit": 8})
+
+
+def parse_film_claims(data):
+    """Year (the earliest release date) and running time in minutes from Wikidata's claims. A film
+    can list several running times (cuts, countries); the preferred one, else the first, wins."""
+    claims = data.get("claims") or {}
+    years, runtime = [], None
+    for c in claims.get("P577", []):
+        t = (((c.get("mainsnak") or {}).get("datavalue") or {}).get("value") or {}).get("time", "")
+        if re.match(r"^\+\d{4}-", t):
+            years.append(int(t[1:5]))
+    runs = sorted(claims.get("P2047", []), key=lambda c: c.get("rank") != "preferred")
+    for c in runs:
+        v = ((c.get("mainsnak") or {}).get("datavalue") or {}).get("value") or {}
+        unit = v.get("unit", "")
+        try:
+            amount = float(v.get("amount"))
+        except (TypeError, ValueError):
+            continue
+        if unit.endswith("/Q7727"):     # minutes
+            runtime = amount
+        elif unit.endswith("/Q11574"):  # seconds
+            runtime = amount / 60
+        elif unit.endswith("/Q25235"):  # hours
+            runtime = amount * 60
+        if runtime:
+            break
+    return {"year": min(years) if years else None,
+            "runtime": int(round(runtime)) if runtime and 20 <= runtime <= 600 else None}
+
+
+def film_claims(qid):
+    out = {"year": None, "runtime": None}
+    for prop in ("P577", "P2047"):
+        data = json.loads(fetch_url("https://www.wikidata.org/w/api.php?" + urlencode(
+            {"action": "wbgetclaims", "format": "json", "entity": qid, "property": prop}), ua=WIKI_UA))
+        found = parse_film_claims(data)
+        out.update({k: v for k, v in found.items() if v})
+    return out
+
+
+def image_ext(data):
+    if data[:3] == b"\xff\xd8\xff":
+        return ".jpg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return ".png"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return ".webp"
+    return None
+
+
+def film_match(text, title):
+    words = re.findall(r"[a-z0-9]+", (text or "").lower())
+    have = " ".join(re.findall(r"[a-z0-9]+", (title or "").lower()))
+    return bool(words) and all(w in have for w in words)
+
+
+class Cinema:
+    """Now Showing: a movie night on the wall. Tonight's film, its poster and its details come from
+    Wikipedia and Wikidata once, then live in data/films/, so a rewatch works with no internet.
+    Where the night is (the poster, the two-minute countdown, the film, an intermission, THE END)
+    is kept in the saved state with wall-clock times; the wall and the phones work out the
+    countdowns from those. Anyone on the Wi-Fi can call an intermission."""
+
+    def __init__(self, store):
+        self.store = store
+        self.dir = os.path.join(store.data_dir, "films")
+        os.makedirs(self.dir, exist_ok=True)
+        self.path = os.path.join(self.dir, "films.json")
+        try:
+            with open(self.path, encoding="utf-8") as f:
+                films = json.load(f)
+            self.films = {k: v for k, v in films.items() if FILM_KEY.fullmatch(k) and isinstance(v, dict)}
+        except (OSError, ValueError, AttributeError):
+            self.films = {}
+        self.searches = {}  # recent searches, so typing doesn't ask Wikipedia the same thing twice
+        store.cinema_info = self.info
+
+    def _save_films(self):
+        tmp = self.path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(self.films, f, indent=1)
+        os.replace(tmp, self.path)
+
+    @staticmethod
+    def _public(film):
+        return {"key": film["key"], "title": film["title"], "year": film.get("year"), "runtime": film.get("runtime"),
+                "director": film.get("director", ""), "poster": f"/films/{film['poster']}" if film.get("poster") else ""}
+
+    def info(self):
+        c = self.store.state["cinema"]
+        film = self.films.get(c["film"] or "")
+        recent = sorted(self.films.values(), key=lambda f: -f.get("watched", 0))[:6]
+        return {**c, "film": self._public(film) if film else None, "now": time.time(),
+                "recent": [self._public(f) for f in recent]}
+
+    # -- finding the film
+
+    def search(self, text):
+        text = " ".join(_str(80)(text or "").split())
+        if len(text) < 2:
+            return {"results": []}
+        with self.store.lock:
+            mine = [dict(self._public(f), desc=f.get("desc", ""), cached=True)
+                    for f in self.films.values() if film_match(text, f["title"])]
+        try:
+            found = self.searches.get(text.lower())
+            if found is None:
+                found = search_films(text)
+                if len(self.searches) > 50:
+                    self.searches.clear()
+                self.searches[text.lower()] = found
+        except Exception as e:
+            if not mine and getattr(e, "code", None) == 429:
+                raise ApiError(503, "Wikipedia asked for a moment's pause. Try again in a few seconds.")
+            if not mine:
+                raise ApiError(502, "Couldn't reach Wikipedia. Films you've shown before still work offline.")
+            return {"results": mine[:5], "offline": True}
+        results = []
+        for f in found:
+            if f["key"] in self.films:
+                results.append(dict(self._public(self.films[f["key"]]), desc=f["desc"], cached=True))
+            else:
+                results.append({"key": f["key"], "title": f["title"], "year": f["year"], "desc": f["desc"],
+                                "director": f["director"], "poster": f["thumb"], "cached": False})
+        return {"results": results[:5]}
+
+    def _look_up(self, key):
+        """Everything the wall needs about one film, fetched once. A landscape picture is usually a
+        still from the film rather than its poster, so it's left out (the wall's typographic card
+        is the fallback)."""
+        try:
+            films = wiki_films({"pageids": key})
+        except Exception as e:
+            if getattr(e, "code", None) == 429:
+                raise ApiError(503, "Wikipedia asked for a moment's pause. Try again in a few seconds.")
+            raise ApiError(502, "Couldn't reach Wikipedia to look that film up.")
+        if not films:
+            raise ApiError(404, "That film couldn't be found on Wikipedia.")
+        f = films[0]
+        film = {"key": key, "title": f["title"], "year": f["year"], "runtime": None, "desc": f["desc"],
+                "director": f["director"], "qid": f["qid"], "poster": None}
+        if re.fullmatch(r"Q\d+", f["qid"]):
+            try:
+                found = film_claims(f["qid"])
+                film["year"] = found["year"] or film["year"]
+                film["runtime"] = found["runtime"]
+            except Exception:
+                pass
+        if f["thumb"].startswith("https://upload.wikimedia.org/") and f["th"] >= f["tw"] * 1.2:
+            try:
+                data = fetch_url(f["thumb"], timeout=15, ua=WIKI_UA)
+                ext = image_ext(data)
+                if ext:
+                    name = key + ext
+                    with open(os.path.join(self.dir, name + ".part"), "wb") as out:
+                        out.write(data)
+                    os.replace(os.path.join(self.dir, name + ".part"), os.path.join(self.dir, name))
+                    film["poster"] = name
+            except Exception:
+                pass
+        return film
+
+    def choose(self, body):
+        key = body.get("key")
+        if not isinstance(key, str) or not FILM_KEY.fullmatch(key):
+            raise ApiError(400, "Bad film.")
+        with self.store.lock:
+            if self.store.state["cinema"]["phase"] in ("countdown", "film", "intermission"):
+                raise ApiError(409, "A film is running. Press The End first.")
+            film = self.films.get(key)
+        if not film or (film.get("poster") and not os.path.exists(os.path.join(self.dir, film["poster"]))):
+            film = self._look_up(key)
+        with self.store.lock:
+            film["watched"] = time.time()
+            self.films[key] = film
+            self._save_films()
+            self.store.state["cinema"] = {"film": key, "phase": "poster", "at": time.time(), "until": 0.0, "mins": 0}
+            self._tune()
+            self.store._changed()
+            return self._public(film)
+
+    # -- the night
+
+    def _tune(self):
+        """Movie night is the whole room: every wall in use goes to Now Showing."""
+        for screen in self.store.state["screens"]:
+            if screen["enabled"]:
+                screen.update(channel="nowshowing", pinned=None)
+
+    def _set(self, phase, until=0.0, mins=0, tune=True):
+        c = self.store.state["cinema"]
+        c.update(phase=phase, at=time.time(), until=until, mins=mins)
+        if tune:
+            self._tune()
+        self.store._changed()
+
+    def start(self, body=None):
+        with self.store.lock:
+            c = self.store.state["cinema"]
+            if not c["film"]:
+                raise ApiError(409, "Choose tonight's film first.")
+            if c["phase"] in ("countdown", "film", "intermission"):
+                raise ApiError(409, "The film has already started.")
+            self._set("countdown", time.time() + COUNTDOWN)
+
+    def intermission(self, body):
+        mins = body.get("mins")
+        if mins not in INTERMISSIONS or isinstance(mins, bool):
+            raise ApiError(400, "Intermissions are 5, 10 or 15 minutes.")
+        with self.store.lock:
+            if self.store.state["cinema"]["phase"] not in ("film", "intermission"):
+                raise ApiError(409, "There's no film running.")
+            self._set("intermission", time.time() + mins * 60, mins)
+
+    def resume(self, body=None):
+        with self.store.lock:
+            if self.store.state["cinema"]["phase"] not in ("countdown", "intermission"):
+                raise ApiError(409, "The film is already running.")
+            self._set("film")
+
+    def end(self, body=None):
+        with self.store.lock:
+            c = self.store.state["cinema"]
+            if not c["film"] or c["phase"] in ("idle", "end"):
+                raise ApiError(409, "There's no film running.")
+            self._set("end", time.time() + END_HOLD)
+
+    def tick(self, now=None):
+        """Moves the night on: the countdown into the film, an intermission back into it, and
+        THE END back to The Bar."""
+        now = time.time() if now is None else now
+        with self.store.lock:
+            c = self.store.state["cinema"]
+            if c["phase"] == "countdown" and now >= c["until"] + DIM_DOWN:
+                c.update(phase="film", at=c["until"] + DIM_DOWN, until=0.0)
+            elif c["phase"] == "intermission" and now >= c["until"]:
+                c.update(phase="film", at=c["until"], until=0.0, mins=0)
+            elif c["phase"] == "end" and now >= c["until"]:
+                c.update(phase="poster", at=now, until=0.0)
+                for screen in self.store.state["screens"]:
+                    if screen.get("channel") == "nowshowing":
+                        screen["channel"] = "rotation"
+            else:
+                return False
+            self.store._changed()
+            return True
+
+
 # ---------------------------------------------------------------- HTTP
 
 # Requests that come in through the tunnel carry Cloudflare's headers. From the internet, only the
@@ -1178,6 +1510,7 @@ class Handler(BaseHTTPRequestHandler):
     mirror = None
     live = None
     tunnel = None
+    cinema = None
 
     def log_message(self, fmt, *args):
         pass
@@ -1341,7 +1674,7 @@ class Handler(BaseHTTPRequestHandler):
         if method in ("GET", "HEAD"):
             if path == "/":
                 return self._redirect("/control")
-            if path in ("/control", "/display", "/play", "/live"):
+            if path in ("/control", "/display", "/play", "/live", "/film"):
                 return self._file(os.path.join(STATIC, path[1:] + ".html"), cache=False)
             if path.startswith("/static/"):
                 full = safe_join(STATIC, path[len("/static/"):])
@@ -1349,6 +1682,11 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith("/media/"):
                 full = safe_join(store.media_dir, path[len("/media/"):])
                 return self._file(full, cache=True) if full else self._json(404, {"error": "Not found."})
+            if path.startswith("/films/") and not path.endswith(".json"):
+                full = safe_join(self.cinema.dir, path[len("/films/"):])
+                return self._file(full, cache=False) if full else self._json(404, {"error": "Not found."})
+            if path == "/api/cinema/search":
+                return self._json(200, self.cinema.search(qs.get("q", [""])[0]))
             if path == "/api/state":
                 body = store.snapshot().encode()
                 self.send_response(200)
@@ -1420,6 +1758,13 @@ class Handler(BaseHTTPRequestHandler):
         if m and method == "POST":
             result = getattr(self.hub, m.group(1))(self._read_json())
             return self._json(200, result or {"ok": True})
+        m = re.fullmatch(r"/api/cinema/(film|start|intermission|resume|end)", path)
+        if m and method == "POST":
+            name = "choose" if m.group(1) == "film" else m.group(1)
+            result = getattr(self.cinema, name)(self._read_json())
+            self.hub.roster_changed()
+            self.live.wake()
+            return self._json(200, result or {"ok": True})
         m = re.fullmatch(r"/api/live/(offer|answer|reoffer|leave)", path)
         if m and method == "POST":
             result = getattr(self.live, m.group(1))(self._read_json())
@@ -1475,6 +1820,7 @@ def main():
     mirror = Handler.mirror = Mirror(MIRROR_PORT)
     live = Handler.live = LiveHub(store)
     tunnel = Handler.tunnel = Tunnel(store, args.tunnel_metrics)
+    cinema = Handler.cinema = Cinema(store)
     host = f"{socket.gethostname().removesuffix('.local')}.local" + ("" if args.port == 80 else f":{args.port}")
     hub.join_url = f"{host}/play"
     store.live_info = lambda: {"url": tunnel.url, "lan": f"http://{host}/live", "qr": bool(QRENCODE), "cams": live.names()}
@@ -1484,6 +1830,7 @@ def main():
         while True:
             time.sleep(0.25)
             store.tick()
+            cinema.tick()
             beats += 1
             store.set_mirroring(mirror.live)
             if beats % 4 == 0:
@@ -1494,7 +1841,8 @@ def main():
     threading.Thread(target=tunnel.run, daemon=True).start()
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     server.daemon_threads = True
-    print(f"Bar Screens is running. Control it from http://{host}/control (games: http://{host}/play)", flush=True)
+    print(f"Bar Screens is running. Control it from http://{host}/control (games: http://{host}/play, "
+          f"intermissions: http://{host}/film)", flush=True)
     if not FFMPEG:
         print("ffmpeg not found: videos will be played as uploaded, without conversion.", flush=True)
     try:

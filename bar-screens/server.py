@@ -953,6 +953,7 @@ class GameHub:
     COLORS = ["#e9c46a", "#2fd39a", "#5aa2ff", "#ff4d6a", "#b98aff", "#ffa94d", "#efe6d2", "#5ef0ff"]
     clock = staticmethod(time.time)
     espn = staticmethod(find_match)  # a party game's live data (Colours: its pinned match)
+    PARKED_FOR = 30 * 60  # a party game left for longer than this starts again from its lobby
 
     def __init__(self, store):
         self.store = store
@@ -964,6 +965,7 @@ class GameHub:
         self.join_url = ""
         self.used = partygames.UsedItems(os.path.join(store.data_dir, "used.json"))
         self.party = None  # the party game being refereed, if one is picked
+        self.parked = {}   # game key -> (party game, when it was left): tuning 6 <-> 9/11 resumes it
         self.party_sent = -1
         self.later = []    # a game's calls into the Store, run once this hub's lock is let go
         self._sync_party()
@@ -975,11 +977,19 @@ class GameHub:
     def _sync_party(self):
         game = self.store.state["channels"]["games"]["game"]
         cls = partygames.PARTY_GAMES.get(game)
+        self.party_sent = -1
+        if type(self.party) is cls:
+            return
+        if self.party:  # kept, so a trip to another game and back picks up where it was
+            self.parked[self.party.key] = (self.party, self.clock())
+        kept, left = self.parked.pop(game, (None, 0))
         if cls is None:
             self.party = None
-        elif type(self.party) is not cls:
+        elif type(kept) is cls and self.clock() - left < self.PARKED_FOR:
+            self.party = kept
+            kept.changed()
+        else:
             self.party = cls(self)
-        self.party_sent = -1
 
     def _roster(self):
         game = self.store.state["channels"]["games"]["game"]

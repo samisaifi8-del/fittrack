@@ -220,6 +220,28 @@ class Game(unittest.TestCase):
             seen.append(self.game.wall()["text"])
         self.assertEqual(len(set(seen)), 60)
 
+    def test_a_trip_to_another_game_keeps_it(self):
+        self.seat("LAYLA", "SAMI", "OMAR")
+        g = self.game
+        send(self.hub, "phone-omar", "suggest", text="steal the aux")
+        send(self.hub, "phone-layla", "start")
+        vote(self.hub, "LAYLA", "SAMI")
+        self.hub.store.update_screen("s1", {"channel": "games"})  # 6, and back to 11
+        self.hub.roster_changed()
+        self.assertIsNot(self.hub.party, g)
+        self.hub.store.update_screen("s1", {"channel": "verdict"})
+        self.hub.roster_changed()
+        self.assertIs(self.hub.party, g)
+        self.assertEqual((g.phase, g.wall()["in"]), ("vote", 1))
+        self.assertEqual(len(g.host()["waiting"]), 1)
+        # left for longer than half an hour: a fresh lobby
+        self.hub.store.update_screen("s1", {"channel": "games"})
+        self.hub.roster_changed()
+        self.hub.clock.t += server.GameHub.PARKED_FOR + 1
+        self.hub.store.update_screen("s1", {"channel": "verdict"})
+        self.hub.roster_changed()
+        self.assertEqual(self.hub.party.phase, "lobby")
+
     def test_input_check(self):
         self.assertEqual(server.GameHub._check_input("suggest", {"text": "steal the aux"}), {"kind": "suggest", "text": "steal the aux"})
         with self.assertRaises(ValueError):

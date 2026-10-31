@@ -20,6 +20,7 @@
     visuals: { n: 5, name: 'VISUALS', accent: GOLD },
     games: { n: 6, name: 'GAMES', accent: GOLD },
     live: { n: 7, name: 'BASEMENT LIVE', accent: GOLD },
+    pour: { n: 8, name: 'THE HOUSE POUR', accent: GOLD },
   };
 
   let fontStr = (name, px) => `600 ${px}px sans-serif`;
@@ -1529,6 +1530,493 @@
     return { stop };
   }
 
+  // ------------------------------------------------------------ the house pour
+
+  // Channel 8: the bar's card of what's on tonight, three drinks at a time, and the moment a drink
+  // is made: its glass, line-drawn in gold, filling in the drink's own colour with the guest's
+  // name above. Every glass is drawn once into small canvases (outline, liquid, ice, garnish), so
+  // pouring is drawImage of the liquid up to the level, a stream and a few bubbles.
+  const POUR_PAGE = 9;      // seconds per page of the menu
+  const POUR_FILL = 8;      // seconds to fill the glass
+  const POUR_BURST = 2.4;   // the gold sunburst when it's served
+
+  // Glasses in their own units: u across (0-1 of the width), v down (0-1 of the height), drawn
+  // with M/L/Q/C commands. `bowl` is the part that holds the drink, `fill` its bottom and top, `rim`
+  // where a garnish sits and `ice` the cubes (u, v of the centre, size as a share of the height).
+  const GLASS = {
+    coupe: { aspect: 0.78, fill: [0.355, 0.075], rim: [0.97, 0.04],
+      bowl: [['M', 0.02, 0.04], ['C', 0.04, 0.3, 0.3, 0.37, 0.5, 0.37], ['C', 0.7, 0.37, 0.96, 0.3, 0.98, 0.04]],
+      stem: [['M', 0.5, 0.37], ['L', 0.5, 0.95], ['M', 0.2, 1], ['Q', 0.5, 0.9, 0.8, 1], ['L', 0.2, 1]] },
+    martini: { aspect: 0.82, fill: [0.46, 0.07], rim: [0.97, 0.03],
+      bowl: [['M', 0.01, 0.02], ['L', 0.5, 0.48], ['L', 0.99, 0.02]],
+      stem: [['M', 0.5, 0.48], ['L', 0.5, 0.95], ['M', 0.22, 1], ['Q', 0.5, 0.91, 0.78, 1], ['L', 0.22, 1]] },
+    flute: { aspect: 0.3, fill: [0.64, 0.08], rim: [0.86, 0.0],
+      bowl: [['M', 0.13, 0.0], ['C', 0.1, 0.35, 0.18, 0.62, 0.5, 0.66], ['C', 0.82, 0.62, 0.9, 0.35, 0.87, 0.0]],
+      stem: [['M', 0.5, 0.66], ['L', 0.5, 0.96], ['M', 0.02, 1], ['Q', 0.5, 0.93, 0.98, 1], ['L', 0.02, 1]] },
+    wine: { aspect: 0.52, fill: [0.565, 0.16], rim: [0.86, 0.02], ice: [[0.4, 0.4, 0.13, 0.3], [0.6, 0.31, 0.12, -0.4]],
+      bowl: [['M', 0.13, 0.02], ['C', 0.0, 0.3, 0.1, 0.57, 0.5, 0.58], ['C', 0.9, 0.57, 1.0, 0.3, 0.87, 0.02]],
+      stem: [['M', 0.5, 0.58], ['L', 0.5, 0.96], ['M', 0.15, 1], ['Q', 0.5, 0.93, 0.85, 1], ['L', 0.15, 1]] },
+    rocks: { aspect: 0.98, fill: [0.86, 0.17], rim: [0.93, 0.0], ice: [[0.4, 0.6, 0.36, 0.2], [0.66, 0.42, 0.3, -0.25]],
+      bowl: [['M', 0.05, 0.0], ['L', 0.105, 0.86], ['L', 0.895, 0.86], ['L', 0.95, 0.0]],
+      stem: [['M', 0.105, 0.86], ['L', 0.12, 1], ['L', 0.88, 1], ['L', 0.895, 0.86], ['M', 0.105, 0.86], ['L', 0.895, 0.86]] },
+    highball: { aspect: 0.46, fill: [0.93, 0.1], rim: [0.95, 0.0],
+      ice: [[0.38, 0.78, 0.3, 0.2], [0.62, 0.6, 0.3, -0.2], [0.4, 0.42, 0.3, 0.35], [0.6, 0.25, 0.28, -0.1]],
+      bowl: [['M', 0.04, 0.0], ['L', 0.085, 0.93], ['L', 0.915, 0.93], ['L', 0.96, 0.0]],
+      stem: [['M', 0.085, 0.93], ['L', 0.09, 1], ['L', 0.91, 1], ['L', 0.915, 0.93], ['M', 0.085, 0.93], ['L', 0.915, 0.93]] },
+    mug: { aspect: 1.1, fill: [0.94, 0.13], rim: [0.04, 0.0], ice: [[0.3, 0.38, 0.28, 0.25], [0.5, 0.28, 0.26, -0.3]],
+      bowl: [['M', 0.02, 0.0], ['L', 0.06, 0.94], ['Q', 0.06, 1, 0.12, 1], ['L', 0.68, 1], ['Q', 0.74, 1, 0.74, 0.94], ['L', 0.78, 0.0]],
+      stem: [['M', 0.775, 0.16], ['C', 1.02, 0.12, 1.02, 0.74, 0.755, 0.72], ['M', 0.77, 0.3], ['C', 0.9, 0.29, 0.9, 0.6, 0.76, 0.6],
+        ['M', 0.02, 0.1], ['L', 0.78, 0.1], ['M', 0.055, 0.86], ['L', 0.745, 0.86]] },
+  };
+  // Where a second colour goes: by default it's a float, foam or crema on top. Muddled mint sits
+  // at the bottom, and the margarita's is its salt rim.
+  const POUR_LAYER = { d003: 'rim', d005: 'bottom', d021: 'bottom', d025: 'bottom' };
+  const GARNISH = { orange: '#f2871c', lemon: '#f4d23a', lime: '#7cc242', mint: '#3fae3f', cherry: '#c8102e', olive: '#8a9a2c' };
+
+  function hexRGB(hex) {
+    const n = parseInt((hex || '#000000').slice(1), 16);
+    return [n >> 16, (n >> 8) & 255, n & 255];
+  }
+  const toHex = (c) => '#' + c.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+  const mix = (hex, other, k) => { const a = hexRGB(hex), b = hexRGB(other); return toHex(a.map((v, i) => v + (b[i] - v) * k)); };
+
+  // A drink as the wall shows it: very dark drinks are lifted a little so the glass doesn't look
+  // empty, and clear ones (gin and tonic, a martini) are see-through rather than milky.
+  function liquidLook(hex) {
+    const c = hexRGB(hex), max = Math.max(...c), min = Math.min(...c);
+    const lum = (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
+    if (lum < 0.1) return { color: mix(hex, '#ffffff', 0.06 + (0.1 - lum)), alpha: 1 };
+    if (lum > 0.8 && (max - min) / max < 0.1) return { color: hex, alpha: 0.5 };
+    return { color: hex, alpha: 1 };
+  }
+
+  function tracePath(x, ops, ox, oy, gw, gh) {
+    for (const op of ops) {
+      const p = op.slice(1).map((v, i) => (i % 2 ? oy + v * gh : ox + v * gw));
+      if (op[0] === 'M') x.moveTo(p[0], p[1]);
+      else if (op[0] === 'L') x.lineTo(p[0], p[1]);
+      else if (op[0] === 'Q') x.quadraticCurveTo(p[0], p[1], p[2], p[3]);
+      else if (op[0] === 'C') x.bezierCurveTo(p[0], p[1], p[2], p[3], p[4], p[5]);
+    }
+  }
+
+  // Everything one glass needs, in a w x h box: the glass sits at the bottom, centred, with room
+  // above it for the garnish. `full` adds ice and garnish (the menu's small icons go without).
+  function pourGlass(drink, w, h, lw, full) {
+    const g = GLASS[drink.glass] || GLASS.rocks;
+    const room = full ? 0.14 : 0.02;
+    const gh = Math.min(h * (1 - room) - lw, (w - lw * 2) / g.aspect), gw = gh * g.aspect;
+    const ox = Math.round((w - gw) / 2), oy = Math.round(h - gh - lw);
+    const at = (u, v) => [ox + u * gw, oy + v * gh];
+    const layer = POUR_LAYER[drink.id] || (drink.colour2 ? 'top' : '');
+    const bowl = (x) => { x.beginPath(); tracePath(x, g.bowl, ox, oy, gw, gh); x.closePath(); };
+
+    // the shape that holds the drink, kept a pixel clear of the gold line
+    const mask = offscreen(w, h, (x) => {
+      bowl(x);
+      x.fillStyle = '#fff';
+      x.fill();
+      x.globalCompositeOperation = 'destination-out';
+      x.lineWidth = lw + 2;
+      x.lineJoin = 'round';
+      bowl(x);
+      x.stroke();
+    });
+    const tinted = (hex, alpha) => offscreen(w, h, (x) => {
+      x.drawImage(mask, 0, 0);
+      x.globalCompositeOperation = 'source-in';
+      x.globalAlpha = alpha;
+      x.fillStyle = hex;
+      x.fillRect(0, 0, w, h);
+    });
+    const look = liquidLook(drink.colour);
+    const second = drink.colour2 && layer !== 'rim' ? liquidLook(drink.colour2) : null;
+    const liquid = tinted(look.color, look.alpha);
+    const surface = tinted(mix(look.color, '#ffffff', 0.45), 1);
+    const liquid2 = second && tinted(second.color, second.alpha);
+    const surface2 = second && tinted(mix(second.color, '#ffffff', 0.35), 1);
+
+    // the widest part of the drink on each row, for bubbles
+    const rows = [];
+    const d = mask.getContext('2d').getImageData(0, 0, w, h).data;
+    for (let y = 0; y < h; y++) {
+      let a = -1, b = -1;
+      for (let x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] > 200) { if (a < 0) a = x; b = x; }
+      rows.push(a < 0 ? null : [a, b]);
+    }
+
+    const outline = offscreen(w, h, (x) => {
+      x.lineJoin = 'round';
+      x.lineCap = 'round';
+      if (layer === 'rim' && full) { // a band of salt hugging the top of the bowl
+        x.save();
+        x.beginPath();
+        x.rect(0, 0, w, oy + gh * (g.fill[1] + 0.13));
+        x.clip();
+        x.strokeStyle = drink.colour2;
+        x.lineWidth = lw * 3;
+        x.beginPath();
+        tracePath(x, g.bowl, ox, oy, gw, gh);
+        x.stroke();
+        x.restore();
+        x.setLineDash([2, 1]); // and the grains along the rim itself
+        x.strokeStyle = drink.colour2;
+        x.lineWidth = lw;
+        x.beginPath();
+        x.moveTo(...at(g.bowl[0][1], g.bowl[0][2] - 0.012));
+        x.lineTo(...at(g.bowl[g.bowl.length - 1].slice(-2)[0], g.bowl[0][2] - 0.012));
+        x.stroke();
+        x.setLineDash([]);
+      }
+      x.strokeStyle = GOLD;
+      x.lineWidth = lw;
+      x.beginPath();
+      tracePath(x, g.bowl, ox, oy, gw, gh);
+      tracePath(x, g.stem, ox, oy, gw, gh);
+      x.stroke();
+    });
+
+    // ice: pale edges, and a frosting that only shows where the drink has reached
+    const cubes = (fill) => offscreen(w, h, (x) => {
+      for (const [u, v, size, turn] of g.ice) {
+        const [cx, cy] = at(u, v), side = size * gh;
+        x.save();
+        x.translate(cx, cy);
+        x.rotate(turn);
+        roundRect(x, -side / 2, -side / 2, side, side, side * 0.18);
+        if (fill) {
+          x.fillStyle = 'rgba(236,240,240,0.16)';
+          x.fill();
+        } else {
+          x.strokeStyle = 'rgba(236,240,240,0.6)';
+          x.lineWidth = 1;
+          x.stroke();
+        }
+        x.restore();
+      }
+      x.globalCompositeOperation = 'destination-in';
+      x.drawImage(mask, 0, 0);
+    });
+    const ice = full && drink.ice && g.ice ? cubes(false) : null;
+    const frost = ice && cubes(true);
+
+    // (the garnish gets a margin of its own: a wheel on the rim hangs over the edge of the box)
+    const pad = Math.round(gh * 0.14);
+    const garnish = full && GARNISH[drink.garnish] ? offscreen(w + pad * 2, h + pad, (x) => {
+      x.translate(pad, pad);
+      drawGarnish(x, drink.garnish, at(...g.rim), gh, g, at, lw);
+    }) : null;
+    const [, yBottom] = at(0, g.fill[0]);
+    const [, yTop] = at(0, g.fill[1]);
+    return { w, h, mask, liquid, surface, liquid2, surface2, layer, rows, outline, ice, frost, garnish, pad,
+             yBottom: Math.round(yBottom), yTop: Math.round(yTop), cx: Math.round(ox + gw / 2), top: oy, gh };
+  }
+
+  function drawGarnish(x, kind, rim, gh, g, at, lw) {
+    const [rx, ry] = rim;
+    const color = GARNISH[kind];
+    x.lineJoin = 'round';
+    x.lineCap = 'round';
+    if (kind === 'orange' || kind === 'lemon') { // a wheel on the rim
+      const r = Math.max(5, gh * 0.1);
+      x.fillStyle = mix(color, '#ffffff', 0.25);
+      x.beginPath(); x.arc(rx, ry, r, 0, Math.PI * 2); x.fill();
+      x.strokeStyle = color;
+      x.lineWidth = Math.max(2, r * 0.22);
+      x.beginPath(); x.arc(rx, ry, r - x.lineWidth / 2, 0, Math.PI * 2); x.stroke();
+      x.strokeStyle = mix(color, '#ffffff', 0.7);
+      x.lineWidth = 1;
+      x.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = (i * Math.PI) / 3;
+        x.moveTo(rx, ry); x.lineTo(rx + Math.cos(a) * r * 0.7, ry + Math.sin(a) * r * 0.7);
+      }
+      x.stroke();
+    } else if (kind === 'lime') { // a wedge, sat on the rim
+      const r = Math.max(5, gh * 0.09);
+      x.fillStyle = mix(color, '#ffffff', 0.2);
+      x.beginPath(); x.moveTo(rx - r, ry); x.arc(rx, ry, r, Math.PI, Math.PI * 2, true); x.closePath(); x.fill();
+      x.strokeStyle = mix(color, '#000000', 0.3);
+      x.lineWidth = Math.max(2, r * 0.25);
+      x.beginPath(); x.arc(rx, ry, r - x.lineWidth / 2, 0, Math.PI); x.stroke();
+    } else if (kind === 'cherry') { // hanging on the rim by its stem
+      const r = Math.max(4, gh * 0.055);
+      x.strokeStyle = '#7a4a1c';
+      x.lineWidth = Math.max(1.5, lw * 0.75);
+      x.beginPath(); x.moveTo(rx - r * 0.2, ry - r * 0.4); x.quadraticCurveTo(rx + r * 0.2, ry - r * 2.6, rx + r * 1.6, ry - r * 2.8); x.stroke();
+      x.fillStyle = color;
+      x.beginPath(); x.arc(rx - r * 0.2, ry + r * 0.4, r, 0, Math.PI * 2); x.fill();
+      x.fillStyle = 'rgba(255,255,255,0.7)';
+      x.fillRect(Math.round(rx - r * 0.6), Math.round(ry), Math.max(1, Math.round(r * 0.35)), Math.max(1, Math.round(r * 0.35)));
+    } else if (kind === 'mint') { // a sprig standing up out of the drink
+      const [mx, my] = at(0.42, g.fill[1] + 0.02);
+      const leaf = Math.max(4, gh * 0.07);
+      x.strokeStyle = mix(color, '#000000', 0.25);
+      x.lineWidth = Math.max(1.5, lw * 0.75);
+      x.beginPath(); x.moveTo(mx, my + leaf); x.lineTo(mx + leaf * 0.3, my - leaf * 2.2); x.stroke();
+      x.fillStyle = color;
+      for (const [dx, dy, a] of [[-0.7, -0.6, -0.7], [0.9, -1.2, 0.8], [-0.4, -2.1, -0.4], [0.5, -2.6, 0.3]]) {
+        x.save();
+        x.translate(mx + dx * leaf, my + dy * leaf);
+        x.rotate(a);
+        x.beginPath(); x.ellipse(0, 0, leaf * 0.42, leaf * 0.8, 0, 0, Math.PI * 2); x.fill();
+        x.restore();
+      }
+    } else if (kind === 'olive') { // on a pick, down in the glass
+      const r = Math.max(4, gh * 0.055);
+      const [px, py] = at(0.5, 0.33);
+      x.strokeStyle = GOLD_LIGHT;
+      x.lineWidth = Math.max(1, lw * 0.6);
+      x.beginPath(); x.moveTo(px - r * 0.3, py + r * 0.3); x.lineTo(rx - r * 0.4, ry - r * 2.4); x.stroke();
+      x.fillStyle = color;
+      x.beginPath(); x.ellipse(px, py, r * 1.15, r, -0.6, 0, Math.PI * 2); x.fill();
+      x.fillStyle = '#d03a2a';
+      x.beginPath(); x.arc(px + r * 0.45, py - r * 0.3, r * 0.4, 0, Math.PI * 2); x.fill();
+    }
+  }
+
+  // The cards are drawn once, so they wait for the web fonts: until those arrive they're redrawn
+  // as soon as they do.
+  const pourFonts = () => !document.fonts || (document.fonts.check(font('Poiret One', 20)) && document.fonts.check(font('Josefin Sans', 20)));
+
+  const article = (name) => (/^[AEIOU]/.test(name) ? 'AN ' : 'A ') + name;
+
+  // A full circle of gold rays, drawn once and scaled up when a drink is served.
+  function pourBurst(r) {
+    return offscreen(r * 2, r * 2, (x) => {
+      const rays = 28;
+      x.fillStyle = GOLD;
+      for (let i = 0; i < rays; i += 1) {
+        const a0 = (i / rays) * Math.PI * 2, a1 = a0 + (Math.PI * 2) / rays / 2.2;
+        x.globalAlpha = i % 2 ? 0.45 : 0.85;
+        x.beginPath();
+        x.moveTo(r + Math.cos(a0) * r * 0.18, r + Math.sin(a0) * r * 0.18);
+        x.lineTo(r + Math.cos(a0) * r, r + Math.sin(a0) * r);
+        x.lineTo(r + Math.cos(a1) * r, r + Math.sin(a1) * r);
+        x.lineTo(r + Math.cos(a1) * r * 0.18, r + Math.sin(a1) * r * 0.18);
+        x.closePath();
+        x.fill();
+      }
+      // fade the rays out towards their tips, so the burst has no hard edge
+      x.globalAlpha = 1;
+      x.globalCompositeOperation = 'destination-out';
+      const fade = x.createRadialGradient(r, r, r * 0.45, r, r, r);
+      fade.addColorStop(0, 'rgba(0,0,0,0)');
+      fade.addColorStop(1, 'rgba(0,0,0,1)');
+      x.fillStyle = fade;
+      x.fillRect(0, 0, r * 2, r * 2);
+    });
+  }
+
+  // One page of the menu: up to three drinks, each a gold glass beside its name.
+  function pourPage(W, H, drinks, icons) {
+    const s = Math.min(W, H);
+    return offscreen(W, H, (x) => {
+      const top = Math.round(H * 0.18), bottom = Math.round(H * 0.91);
+      const rowH = (bottom - top) / 3;
+      const iconW = Math.round(W * 0.2), iconH = Math.round(rowH * 0.78);
+      const textX = Math.round(W * 0.31), textW = Math.round(W * 0.93) - textX;
+      x.textAlign = 'left';
+      x.textBaseline = 'middle';
+      drinks.forEach((d, i) => {
+        const y = top + i * rowH, cy = y + rowH / 2;
+        if (i > 0) {
+          x.fillStyle = rgba(GOLD, 0.3);
+          x.fillRect(Math.round(W * 0.08), Math.round(y), Math.round(W * 0.84), hair(s));
+        }
+        const icon = icons(d, iconW, iconH);
+        x.drawImage(icon.liquid, 0, icon.yTop + (icon.yBottom - icon.yTop) * 0.3, iconW, (icon.yBottom - icon.yTop) * 0.7,
+          Math.round(W * 0.07), Math.round(cy - iconH / 2) + icon.yTop + (icon.yBottom - icon.yTop) * 0.3, iconW, (icon.yBottom - icon.yTop) * 0.7);
+        x.drawImage(icon.outline, Math.round(W * 0.07), Math.round(cy - iconH / 2));
+        tracking(x, s * 0.008);
+        const max = Math.round(s * 0.094);
+        let size = fitSize(x, d.name, 'Josefin Sans', textW, max), lines = [d.name];
+        if (size < s * 0.07 && d.name.includes(' ')) {
+          const b = fitWrapped(x, d.name, 'Josefin Sans', textW, Math.min(rowH * 0.7, max * 2.3), 2, 1.12);
+          if (b.size > size) { size = b.size; lines = b.lines; }
+        }
+        x.font = font('Josefin Sans', size);
+        x.fillStyle = IVORY;
+        lines.forEach((l, k) => x.fillText(l, textX, Math.round(cy + (k - (lines.length - 1) / 2) * size * 1.12 + size * 0.06)));
+        tracking(x, 0);
+      });
+    });
+  }
+
+  function pour(canvas, W, H, opts) {
+    const ctx = canvas.getContext('2d');
+    const s = Math.min(W, H);
+    const conf = opts.conf || {};
+    const lw = Math.max(2, Math.round(s * 0.008));
+    let t0 = null;
+
+    if (!conf.order) {
+      // ---- the menu
+      const menu = (conf.menu || []).slice(0, 30);
+      const iconLw = Math.max(1, Math.round(s * 0.006));
+      const icons = new Map();
+      const iconFor = (d, w, h) => cached(icons, `${d.glass}|${d.colour}|${w}x${h}`, () => pourGlass(d, w, h, iconLw, false));
+      const menuCard = () => offscreen(W, H, (x) => {
+        x.fillStyle = '#000';
+        x.fillRect(0, 0, W, H);
+        frame(x, W, H);
+        x.textAlign = 'center';
+        x.textBaseline = 'middle';
+        decoRule(x, W / 2 - W * 0.16, Math.round(H * 0.06), W * 0.32, s);
+        tracking(x, s * 0.012);
+        x.font = font('Poiret One', fitSize(x, 'THE HOUSE POUR', 'Poiret One', W * 0.8, s * 0.1));
+        x.fillStyle = IVORY;
+        x.fillText('THE HOUSE POUR', W / 2 + s * 0.006, Math.round(H * 0.115));
+        tracking(x, 0);
+        if (!menu.length) message(x, W, H * 0.2, H, 'Tonight’s drinks are chosen on the control page');
+      });
+      const pages = [];
+      for (let i = 0; i < menu.length; i += 3) pages.push(menu.slice(i, i + 3));
+      const pageAt = new Map();
+      const pageImg = (i) => cached(pageAt, i, () => pourPage(W, H, pages[i], iconFor));
+      const dots = pages.length > 1 ? offscreen(W, 12, (x) => {
+        x.fillStyle = rgba(GOLD, 0.45);
+        const gap = Math.round(s * 0.04), x0 = Math.round(W / 2 - ((pages.length - 1) * gap) / 2);
+        for (let i = 0; i < pages.length; i++) x.fillRect(x0 + i * gap - 1, 5, 3, 3);
+      }) : null;
+      let shown = -1, card = null, fontsIn = false;
+      const stop = animate((t) => {
+        if (t0 === null) t0 = t;
+        const age = t - t0;
+        if (!card || (!fontsIn && pourFonts())) { fontsIn = pourFonts(); card = menuCard(); pageAt.clear(); shown = -1; }
+        const i = pages.length ? Math.floor(age / POUR_PAGE) % pages.length : -1;
+        const into = age % POUR_PAGE;
+        const fade = pages.length > 1 ? Math.min(1, into / 0.9, (POUR_PAGE - into) / 0.6) : Math.min(1, age / 0.6);
+        if (fade >= 1 && shown === i) return; // a page holding still: nothing to redraw
+        shown = fade >= 1 ? i : -1;
+        ctx.drawImage(card, 0, 0);
+        if (i < 0) return;
+        ctx.globalAlpha = Math.max(0, fade);
+        ctx.drawImage(pageImg(i), 0, 0);
+        ctx.globalAlpha = 1;
+        if (dots) {
+          ctx.drawImage(dots, 0, Math.round(H * 0.935));
+          const gap = Math.round(s * 0.04), x0 = Math.round(W / 2 - ((pages.length - 1) * gap) / 2);
+          ctx.fillStyle = GOLD_LIGHT;
+          ctx.fillRect(x0 + i * gap - 2, Math.round(H * 0.935) + 4, 5, 5);
+        }
+      }, 30);
+      return { stop };
+    }
+
+    // ---- a drink being made, or just served
+    const order = conf.order;
+    const drink = order.drink || {};
+    const served = order.phase === 'served';
+    // the glass stands above a fixed band for the drink's name, which takes one line or two
+    const nameBand = [H * 0.805, H * 0.955];
+    const box = { x: Math.round(W * 0.1), y: Math.round(H * 0.13), w: Math.round(W * 0.8), h: Math.round(H * 0.66) };
+    const g = pourGlass(drink, box.w, box.h, lw, true);
+    const burst = served ? pourBurst(Math.round(s * 0.5)) : null;
+    const orderCard = () => offscreen(W, H, (x) => {
+      frame(x, W, H);
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      const head = served ? 'SERVED' : order.guest ? `FOR ${order.guest}` : 'THE HOUSE POUR';
+      tracking(x, s * 0.02);
+      x.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(x, head, 'Josefin Sans', W * 0.82, s * 0.078)));
+      x.fillStyle = GOLD;
+      x.fillText(head, W / 2 + s * 0.01, Math.round(H * 0.085));
+      tracking(x, 0);
+      const name = article((drink.name || 'DRINK').toUpperCase());
+      tracking(x, s * 0.008);
+      let size = fitSize(x, name, 'Poiret One', W * 0.86, s * 0.13), lines = [name];
+      if (size < s * 0.095 && name.includes(' ')) {
+        const b = fitWrapped(x, name, 'Poiret One', W * 0.86, nameBand[1] - nameBand[0], 2, 1.06);
+        if (b.size > size) { size = b.size; lines = b.lines; }
+      }
+      x.font = font('Poiret One', size);
+      x.fillStyle = IVORY;
+      const cy = (nameBand[0] + nameBand[1]) / 2;
+      lines.forEach((l, k) => x.fillText(l, W / 2, Math.round(cy + (k - (lines.length - 1) / 2) * size * 1.06)));
+      tracking(x, 0);
+    });
+
+    // bubbles rise from the bottom of the drink to its surface
+    const bubbles = [];
+    if (drink.bubbles) {
+      const n = drink.glass === 'flute' ? 9 : drink.glass === 'highball' ? 14 : 10;
+      for (let i = 0; i < n; i++) bubbles.push({ u: Math.random(), y: g.yTop + Math.random() * (g.yBottom - g.yTop), v: 6 + Math.random() * 14, big: Math.random() < 0.3 });
+    }
+    const pourEase = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : 1 - Math.pow(1 - u, 1.7));
+    let last = null, card = null, fontsIn = false;
+
+    const stop = animate((t) => {
+      if (t0 === null) t0 = t;
+      const age = t - t0;
+      if (!card || (!fontsIn && pourFonts())) { fontsIn = pourFonts(); card = orderCard(); }
+      const dt = last === null ? 0 : Math.min(0.1, t - last);
+      last = t;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+      const gx = box.x, gy = box.y;
+      if (burst) {
+        const u = Math.min(1, age / POUR_BURST);
+        const k = 0.55 + 0.6 * ease(u);
+        const size = burst.width * k;
+        ctx.globalAlpha = 0.18 + 0.72 * Math.sin(Math.PI * Math.min(1, u * 1.15)) * (1 - u * 0.4);
+        ctx.drawImage(burst, Math.round(gx + g.cx - size / 2), Math.round(gy + (g.top + g.yBottom) / 2 - size / 2), size, size);
+        ctx.globalAlpha = 1;
+      }
+      ctx.drawImage(card, 0, 0);
+
+      const p = served ? 1 : pourEase((age - 0.7) / POUR_FILL);
+      const full = g.yBottom - g.yTop;
+      const level = Math.round(g.yBottom - full * p);
+      const depth = g.yBottom - level;
+      if (depth > 0) {
+        let bodyTop = level, band = 0;
+        if (g.layer === 'top' && g.liquid2) band = Math.round(Math.min(depth * 0.3, full * 0.17));
+        if (g.layer === 'bottom' && g.liquid2) band = Math.round(Math.min(depth, full * 0.2));
+        if (g.layer === 'top') bodyTop = level + band;
+        if (g.yBottom - bodyTop > 0) ctx.drawImage(g.liquid, 0, bodyTop, g.w, g.yBottom - bodyTop, gx, gy + bodyTop, g.w, g.yBottom - bodyTop);
+        if (band > 0 && g.layer === 'top') ctx.drawImage(g.liquid2, 0, level, g.w, band, gx, gy + level, g.w, band);
+        if (band > 0 && g.layer === 'bottom') ctx.drawImage(g.liquid2, 0, g.yBottom - band, g.w, band, gx, gy + g.yBottom - band, g.w, band);
+        const surf = g.layer === 'top' && band > 0 ? g.surface2 : g.surface;
+        ctx.drawImage(surf, 0, level, g.w, 1, gx, gy + level, g.w, 1);
+      }
+      // the pour itself: a thin stream from above while the glass fills
+      if (!served && p > 0 && p < 1) {
+        const a = Math.min(1, (age - 0.7) / 0.3, (POUR_FILL + 0.7 - age) / 0.6);
+        ctx.globalAlpha = Math.max(0, a);
+        ctx.fillStyle = mix(liquidLook(drink.colour).color, '#ffffff', 0.15);
+        const sw = Math.max(2, Math.round(lw * 1.2));
+        ctx.fillRect(gx + g.cx - Math.floor(sw / 2), gy, sw, level);
+        ctx.globalAlpha = 1;
+      }
+      for (const b of bubbles) {
+        b.y -= b.v * dt;
+        if (b.y < level + 1) { b.y = g.yBottom - 2; b.u = Math.random(); }
+        const row = g.rows[Math.round(b.y)];
+        if (!row || b.y < level + 1) continue;
+        const bx = Math.round(row[0] + 1 + b.u * Math.max(0, row[1] - row[0] - 2));
+        ctx.fillStyle = 'rgba(255,255,250,0.75)';
+        ctx.fillRect(gx + bx, Math.round(gy + b.y), b.big ? 2 : 1, b.big ? 2 : 1);
+      }
+      if (g.ice) {
+        if (depth > 0) ctx.drawImage(g.frost, 0, level, g.w, depth, gx, gy + level, g.w, depth);
+        ctx.drawImage(g.ice, gx, gy);
+      }
+      ctx.globalAlpha = served ? 1 : Math.min(1, age / 0.7);
+      ctx.drawImage(g.outline, gx, gy);
+      ctx.globalAlpha = 1;
+      if (g.garnish) {
+        const u = served ? 1 : ease((age - POUR_FILL - 0.8) / 0.6);
+        if (u > 0) {
+          ctx.globalAlpha = u;
+          ctx.drawImage(g.garnish, gx - g.pad, Math.round(gy - g.pad - (1 - u) * s * 0.08));
+          ctx.globalAlpha = 1;
+        }
+      }
+    }, 30);
+    return { stop };
+  }
+
   // ------------------------------------------------------------ channel ident
 
   // Shown for a few seconds when the channel changes: a quiet black title slide.
@@ -1563,7 +2051,7 @@
     tracking(ctx, 0);
   }
 
-  const FACTORIES = { scores, news, weather, visuals, live };
+  const FACTORIES = { scores, news, weather, visuals, live, pour };
 
   window.BarChannels = {
     THEMES,

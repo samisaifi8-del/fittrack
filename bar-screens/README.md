@@ -3,8 +3,8 @@
 Runs the LED walls at The Basement from a Raspberry Pi instead of ViPlex. The Pi plugs into the
 NovaStar TB6's **HDMI IN**, shows a full-screen display page, and you control it from your phone
 over the home Wi-Fi. It has TV-style channels (your own photos and videos, scores, news, weather,
-deco visuals, party games and guests' phone cameras), live mirroring from an iPhone, quick
-messages, brightness and blackout.
+deco visuals, party games, guests' phone cameras and the house drinks card), live mirroring from
+an iPhone, quick messages, brightness and blackout.
 
 ```
 Phone (home Wi-Fi) ──> Raspberry Pi ──HDMI──> NovaStar TB6 (HDMI IN) ──> LED wall
@@ -81,6 +81,7 @@ The control page works like a TV remote. Pick a channel for each wall:
 | 5 · Visuals | The Basement sign, a 1930s lift dial that settles on B, a deco clock, the city at dusk, champagne bubbles and deco fans. |
 | 6 · Games | Party games on the wall, with phones as the controllers. |
 | 7 · Basement Live | Guests' phone cameras on the wall, up to four, cut together automatically. |
+| 8 · The House Pour | Tonight's drinks as a 1930s hotel-bar card, and each drink you make, filling in its glass. |
 
 Set leagues, news section, your town, the visual style, the game and the bar's name under
 **Channel settings**. Scores, news and weather need the Pi to be online.
@@ -133,6 +134,30 @@ control page, uploads, settings) gets "403 Forbidden", so the remote stays on th
 
 The video goes straight from each phone to the Pi's display over WebRTC (with Google's public STUN
 server to find the way); the server only passes the connection details along.
+
+## The House Pour
+
+Channel 8 is the bar's card: **THE HOUSE POUR**, then three of tonight's drinks at a time in big
+type, each beside a small gold glass, turning the page every few seconds. Ask what there is, point
+at the wall.
+
+When you make someone a drink, use **The House Pour** panel on the control page: tap their name (or
+type it), tap the drink and press **Making**. The wall draws the drink's glass in gold (coupe, rocks,
+highball, flute, martini, mug or wine glass) and fills it over about eight seconds in the drink's
+own colour, with its float or foam, bubbles, ice and garnish, under **FOR SARAH** and above
+**A NEGRONI**. Press **Served** for a short gold sunburst; a few seconds later the wall goes back to
+the menu. One drink at a time, and nothing is counted.
+
+If the wall is on channel 1 to 5 when you press Making, the drink takes it over and the wall goes
+back to that channel afterwards. A game or Basement Live is never interrupted.
+
+**Tonight's menu** (in the same panel) starts with eight classics and mocktails ticked. Tick from
+26 seeded drinks (`static/content/drinks.json`) or add your own with a name, a glass and a colour.
+
+**Guests can ask from their phones** is off unless you switch it on. Then guests on
+**http://<pi-name>.local/play** see tonight's menu and can ask for a drink; it shows on your panel
+with **Make it** and **Not now**, and their phone tells them how it's going. Nothing goes on the
+wall without you.
 
 ## Live from your phone
 

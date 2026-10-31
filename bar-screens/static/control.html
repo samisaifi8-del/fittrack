@@ -136,7 +136,7 @@ input[type="color"] { width: 44px; height: 36px; padding: 2px; border: 1px solid
 .up progress { width: 100%; height: 6px; accent-color: var(--accent); }
 
 .remote { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-@media (min-width: 600px) { .remote { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+@media (min-width: 600px) { .remote { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
 .ch { display: grid; justify-items: center; gap: 6px; padding: 8px 2px 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--raise); cursor: pointer; min-width: 0; }
 .ch-n { display: grid; place-items: center; width: 38px; height: 30px; border-radius: 3px; background: #000; color: var(--c); font: 400 22px/1 var(--f-display); }
 .ch-name { font: 600 14px/1 var(--f-label); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -159,6 +159,19 @@ details.card[open] > summary::after { content: "Hide"; }
 .golive img { width: 132px; height: 132px; display: block; border-radius: 6px; background: #fff; padding: 6px; image-rendering: pixelated; }
 .golive .link { font: 600 16px/1.3 var(--f-label); overflow-wrap: anywhere; user-select: all; }
 @media (max-width: 360px) { .golive { grid-template-columns: 1fr; } }
+.pour-now { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--accent); border-radius: 10px; }
+.pour-now b { font: 600 20px/1.15 var(--f-label); }
+.drinks .chip { display: inline-flex; align-items: center; gap: 7px; }
+.drinks .chip i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1px var(--line); flex: none; }
+.reqs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.reqs li { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 10px; border-radius: 10px; background: var(--raise); }
+.reqs li span { flex: 1 1 140px; font: 600 16px/1.2 var(--f-label); }
+details.sub > summary { cursor: pointer; font: 600 15px var(--f-label); color: var(--muted); }
+details.sub[open] > summary { margin-bottom: 10px; }
+.menu-list { display: grid; gap: 4px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.menu-list .check { align-items: center; font: 600 15px/1.2 var(--f-label); }
+.menu-list .check i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex: none; }
+.menu-list .x { margin-left: auto; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; padding: 2px 6px; }
 ol.steps { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; font-size: 15px; }
 
 dialog { padding: 0; border: 0; background: transparent; color: var(--fg); max-width: 720px; width: 100%; max-height: 100%; height: 100%; margin: 0 auto; }
@@ -207,6 +220,47 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     </div>
     <div class="remote" id="remote"></div>
     <p class="note" id="chDesc"></p>
+  </section>
+
+  <section class="card" aria-labelledby="hPour">
+    <div class="section-head">
+      <h2 id="hPour">The House Pour</h2>
+      <button type="button" class="btn small" id="pourWall">Put the menu up</button>
+    </div>
+    <div class="pour-now" id="pourNow" hidden>
+      <span class="eyebrow" id="pourPhase"></span>
+      <b id="pourWhat"></b>
+      <div class="row">
+        <button type="button" class="btn primary" id="pourServed">Served</button>
+        <button type="button" class="btn" id="pourClear">Take it down</button>
+      </div>
+    </div>
+    <ul class="reqs" id="pourReqs" hidden></ul>
+    <div class="field"><span class="lab">For</span>
+      <div class="chips" id="pourNames"></div>
+      <input type="text" id="pourGuest" maxlength="16" placeholder="Guest's name (optional)" autocomplete="off" aria-label="Guest's name">
+    </div>
+    <div class="field"><span class="lab">Drink</span>
+      <div class="chips drinks" id="pourDrinks"></div>
+    </div>
+    <button type="button" class="btn primary" id="pourMake" disabled>Making</button>
+    <p class="note" id="pourNote"></p>
+    <details class="sub" id="pourMenu">
+      <summary id="pourMenuSum">Tonight's menu</summary>
+      <div style="display:grid;gap:12px">
+        <div class="menu-list" id="pourList"></div>
+        <div class="field"><span class="lab">Add your own</span>
+          <div class="row">
+            <input type="text" id="pourNewName" maxlength="24" placeholder="e.g. HOUSE SOUR" style="flex:1 1 150px" aria-label="Drink name">
+            <select id="pourNewGlass" style="flex:1 1 110px;width:auto" aria-label="Glass"></select>
+            <input type="color" id="pourNewColour" value="#e3a63a" aria-label="Colour of the drink">
+            <button type="button" class="btn small" id="pourAdd">Add</button>
+          </div>
+        </div>
+        <label class="switch"><input type="checkbox" id="pourGuests"><span></span>Guests can ask from their phones</label>
+        <p class="note" id="pourGuestsNote"></p>
+      </div>
+    </details>
   </section>
 
   <section class="card" aria-labelledby="hLive">
@@ -348,6 +402,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     ['visuals', 5, 'Visuals', 'Banana leaves in gold, The Basement sign, the lift dial, a deco clock and more.', '#b89a63'],
     ['games', 6, 'Games', 'Party games on the wall. Guests use their phones as controllers.', '#b89a63'],
     ['live', 7, 'Live', 'Guests\' phone cameras on the wall, up to four, cut together automatically.', '#b89a63'],
+    ['pour', 8, 'Pour', 'Tonight\'s drinks as a hotel-bar card, and each drink you make, filling in its glass.', '#b89a63'],
   ];
   const STYLE_NAMES = { mix: 'Mix (changes every 45 seconds)', botanical: 'Banana leaves in gold', skyline: 'Dark deco city', deco: 'The Basement sign', lift: 'Lift floor indicator', clockface: 'Deco wall clock', fans: 'Art deco fans', bubbles: 'Champagne bubbles' };
 
@@ -466,6 +521,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     renderChannelSettings();
     renderMirror();
     renderGoLive();
+    renderPour();
 
     const b = $('brightness');
     if (document.activeElement !== b) b.value = state.settings.brightness;
@@ -629,6 +685,106 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     if (!url) return;
     try { await navigator.clipboard.writeText(url); toast('Link copied.'); } catch (e) { toast(url); }
   });
+
+  // The House Pour (channel 8): put a drink on the wall for a guest, and choose tonight's menu.
+  const GLASS_NAMES = { coupe: 'Coupe', rocks: 'Rocks', highball: 'Highball', flute: 'Flute', martini: 'Martini', mug: 'Mug', wine: 'Wine glass' };
+  const title = (n) => String(n || '').replace(/\b(\w)(\w*)/g, (m, a, b) => a + b.toLowerCase());
+  let pourPick = { guest: '', drink: '' }, pourReqCount = 0;
+  const html = (el, markup) => { if (el.dataset.html !== markup) { el.dataset.html = markup; el.innerHTML = markup; } };
+  const allDrinks = () => [...state.catalog.drinks, ...state.channels.pour.custom];
+
+  function renderPour() {
+    const bar = state.bar || {}, conf = state.channels.pour;
+    const order = bar.order;
+    $('pourNow').hidden = !order;
+    if (order) {
+      $('pourPhase').textContent = order.phase === 'served' ? 'Served · back to the menu in a moment' : 'Making it now';
+      $('pourWhat').textContent = `${title(order.drink.name)}${order.guest ? ` for ${title(order.guest)}` : ''}`;
+      $('pourServed').hidden = order.phase === 'served';
+    }
+    const reqs = bar.requests || [];
+    $('pourReqs').hidden = !reqs.length;
+    html($('pourReqs'), reqs.map((r) => `<li data-rid="${esc(r.rid)}"><span>${esc(title(r.name))} asks for ${esc(title(r.drink.name))}</span>
+      <button type="button" class="btn small primary" data-act="approve">Make it</button><button type="button" class="btn small" data-act="decline">Not now</button></li>`).join(''));
+    if (reqs.length > pourReqCount) toast(`${title(reqs[reqs.length - 1].name)} asks for ${title(reqs[reqs.length - 1].drink.name)}.`);
+    pourReqCount = reqs.length;
+
+    const names = bar.names || [];
+    html($('pourNames'), names.map((n) => `<button type="button" class="chip" data-name="${esc(n)}">${esc(title(n))}</button>`).join(''));
+    $('pourNames').hidden = !names.length;
+    $('pourNames').querySelectorAll('[data-name]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.name === pourPick.guest.toUpperCase())));
+    const menu = bar.menu || [];
+    if (!menu.some((d) => d.id === pourPick.drink)) pourPick.drink = '';
+    html($('pourDrinks'), menu.map((d) => `<button type="button" class="chip" data-drink="${esc(d.id)}" style="--c:${esc(d.colour)}"><i></i>${esc(title(d.name))}</button>`).join(''));
+    $('pourDrinks').querySelectorAll('[data-drink]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.drink === pourPick.drink)));
+    $('pourMake').disabled = !pourPick.drink;
+    const onPour = state.screens.filter((s) => s.enabled).some((s) => s.channel === 'pour');
+    $('pourWall').hidden = onPour;
+    $('pourNote').innerHTML = !menu.length ? 'Nothing is on tonight\'s menu yet. Tick some drinks below.'
+      : onPour ? 'The menu is on the wall. <b>Making</b> puts the drink up for your guest.'
+      : '<b>Making</b> puts the drink on the wall for a moment, then the wall goes back to what it was showing (not during a game or Basement Live).';
+
+    $('pourMenuSum').textContent = `Tonight's menu (${menu.length})`;
+    html($('pourList'), allDrinks().map((d) => `<label class="check" style="--c:${esc(d.colour)}"><input type="checkbox" data-tonight="${esc(d.id)}"><i></i>${esc(title(d.name))}${d.alcohol === false ? ' <small class="muted">0%</small>' : ''}${d.custom ? `<button type="button" class="x" data-remove="${esc(d.id)}" aria-label="Remove ${esc(title(d.name))}">×</button>` : ''}</label>`).join(''));
+    $('pourList').querySelectorAll('[data-tonight]').forEach((c) => { c.checked = conf.tonight.includes(c.dataset.tonight); });
+    if (!$('pourNewGlass').options.length) $('pourNewGlass').innerHTML = state.catalog.glasses.map((g) => `<option value="${g}">${GLASS_NAMES[g] || g}</option>`).join('');
+    $('pourGuests').checked = conf.guestOrders;
+    $('pourGuestsNote').innerHTML = conf.guestOrders
+      ? `Guests pick from tonight's menu at <b>${esc(location.host)}/play</b> and you say yes or not now. Nothing goes up without you.`
+      : 'Off: only you put drinks up.';
+  }
+
+  $('pourNames').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-name]');
+    if (!b) return;
+    pourPick.guest = b.getAttribute('aria-pressed') === 'true' ? '' : b.dataset.name;
+    $('pourGuest').value = title(pourPick.guest);
+    renderPour();
+  });
+  $('pourGuest').addEventListener('input', (e) => { pourPick.guest = e.target.value.trim(); renderPour(); });
+  $('pourDrinks').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-drink]');
+    if (!b) return;
+    pourPick.drink = b.getAttribute('aria-pressed') === 'true' ? '' : b.dataset.drink;
+    renderPour();
+  });
+  $('pourMake').addEventListener('click', async () => {
+    if (!pourPick.drink) return;
+    try {
+      await api('POST', '/api/pour/order', { guest: pourPick.guest, drink: pourPick.drink });
+      pourPick = { guest: '', drink: '' };
+      $('pourGuest').value = '';
+      renderPour();
+    } catch (e) { toast(e.message); }
+  });
+  $('pourServed').addEventListener('click', () => run(api('POST', '/api/pour/served')));
+  $('pourClear').addEventListener('click', () => run(api('POST', '/api/pour/clear')));
+  $('pourWall').addEventListener('click', () => tuneTo('pour'));
+  $('pourReqs').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]');
+    if (b) run(api('POST', `/api/pour/${b.dataset.act}`, { rid: b.closest('[data-rid]').dataset.rid }));
+  });
+  $('pourList').addEventListener('change', (e) => {
+    if (!e.target.dataset.tonight) return;
+    const ticked = new Set([...$('pourList').querySelectorAll('[data-tonight]')].filter((c) => c.checked).map((c) => c.dataset.tonight));
+    run(api('PATCH', '/api/pour', { tonight: allDrinks().map((d) => d.id).filter((id) => ticked.has(id)) }));
+  });
+  $('pourList').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-remove]');
+    if (!b) return;
+    e.preventDefault();
+    run(api('DELETE', `/api/pour/drinks/${b.dataset.remove}`));
+  });
+  $('pourAdd').addEventListener('click', async () => {
+    const name = $('pourNewName').value.trim();
+    if (!name) { $('pourNewName').focus(); toast('Give the drink a name.'); return; }
+    try {
+      await api('POST', '/api/pour/drinks', { name, glass: $('pourNewGlass').value, colour: $('pourNewColour').value });
+      $('pourNewName').value = '';
+      toast(`${title(name)} is on tonight's menu.`);
+    } catch (e) { toast(e.message); }
+  });
+  $('pourGuests').addEventListener('change', (e) => run(api('PATCH', '/api/pour', { guestOrders: e.target.checked })));
 
   $('mirrorScreen').addEventListener('change', (e) => run(api('PATCH', '/api/settings', { mirrorScreen: e.target.value })));
   $('mirrorFit').addEventListener('change', (e) => run(api('PATCH', '/api/settings', { mirrorFit: e.target.value })));

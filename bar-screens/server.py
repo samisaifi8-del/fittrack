@@ -43,7 +43,7 @@ TUNNEL_METRICS = "127.0.0.1:3998"
 TUNNEL_UNIT = "bar-screens-tunnel"
 
 # Channel 1 is your own rotation; the rest are live channels drawn on the Pi from free data feeds.
-CHANNELS = ["rotation", "scores", "news", "weather", "visuals", "games", "live"]
+CHANNELS = ["rotation", "scores", "news", "weather", "visuals", "games", "live", "pour"]
 LEAGUES = {  # ESPN's public scoreboard feed: no key needed, but it's unofficial and could change
     "eng.1": ("soccer/eng.1", "Premier League"),
     "eng.2": ("soccer/eng.2", "Championship"),
@@ -68,6 +68,11 @@ NEWS_FEEDS = {
 }
 VISUAL_STYLES = ["mix", "botanical", "deco", "lift", "clockface", "skyline", "bubbles", "fans"]
 GAMES = [["breaker", "Brick Breaker"], ["duel", "Deco Duel"], ["snake", "Serpentine"], ["quickdraw", "Quick Draw"]]
+# The House Pour (channel 8): the seeded drinks, and what's on the menu until the host changes it.
+DRINKS_FILE = os.path.join(STATIC, "content", "drinks.json")
+GLASSES = ["coupe", "rocks", "highball", "flute", "martini", "mug", "wine"]
+GARNISHES = ["orange", "lime", "lemon", "mint", "cherry", "olive", "none"]
+TONIGHT = ["d001", "d002", "d004", "d003", "d006", "d007", "d021", "d024"]
 
 for ext, ctype in ((".webp", "image/webp"), (".avif", "image/avif"), (".mp4", "video/mp4"),
                    (".m4v", "video/mp4"), (".webm", "video/webm"), (".mkv", "video/x-matroska")):
@@ -172,6 +177,7 @@ def default_channels():
         "weather": {"place": "", "label": "", "lat": None, "lon": None},
         "visuals": {"style": "mix"},
         "games": {"game": "breaker"},
+        "pour": {"tonight": list(TONIGHT), "custom": [], "guestOrders": False},
     }
 
 
@@ -209,6 +215,8 @@ class Store:
         self.display = None  # HDMI picture size reported by the display page
         self.mirroring = False  # a phone is mirroring to the wall over AirPlay
         self.live_info = dict   # Basement Live's link and cameras (set up in main)
+        self.pour_info = dict   # The House Pour's menu and the order on the wall (set up in main)
+        self.drinks = load_drinks(DRINKS_FILE)
         self.state = self._load()
         for slide in self.state["slides"]:
             if slide.get("processing"):
@@ -253,12 +261,15 @@ class Store:
                 "displayOn": not os.path.exists(self.off_flag),
                 "mirror": {"available": bool(UXPLAY), "live": self.mirroring},
                 "golive": self.live_info(),
+                "bar": self.pour_info(),
                 "ffmpeg": bool(FFMPEG),
                 "catalog": {
                     "leagues": [[k, v[1]] for k, v in LEAGUES.items()],
                     "feeds": [[k, v[1]] for k, v in NEWS_FEEDS.items()],
                     "styles": VISUAL_STYLES,
                     "games": GAMES,
+                    "drinks": self.drinks,
+                    "glasses": GLASSES,
                 },
             })
 
@@ -763,6 +774,10 @@ class GameHub:
         return {"type": "roster", "game": game, "joinUrl": self.join_url, "onWall": on_wall,
                 "players": [{"slot": p["slot"], "name": p["name"], "color": p["color"]} for p in players]}
 
+    def names(self):
+        with self.lock:
+            return [p["name"] for p in sorted(self.players.values(), key=lambda p: p["slot"])]
+
     def _send(self, msg, role=None):
         data = json.dumps(msg)
         for q, r, _ in list(self.subs):
@@ -1148,6 +1163,250 @@ def qr_svg(rows, margin=4):
             f'<rect width="{n}" height="{n}" fill="#fff"/><path d="{path}" fill="#000"/></svg>')
 
 
+# ---------------------------------------------------------------- the house pour
+
+def load_drinks(path):
+    """The seeded drinks (static/content/drinks.json). Anything malformed is left out rather than
+    stopping the server; a missing file just means an empty list."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            items = json.load(f)
+    except (OSError, ValueError):
+        return []
+    drinks = []
+    for d in items if isinstance(items, list) else []:
+        try:
+            if not re.fullmatch(r"d\d{3}", str(d.get("id"))) or any(x["id"] == d["id"] for x in drinks):
+                continue
+            drinks.append({
+                "id": d["id"],
+                "name": _str(24)(d["name"]).strip().upper(),
+                "glass": _choice(*GLASSES)(d["glass"]),
+                "colour": _hex(d["colour"]),
+                "colour2": _hex(d["colour2"]) if d.get("colour2") else None,
+                "bubbles": bool(d.get("bubbles")), "ice": bool(d.get("ice")),
+                "garnish": d.get("garnish") if d.get("garnish") in GARNISHES else "none",
+                "alcohol": bool(d.get("alcohol", True)),
+            })
+        except (AttributeError, KeyError, TypeError, ValueError):
+            continue
+    return drinks
+
+
+class HousePour:
+    """The House Pour (channel 8): tonight's drinks as a hotel-bar card, and one order at a time on
+    the wall, its glass filling for the guest it's for. The host runs it from the control page.
+    Guests can ask for a drink from /play only while he has that switched on, and he says yes to
+    each one. The menu is saved; orders and requests are only kept in memory, and nothing is
+    counted. Putting an order up takes over walls on a quiet channel and gives them back after."""
+    SERVED_HOLD = 10        # seconds a served drink stays up before the wall goes back
+    MAKING_MAX = 20 * 60    # an order nobody marked served comes down after this long
+    MAX_CUSTOM = 12
+    MAX_REQUESTS = 10
+    TAKE_OVER = ("rotation", "scores", "news", "weather", "visuals")  # never a game or live cameras
+
+    def __init__(self, store):
+        self.store = store
+        self.order = None      # {"id", "guest", "drink", "phase", "pid", "at"}
+        self.requests = []     # [{"rid", "pid", "name", "drink", "at"}], oldest first
+        self.answers = {}      # pid -> {"rid", "drink", "state"}: what that phone last asked for
+        self.names = []        # names drinks were made for tonight, newest first
+        self.returns = {}      # screen id -> the channel it was on before an order took over
+        self.guest_names = list  # people on /play and Basement Live (set up in main)
+
+    @property
+    def conf(self):
+        return self.store.state["channels"]["pour"]
+
+    def _drinks(self):
+        return self.store.drinks + [d for d in self.conf["custom"] if isinstance(d, dict)]
+
+    def _drink(self, drink_id, tonight=False):
+        found = next((d for d in self._drinks() if d.get("id") == drink_id), None)
+        if not found or (tonight and drink_id not in self.conf["tonight"]):
+            raise ApiError(404, "That drink isn't on tonight's menu." if tonight else "That drink isn't on the list.")
+        return found
+
+    def menu(self):
+        by_id = {d.get("id"): d for d in self._drinks()}
+        return [by_id[i] for i in self.conf["tonight"] if i in by_id]
+
+    def info(self):
+        with self.store.lock:
+            order = self.order and {k: self.order[k] for k in ("id", "guest", "drink", "phase")}
+            names = []
+            for n in self.names + list(self.guest_names()):
+                if n and n not in names:
+                    names.append(n)
+            return {"menu": self.menu(), "order": order, "names": names[:12],
+                    "requests": [{"rid": r["rid"], "name": r["name"], "drink": {"id": r["drink"]["id"], "name": r["drink"]["name"]}}
+                                 for r in self.requests]}
+
+    # -- the menu
+
+    def update(self, patch):
+        if not isinstance(patch, dict):
+            raise ApiError(400, "Expected a JSON object.")
+        with self.store.lock:
+            conf = self.conf
+            if "tonight" in patch:
+                if not isinstance(patch["tonight"], list):
+                    raise ApiError(400, "Bad value for tonight.")
+                ids = {d.get("id") for d in self._drinks()}
+                conf["tonight"] = [i for i in dict.fromkeys(patch["tonight"]) if isinstance(i, str) and i in ids]
+                self.requests = [r for r in self.requests if r["drink"]["id"] in conf["tonight"]]
+            if "guestOrders" in patch:
+                conf["guestOrders"] = _clean(patch, {"guestOrders": _bool})["guestOrders"]
+                if not conf["guestOrders"]:
+                    self.requests = []
+            self.store._changed()
+            return conf
+
+    def add_drink(self, body):
+        clean = _clean(body, {"name": _str(24), "glass": _choice(*GLASSES), "colour": _hex})
+        name = " ".join(clean.get("name", "").split()).upper()
+        if not name or set(clean) != {"name", "glass", "colour"}:
+            raise ApiError(400, "A drink needs a name, a glass and a colour.")
+        with self.store.lock:
+            conf = self.conf
+            if len(conf["custom"]) >= self.MAX_CUSTOM:
+                raise ApiError(409, f"That's {self.MAX_CUSTOM} of your own drinks already. Remove one first.")
+            drink = {"id": "c" + uuid.uuid4().hex[:8], "name": name, "glass": clean["glass"], "colour": clean["colour"],
+                     "colour2": None, "bubbles": clean["glass"] == "flute", "ice": clean["glass"] in ("rocks", "highball", "mug"),
+                     "garnish": "none", "alcohol": True, "custom": True}
+            conf["custom"].append(drink)
+            conf["tonight"].append(drink["id"])
+            self.store._changed()
+            return drink
+
+    def remove_drink(self, drink_id):
+        with self.store.lock:
+            conf = self.conf
+            if not any(d.get("id") == drink_id for d in conf["custom"]):
+                raise ApiError(404, "Only your own drinks can be removed.")
+            conf["custom"] = [d for d in conf["custom"] if d.get("id") != drink_id]
+            conf["tonight"] = [i for i in conf["tonight"] if i != drink_id]
+            self.requests = [r for r in self.requests if r["drink"]["id"] != drink_id]
+            self.store._changed()
+
+    # -- the order on the wall
+
+    def _answer(self, state):
+        if self.order and self.order["pid"] in self.answers and self.answers[self.order["pid"]]["rid"] == self.order["id"]:
+            self.answers[self.order["pid"]]["state"] = state
+
+    def _put_up(self, guest, drink, pid=None, rid=None):
+        if self.order and self.order["phase"] == "making":
+            self._answer("served")
+        self.order = {"id": rid or uuid.uuid4().hex[:8], "guest": guest, "drink": drink, "phase": "making",
+                      "pid": pid, "at": time.time()}
+        if guest:
+            self.names = [guest] + [n for n in self.names if n != guest][:11]
+        for screen in self.store.state["screens"]:
+            if screen["enabled"] and not screen["pinned"] and screen.get("channel") in self.TAKE_OVER:
+                self.returns[screen["id"]] = screen["channel"]
+                screen["channel"] = "pour"
+        self.store._changed()
+
+    def put_up(self, body):
+        guest = " ".join(_str(16)(body.get("guest") or "").split()).upper()
+        with self.store.lock:
+            self._put_up(guest, self._drink(body.get("drink")))
+            return self.info()["order"]
+
+    def served(self, body=None):
+        with self.store.lock:
+            if not self.order:
+                raise ApiError(409, "There's no drink on the wall.")
+            if self.order["phase"] != "served":
+                self.order.update(phase="served", at=time.time())
+                self._answer("served")
+                self.store._changed(save=False)
+
+    def clear(self, body=None):
+        with self.store.lock:
+            if self.order:
+                self._answer("served")
+            self.order = None
+            for screen in self.store.state["screens"]:
+                prev = self.returns.pop(screen["id"], None)
+                if prev and screen.get("channel") == "pour":
+                    screen["channel"] = prev
+            self.returns = {}
+            self.store._changed()
+
+    def tick(self):
+        with self.store.lock:
+            o = self.order
+            if o and time.time() - o["at"] > (self.SERVED_HOLD if o["phase"] == "served" else self.MAKING_MAX):
+                self.clear()
+
+    # -- guests asking from their phones
+
+    @staticmethod
+    def _pid(body):
+        pid = body.get("pid")
+        if not isinstance(pid, str) or not re.fullmatch(r"[A-Za-z0-9_-]{6,40}", pid):
+            raise ApiError(400, "Bad player id.")
+        return pid
+
+    def request(self, body):
+        pid = self._pid(body)
+        name = " ".join(_str(16)(body.get("name") or "").split()).upper()
+        if not name:
+            raise ApiError(400, "Type your name first, so the bar knows who it's for.")
+        with self.store.lock:
+            if not self.conf["guestOrders"]:
+                raise ApiError(403, "Asking from your phone is off tonight. Ask at the bar.")
+            drink = self._drink(body.get("drink"), tonight=True)
+            self.requests = [r for r in self.requests if r["pid"] != pid]
+            if len(self.requests) >= self.MAX_REQUESTS:
+                raise ApiError(409, "The bar has a few to make already. Try again in a minute.")
+            req = {"rid": uuid.uuid4().hex[:8], "pid": pid, "name": name, "drink": drink, "at": time.time()}
+            self.requests.append(req)
+            self.answers[pid] = {"rid": req["rid"], "drink": drink["name"], "state": "asked"}
+            self.store._changed(save=False)
+            return self.answers[pid]
+
+    def _take(self, body):
+        req = next((r for r in self.requests if r["rid"] == body.get("rid")), None)
+        if not req:
+            raise ApiError(404, "That request has gone.")
+        self.requests.remove(req)
+        return req
+
+    def approve(self, body):
+        with self.store.lock:
+            req = self._take(body)
+            self.answers[req["pid"]] = {"rid": req["rid"], "drink": req["drink"]["name"], "state": "making"}
+            self._put_up(req["name"], req["drink"], req["pid"], req["rid"])
+
+    def decline(self, body):
+        with self.store.lock:
+            req = self._take(body)
+            self.answers[req["pid"]] = {"rid": req["rid"], "drink": req["drink"]["name"], "state": "passed"}
+            self.store._changed(save=False)
+
+    def cancel(self, body):
+        """A guest takes their request back."""
+        pid = self._pid(body)
+        with self.store.lock:
+            before = len(self.requests)
+            self.requests = [r for r in self.requests if r["pid"] != pid]
+            if self.answers.get(pid, {}).get("state") == "asked":
+                del self.answers[pid]
+            if len(self.requests) != before:
+                self.store._changed(save=False)
+
+    def guest(self, pid):
+        """What /play shows a guest: whether they can ask, tonight's menu and their last request."""
+        with self.store.lock:
+            on = bool(self.conf["guestOrders"])
+            return {"on": on, "menu": [{"id": d["id"], "name": d["name"], "glass": d["glass"], "alcohol": d.get("alcohol", True)}
+                                       for d in self.menu()] if on else [],
+                    "mine": self.answers.get(pid) if isinstance(pid, str) else None}
+
+
 # ---------------------------------------------------------------- HTTP
 
 # Requests that come in through the tunnel carry Cloudflare's headers. From the internet, only the
@@ -1178,6 +1437,7 @@ class Handler(BaseHTTPRequestHandler):
     mirror = None
     live = None
     tunnel = None
+    pour = None
 
     def log_message(self, fmt, *args):
         pass
@@ -1375,6 +1635,8 @@ class Handler(BaseHTTPRequestHandler):
                 except ValueError:
                     since = 0
                 return self._json(200, self.live.poll(qs.get("cid", [""])[0], since, qs.get("st", [""])[0]))
+            if path == "/api/pour/guest":
+                return self._json(200, self.pour.guest(qs.get("pid", [None])[0]))
             if path in ("/api/live/qr", "/api/live/qr.svg"):
                 url = self.tunnel.url
                 rows = qr_matrix(url)
@@ -1423,6 +1685,19 @@ class Handler(BaseHTTPRequestHandler):
         m = re.fullmatch(r"/api/live/(offer|answer|reoffer|leave)", path)
         if m and method == "POST":
             result = getattr(self.live, m.group(1))(self._read_json())
+            return self._json(200, result or {"ok": True})
+        if method == "PATCH" and path == "/api/pour":
+            return self._json(200, self.pour.update(self._read_json()))
+        if method == "POST" and path == "/api/pour/drinks":
+            return self._json(201, self.pour.add_drink(self._read_json()))
+        m = re.fullmatch(r"/api/pour/drinks/(c[0-9a-f]{8})", path)
+        if m and method == "DELETE":
+            self.pour.remove_drink(m.group(1))
+            return self._json(200, {"ok": True})
+        m = re.fullmatch(r"/api/pour/(order|served|clear|request|approve|decline|cancel)", path)
+        if m and method == "POST":
+            body = self._read_json()
+            result = (self.pour.put_up if m.group(1) == "order" else getattr(self.pour, m.group(1)))(body)
             return self._json(200, result or {"ok": True})
         if method == "PATCH" and path == "/api/settings":
             store.update_settings(self._read_json())
@@ -1475,15 +1750,19 @@ def main():
     mirror = Handler.mirror = Mirror(MIRROR_PORT)
     live = Handler.live = LiveHub(store)
     tunnel = Handler.tunnel = Tunnel(store, args.tunnel_metrics)
+    pour = Handler.pour = HousePour(store)
     host = f"{socket.gethostname().removesuffix('.local')}.local" + ("" if args.port == 80 else f":{args.port}")
     hub.join_url = f"{host}/play"
     store.live_info = lambda: {"url": tunnel.url, "lan": f"http://{host}/live", "qr": bool(QRENCODE), "cams": live.names()}
+    store.pour_info = pour.info
+    pour.guest_names = lambda: hub.names() + live.names()
 
     def ticker():
         beats = 0
         while True:
             time.sleep(0.25)
             store.tick()
+            pour.tick()
             beats += 1
             store.set_mirroring(mirror.live)
             if beats % 4 == 0:

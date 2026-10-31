@@ -539,6 +539,382 @@
 
   RENDERERS.closest = closest;
 
+  // ------------------------------------------------------------ colours
+
+  // The wall takes sides: home club's colour on top, away below (both darkened on the Pi so a
+  // dim room isn't dazzled), split by a black-and-gold deco band with any neutrals' names on it.
+  // Each half has the club in tall capitals and its supporters' names; the room's score sits in
+  // two big numerals by the band. A goal's tap war moves the band (the wall eases after the Pi's
+  // position), a flood gives the scorers the whole wall, and full time holds the winner's colour,
+  // then the card with who called it, the season table and the forfeit.
+  const colours = {
+    draw(g, st, e) {
+      if (!st.match) return false; // nothing pinned: the kit's lobby
+      if (st.phase === 'flood') return floodScreen(g, st, e);
+      if (st.phase === 'fulltime' && st.result && st.result.winner) return fullTimeScreen(g, st, e);
+      if (st.phase === 'table') return tableScreen(g, st, e);
+      return splitScreen(g, st, e);
+    },
+  };
+
+  const TALL = 'Bebas Neue';
+  const joinNames = (list) => (list || []).join('  ·  ');
+
+  // One half's club and names, drawn once: the abbreviation in tall capitals, names under it.
+  function clubBlock(g, t, names, w, h) {
+    const { k, s } = g;
+    const key = `club|${t.abbr}|${t.color}|${joinNames(names)}|${w}|${h}`;
+    return g.sprite(key, w, h, (x) => {
+      x.textAlign = 'left';
+      x.textBaseline = 'alphabetic';
+      const size = Math.min(Math.round(h * 0.62), k.fitSize(x, t.abbr, TALL, w, h * 0.62));
+      x.font = k.font(TALL, size);
+      x.fillStyle = t.ink;
+      k.tracking(x, s * 0.01);
+      x.fillText(t.abbr, 0, Math.round(size * 0.8));
+      k.tracking(x, 0);
+      const y = Math.round(size * 0.8 + s * 0.035);
+      k.tracking(x, s * 0.006);
+      const b = names && names.length ? nameLines(g, x, names, w, h - y, 3, Math.round(s * 0.068)) : k.fitWrapped(x, 'PICK A SIDE ON YOUR PHONE', 'Josefin Sans', w, h - y, 2, 1.2);
+      const px = Math.min(b.size, Math.round(s * (names && names.length ? 0.068 : 0.042)));
+      x.font = k.font('Josefin Sans', px);
+      x.textBaseline = 'top';
+      x.globalAlpha = names && names.length ? 1 : 0.7;
+      b.lines.forEach((l, i) => x.fillText(l, 0, y + i * px * 1.2));
+      x.globalAlpha = 1;
+      k.tracking(x, 0);
+    });
+  }
+
+  // Names in lines that only break between names, as big as they fit (up to maxLines lines).
+  function nameLines(g, x, names, w, h, maxLines, maxSize) {
+    const { k } = g;
+    for (let size = Math.floor(Math.min(h, maxSize || h)); size >= 6; size--) {
+      x.font = k.font('Josefin Sans', size);
+      const lines = [];
+      for (const n of names) {
+        const next = lines.length ? `${lines[lines.length - 1]}  ·  ${n}` : n;
+        if (lines.length && x.measureText(next).width <= w) lines[lines.length - 1] = next;
+        else lines.push(n);
+      }
+      if (lines.length <= maxLines && lines.length * size * 1.2 <= h && lines.every((l) => x.measureText(l).width <= w)) return { size, lines };
+    }
+    return { size: 6, lines: names.slice(0, maxLines) };
+  }
+
+  // A big numeral (or any short text) in tall type, cached.
+  function numeral(g, text, color, size) {
+    const { k } = g;
+    return g.sprite(`num|${text}|${color}|${size}`, Math.round(size * 0.5 * Math.max(1, String(text).length) + 6), Math.round(size * 0.78), (x, w, h) => {
+      x.font = k.font(TALL, size);
+      x.textAlign = 'right';
+      x.textBaseline = 'alphabetic';
+      x.fillStyle = color;
+      x.fillText(String(text), w - 2, Math.round(size * 0.74));
+    });
+  }
+
+  // The band between the halves: black, gold edges, gold capitals (or a small diamond).
+  function band(g, ctx, y, text, solid) {
+    const { k, W, s } = g;
+    const bh = Math.round(s * 0.075);
+    const top = Math.round(y - bh / 2);
+    ctx.fillStyle = solid ? k.GOLD : '#000';
+    ctx.fillRect(0, top, W, bh);
+    if (!solid) {
+      ctx.fillStyle = k.GOLD;
+      ctx.fillRect(0, top, W, 2);
+      ctx.fillRect(0, top + bh - 2, W, 2);
+    }
+    const c = g.sprite(`band|${text}|${solid ? 1 : 0}`, W, bh, (x, w, h) => {
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      if (!text) {
+        const d = Math.round(h * 0.28);
+        x.fillStyle = k.GOLD;
+        for (const cx of [w / 2 - d * 3, w / 2, w / 2 + d * 3]) {
+          const r = cx === w / 2 ? d : Math.round(d * 0.6);
+          x.beginPath();
+          x.moveTo(cx, h / 2 - r); x.lineTo(cx + r, h / 2); x.lineTo(cx, h / 2 + r); x.lineTo(cx - r, h / 2);
+          x.fill();
+        }
+        return;
+      }
+      k.tracking(x, s * 0.012);
+      x.font = k.font('Josefin Sans', Math.min(Math.round(h * 0.56), k.fitSize(x, text, 'Josefin Sans', w * 0.9, h * 0.56)));
+      x.fillStyle = solid ? '#000' : k.GOLD_LIGHT;
+      x.fillText(text, w / 2, h / 2 + 1);
+    });
+    ctx.drawImage(c, 0, top);
+    return bh;
+  }
+
+  // What the band says: kickoff and calls before the match, neutrals during it.
+  function bandText(g, st) {
+    const m = st.match, neutral = (st.sides || {}).neutral || [];
+    if (st.note) return st.note;
+    if (m.status) return m.status;
+    if (st.phase === 'push') return st.scorer === 'home' ? `${m.home.abbr} PUSH  ▼` : `▲  ${m.away.abbr} PUSH`;
+    if (st.phase === 'ftwait') return 'FULL TIME?';
+    if (st.phase === 'fulltime') return st.result && st.result.winner ? 'FULL TIME' : 'FULL TIME · A DRAW';
+    if (st.phase === 'pre') {
+      const called = (st.called || []).length;
+      const lines = [`KICK-OFF ${g.k.timeStr(new Date(m.kickoff * 1000))}`, 'CALL THE SCORE'];
+      if (called) lines.push(`${called} CALL${called > 1 ? 'S' : ''} IN`);
+      if (neutral.length) lines.push(joinNames(neutral));
+      return lines[Math.floor(g.now() / 4) % lines.length];
+    }
+    return joinNames(neutral);
+  }
+
+  // The split: two fields, two clubs, the band and the score. The band eases toward the Pi's
+  // position, so a tap war moves it smoothly and a flood sweeps it to the edge.
+  function splitScreen(g, st) {
+    const { ctx, W, H, s } = g;
+    const m = st.match;
+    const now = performance.now() / 1000;
+    const target = st.rule == null ? 0.5 : st.rule;
+    if (g.cRule == null || g.cMatch !== m.id) { g.cRule = target; g.cMatch = m.id; }
+    g.cRule += (target - g.cRule) * Math.min(1, (now - (g.cAt || now)) * 7);
+    g.cAt = now;
+    const R = Math.round(H * g.cRule);
+    const sides = st.sides || {};
+    const pre = st.phase === 'pre';
+    const result = st.result;
+    const score = result ? { home: result.home, away: result.away } : st.score || { home: 0, away: 0 };
+    const numSize = Math.round(s * 0.36);
+    const numW = pre ? 0 : Math.round(numSize * 0.5 + s * 0.06);
+    const pad = Math.round(s * 0.06);
+    const bw = W - pad * 2 - numW, bh = Math.round(H * 0.36);
+
+    ctx.fillStyle = m.home.color;
+    ctx.fillRect(0, 0, W, R);
+    ctx.fillStyle = m.away.color;
+    ctx.fillRect(0, R, W, H - R);
+    const half = Math.round(s * 0.0375);
+    // each club's block sits in the middle of its field, cut off where the other field starts
+    const blocks = [[m.home, sides.home, 0, R], [m.away, sides.away, R, H]];
+    for (const [t, names, y0, y1] of blocks) {
+      if (y1 - y0 < 8) continue;
+      const c = clubBlock(g, t, names, bw, bh);
+      const top = Math.round((y0 + y1) / 2 - bh / 2 + (y0 === 0 ? -half : half));
+      const from = Math.max(0, y0 + (y0 === 0 ? 0 : half) - top), to = Math.min(bh, y1 - (y0 === 0 ? half : 0) - top);
+      if (to > from) ctx.drawImage(c, 0, from, bw, to - from, pad, top + from, bw, to - from);
+    }
+    if (!pre) {
+      const gap = Math.round(s * 0.05);
+      const hn = numeral(g, score.home, m.home.ink, numSize), an = numeral(g, score.away, m.away.ink, numSize);
+      if (R - half - gap - hn.height > -hn.height) ctx.drawImage(hn, W - pad - hn.width + 4, R - half - gap - hn.height + Math.round(numSize * 0.04));
+      if (R + half + gap < H) ctx.drawImage(an, W - pad - an.width + 4, R + half + gap);
+    }
+    band(g, ctx, Math.min(H - half, Math.max(half, R)), bandText(g, st), st.phase === 'push' || !!st.note);
+    if (st.phase === 'push') countdown(g, st, st.scorer === 'home' ? H - 6 : 4);
+  }
+
+  // A goal that reached the edge: the scorers' colour fills the wall, a gold fan, GOAL, the
+  // club and every supporter's name in huge type, one after another.
+  function floodScreen(g, st, e) {
+    const { ctx, k, W, H, s } = g;
+    const m = st.match, side = st.scorer, t = m[side];
+    const names = (st.sides || {})[side] || [];
+    g.cRule = side === 'home' ? 1 : 0;
+    const key = `flood|${st.at}`;
+    const layer = g.layer(key, (x) => {
+      x.fillStyle = t.color;
+      x.fillRect(0, 0, W, H);
+      // the fan opens from the foot of the wall
+      k.sunburst(x, W / 2, H, H * 1.05, 26, k.GOLD, 0.2, 0);
+      x.fillStyle = k.GOLD;
+      x.fillRect(0, H - 4, W, 4);
+      x.textAlign = 'center';
+      x.textBaseline = 'alphabetic';
+      const gs = k.fitSize(x, 'GOAL', TALL, W * 0.88, H * 0.3);
+      x.font = k.font(TALL, gs);
+      x.fillStyle = k.GOLD_LIGHT;
+      k.tracking(x, s * 0.02);
+      x.fillText('GOAL', W / 2 + s * 0.01, Math.round(H * 0.06 + gs * 0.78));
+      k.tracking(x, s * 0.03);
+      x.font = k.font('Josefin Sans', Math.round(s * 0.07));
+      x.fillStyle = t.ink;
+      x.fillText(t.name, W / 2, Math.round(H * 0.06 + gs * 0.78 + s * 0.12));
+      k.tracking(x, 0);
+    });
+    ctx.globalAlpha = st.pushed === true ? 1 : ease(e / 0.5);
+    ctx.drawImage(layer, 0, 0);
+    // the names land one by one, as big as they'll go
+    const top = Math.round(H * 0.47), room = H * 0.47;
+    const list = names.length ? names : [t.abbr];
+    const lh = Math.min(Math.round(s * 0.2), Math.floor(room / list.length));
+    list.forEach((n, i) => {
+      const at = 0.5 + i * 0.35;
+      if (e < at) return;
+      const c = g.sprite(`floodname|${n}|${t.ink}|${lh}`, W, lh, (x, w, h) => {
+        x.textAlign = 'center';
+        x.textBaseline = 'middle';
+        k.tracking(x, s * 0.01);
+        x.font = k.font(TALL, Math.min(Math.round(h * 0.95), k.fitSize(x, n, TALL, w * 0.86, h * 0.95)));
+        x.fillStyle = t.ink;
+        x.fillText(n, w / 2, h / 2 + h * 0.06);
+      });
+      ctx.globalAlpha = ease((e - at) / 0.25);
+      ctx.drawImage(c, 0, top + i * lh);
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  // Full time with a winner: their colour holds the wall with the final score.
+  function fullTimeScreen(g, st, e) {
+    const { ctx, k, W, H, s } = g;
+    const m = st.match, r = st.result, t = m[r.winner];
+    g.cRule = r.winner === 'home' ? 1 : 0;
+    const names = (st.sides || {})[r.winner] || [];
+    const layer = g.layer(`ft|${st.at}`, (x) => {
+      x.fillStyle = t.color;
+      x.fillRect(0, 0, W, H);
+      k.sunburst(x, W / 2, H, H * 1.05, 26, k.GOLD, 0.13, 0);
+      x.fillStyle = k.GOLD;
+      x.fillRect(0, H - 4, W, 4);
+      let y = Math.round(H * 0.07);
+      x.textAlign = 'center';
+      x.textBaseline = 'top';
+      k.tracking(x, s * 0.03);
+      x.font = k.font('Josefin Sans', Math.round(s * 0.055));
+      x.fillStyle = k.GOLD_LIGHT;
+      x.fillText('FULL TIME', W / 2 + s * 0.015, y);
+      y += Math.round(s * 0.1);
+      const as = Math.min(Math.round(H * 0.26), k.fitSize(x, t.abbr, TALL, W * 0.8, H * 0.26));
+      x.font = k.font(TALL, as);
+      x.fillStyle = t.ink;
+      k.tracking(x, s * 0.01);
+      x.fillText(t.abbr, W / 2, y);
+      y += Math.round(as * 0.86);
+      // the winner's score first: 2 – 1, then who they beat
+      const won = r.winner === 'home' ? [r.home, r.away] : [r.away, r.home];
+      const line = `${won[0]} – ${won[1]}`;
+      x.font = k.font(TALL, Math.round(s * 0.24));
+      x.fillStyle = k.GOLD_LIGHT;
+      x.fillText(line, W / 2, y);
+      y += Math.round(s * 0.25);
+      k.tracking(x, s * 0.02);
+      const beat = `V ${m[r.winner === 'home' ? 'away' : 'home'].name}`;
+      x.font = k.font('Josefin Sans', Math.min(Math.round(s * 0.05), k.fitSize(x, beat, 'Josefin Sans', W * 0.84, s * 0.05)));
+      x.fillStyle = t.ink;
+      x.globalAlpha = 0.75;
+      x.fillText(beat, W / 2, y);
+      x.globalAlpha = 1;
+      y += Math.round(s * 0.12);
+      k.tracking(x, s * 0.006);
+      if (names.length) {
+        const b = nameLines(g, x, names, W * 0.84, H * 0.2, 3, Math.round(s * 0.075));
+        const px = Math.min(b.size, Math.round(s * 0.075));
+        x.font = k.font('Josefin Sans', px);
+        x.fillStyle = t.ink;
+        b.lines.forEach((l, i) => x.fillText(l, W / 2, y + i * px * 1.25));
+      }
+      k.tracking(x, 0);
+    });
+    ctx.globalAlpha = e < 1 ? 0.15 : 1; // a slow crossfade over the last frame of the match
+    ctx.drawImage(layer, 0, 0);
+    ctx.globalAlpha = 1;
+  }
+
+  // A deco crown for the season's leader, drawn once.
+  function crown(g, size) {
+    return g.sprite(`crown|${size}`, size + 2, size + 2, (x) => {
+      const w = size, h = size * 0.78, y0 = (size - h) / 2 + 1;
+      x.fillStyle = g.k.GOLD_LIGHT;
+      x.beginPath();
+      x.moveTo(1, y0 + h);
+      x.lineTo(1, y0 + h * 0.3);
+      x.lineTo(1 + w * 0.27, y0 + h * 0.62);
+      x.lineTo(1 + w * 0.5, y0);
+      x.lineTo(1 + w * 0.73, y0 + h * 0.62);
+      x.lineTo(1 + w, y0 + h * 0.3);
+      x.lineTo(1 + w, y0 + h);
+      x.closePath();
+      x.fill();
+      x.fillStyle = '#000';
+      x.fillRect(1 + Math.round(w * 0.12), Math.round(y0 + h * 0.76), Math.round(w * 0.76), Math.max(1, Math.round(h * 0.08)));
+    });
+  }
+
+  // The card: the final score, who called it, the season table and the forfeit.
+  function tableScreen(g, st) {
+    const { ctx, k, W, H, s } = g;
+    const m = st.match, r = st.result || {}, table = st.table || [], losers = r.losers || [];
+    const key = `table|${st.at}`;
+    ctx.drawImage(g.layer(key, (x) => {
+      const hh = base(g, x, 'FULL TIME');
+      let y = hh + Math.round(s * 0.01);
+      // the score, with each club's colour as a bar under its name
+      const fs = Math.round(s * 0.17);
+      x.font = k.font(TALL, fs);
+      x.textBaseline = 'alphabetic';
+      const parts = [m.home.abbr, `${r.home} – ${r.away}`, m.away.abbr];
+      const gapW = s * 0.06;
+      const widths = parts.map((p) => x.measureText(p).width);
+      let cx = W / 2 - (widths.reduce((a, b) => a + b, 0) + gapW * 2) / 2;
+      parts.forEach((p, i) => {
+        x.fillStyle = i === 1 ? k.GOLD_LIGHT : k.IVORY;
+        x.textAlign = 'left';
+        x.fillText(p, cx, y + fs * 0.8);
+        if (i !== 1) {
+          x.fillStyle = (i === 0 ? m.home : m.away).color;
+          x.fillRect(Math.round(cx), Math.round(y + fs * 0.88), Math.round(widths[i]), 4);
+        }
+        cx += widths[i] + gapW;
+      });
+      y += Math.round(fs * 1.05 + s * 0.04);
+      // who called it
+      const calls = r.calls || [];
+      const called = r.called || [];
+      const label = !calls.length ? 'NO CALLS TONIGHT' : !called.length ? 'NOBODY CALLED IT' : r.exact ? `CALLED IT  ${r.home}-${r.away}` : 'RIGHT RESULT';
+      y = stack(g, x, y, [[label, 'Josefin Sans', Math.round(s * 0.042), k.MUTED, s * 0.02]]) - s * 0.01;
+      if (called.length) {
+        const b = k.fitWrapped(x, joinNames(called), 'Josefin Sans', W * 0.84, s * 0.16, 2, 1.2);
+        const px = Math.min(b.size, Math.round(s * 0.075));
+        x.font = k.font('Josefin Sans', px);
+        x.fillStyle = k.GOLD_LIGHT;
+        x.textAlign = 'center';
+        x.textBaseline = 'top';
+        b.lines.forEach((l, i) => x.fillText(l, W / 2, y + i * px * 1.2));
+        y += b.lines.length * px * 1.2;
+      }
+      y += s * 0.04;
+      k.decoRule(x, W * 0.22, y, W * 0.56, s);
+      y += s * 0.05;
+      // the season, a crown on the leader
+      y = stack(g, x, y, [['THE SEASON', 'Josefin Sans', Math.round(s * 0.042), k.MUTED, s * 0.03]]);
+      const foot = losers.length ? Math.round(s * 0.31) : Math.round(s * 0.06);
+      const rows = table.slice(0, Math.max(1, Math.floor((H - foot - y) / (s * 0.085))));
+      const rowH = Math.round(s * 0.085);
+      const cs = Math.round(rowH * 0.7);
+      rows.forEach((row, i) => {
+        const cy = Math.round(y + i * rowH + rowH / 2);
+        const lead = i === 0 && row.points > 0;
+        if (lead) x.drawImage(crown(g, cs), Math.round(W * 0.09), cy - cs / 2 - 2);
+        x.textBaseline = 'middle';
+        x.font = k.font('Josefin Sans', Math.round(s * 0.062));
+        x.fillStyle = lead ? k.GOLD_LIGHT : k.IVORY;
+        x.textAlign = 'left';
+        x.fillText(row.name, Math.round(W * 0.09 + cs + s * 0.04), cy + 1);
+        x.textAlign = 'right';
+        x.fillText(String(row.points), Math.round(W * 0.91), cy + 1);
+      });
+      if (!rows.length || !table.length) stack(g, x, y, [['NO POINTS YET', 'Josefin Sans', Math.round(s * 0.05), k.MUTED]]);
+      // the forfeit
+      if (losers.length) {
+        let fy = H - foot + s * 0.02;
+        k.decoRule(x, W * 0.22, fy, W * 0.56, s);
+        fy += s * 0.05;
+        fy = stack(g, x, fy, [[losers.join(' & '), 'Josefin Sans', Math.round(s * 0.075), k.IVORY, s * 0.01]]);
+        stack(g, x, fy - s * 0.01, [[st.forfeit || 'LOSER POURS', TALL, Math.round(s * 0.11), k.GOLD_LIGHT, s * 0.02]]);
+      }
+    }), 0, 0);
+  }
+
+  RENDERERS.colours = colours;
+
   window.BarParty = {
     register(name, renderer) { RENDERERS[name] = renderer; },
     has(name) { return name in RENDERERS; },

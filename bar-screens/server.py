@@ -7,6 +7,7 @@ the walls. Standard library only, so it runs on a fresh Raspberry Pi OS.
 """
 
 import argparse
+import concurrent.futures
 import datetime
 import json
 import mimetypes
@@ -70,7 +71,7 @@ NEWS_FEEDS = {
 }
 VISUAL_STYLES = ["mix", "botanical", "deco", "lift", "clockface", "skyline", "bubbles", "fans"]
 GAMES = [["breaker", "Brick Breaker"], ["duel", "Deco Duel"], ["snake", "Serpentine"], ["quickdraw", "Quick Draw"],
-         ["closest", "Closest Wins"]]  # the last ones are party games the Pi referees (partygames.py)
+         ["closest", "Closest Wins"], ["colours", "Colours"]]  # the last ones are party games the Pi referees (partygames.py)
 
 for ext, ctype in ((".webp", "image/webp"), (".avif", "image/avif"), (".mp4", "video/mp4"),
                    (".m4v", "video/mp4"), (".webm", "video/webm"), (".mkv", "video/x-matroska")):
@@ -175,6 +176,9 @@ def default_channels():
         "weather": {"place": "", "label": "", "lat": None, "lon": None},
         "visuals": {"style": "mix"},
         "games": {"game": "breaker", "sipsUntil": 0},  # sips are on for the night until sipsUntil
+        # Colours (a party game on channel 6): the match the host pinned (ESPN's teams and colours,
+        # kept so a restart doesn't need the internet), the forfeit line and the tap war after a goal
+        "colours": {"pin": None, "forfeit": "LOSER POURS", "push": True},
     }
 
 
@@ -461,6 +465,23 @@ class Store:
         if isinstance(weather, dict) and "place" in weather:
             place = _str(80)(weather["place"]).strip()
             found = geocode(place) if place else {"place": "", "label": "", "lat": None, "lon": None}
+        pinned = None  # Colours: the match to pin ({} to unpin), looked up on ESPN first
+        colours = patch.get("colours")
+        if isinstance(colours, dict) and "pin" in colours:
+            pin = colours["pin"]
+            if pin is None:
+                pinned = {}
+            elif isinstance(pin, dict) and pin.get("league") in SOCCER and re.fullmatch(r"\d{1,12}", str(pin.get("id", ""))):
+                try:
+                    pinned = find_match(pin["league"], str(pin["id"]), pin.get("date") if isinstance(pin.get("date"), str) else None)
+                except Exception:
+                    pinned = None
+                if not pinned:
+                    raise ApiError(502, "Couldn't find that match on ESPN. Check the Pi is online and try again.")
+                for side in ("home", "away"):
+                    pinned[side].pop("score", None)  # the wall's score comes only from the room
+            else:
+                raise ApiError(400, "Bad match.")
         with self.lock:
             conf = self.state["channels"]
             scores = patch.get("scores")
@@ -477,6 +498,16 @@ class Store:
                 conf["games"]["game"] = games["game"]
             if isinstance(games, dict) and isinstance(games.get("sips"), bool):
                 conf["games"]["sipsUntil"] = partygames.sips_until(time.time()) if games["sips"] else 0
+            colours = patch.get("colours")
+            if isinstance(colours, dict):
+                if isinstance(colours.get("forfeit"), str):
+                    conf["colours"]["forfeit"] = " ".join(_str(32)(colours["forfeit"]).split()).upper() or "LOSER POURS"
+                if isinstance(colours.get("push"), bool):
+                    conf["colours"]["push"] = colours["push"]
+                if pinned is not None:
+                    conf["colours"]["pin"] = pinned or None
+                    if pinned:
+                        conf["games"]["game"] = "colours"  # pinning a match is asking for Colours
             if found is not None:
                 conf["weather"] = found
             self._changed()
@@ -565,14 +596,18 @@ def geocode(place):
             "lat": r["latitude"], "lon": r["longitude"]}
 
 
+def _hexcolor(v):
+    return "#" + v.lower() if isinstance(v, str) and re.fullmatch(r"[0-9a-fA-F]{6}", v) else None
+
+
 def _team(competitor):
     t = competitor.get("team") or {}
-    color = t.get("color") or ""
     return {
         "abbr": (t.get("abbreviation") or t.get("shortDisplayName") or "?")[:4].upper(),
         "name": t.get("shortDisplayName") or t.get("displayName") or "",
         "score": str(competitor.get("score") or ""),
-        "color": "#" + color if re.fullmatch(r"[0-9a-fA-F]{6}", color) else None,
+        "color": _hexcolor(t.get("color")),
+        "alt": _hexcolor(t.get("alternateColor")),
     }
 
 
@@ -613,6 +648,92 @@ def fetch_scores(conf):
     if failures and not leagues:
         raise IOError("scores unavailable")
     return {"leagues": leagues}
+
+
+# Colours (partygames.py) needs one football match at a time: tonight's list for the host to pin
+# from, then that match's kickoff and full-time result. ESPN answers 400 to a date range, so these
+# ask for one day at a time (or no date: its current matchday).
+SOCCER = {k: v for k, v in LEAGUES.items() if v[0].startswith("soccer/")}
+
+
+def espn_board(league, date=None):
+    """One league's ESPN scoreboard for one day (a date) or its current matchday (None), as
+    matches: [{id, league, leagueName, date, state, completed, detail, home, away}]."""
+    path, title = SOCCER[league]
+    url = f"https://site.api.espn.com/apis/site/v2/sports/{path}/scoreboard" + (f"?dates={date:%Y%m%d}" if date else "")
+    data = json.loads(fetch_url(url))
+    out = []
+    for ev in data.get("events", []):
+        comp = (ev.get("competitions") or [{}])[0]
+        sides = {c.get("homeAway"): c for c in comp.get("competitors", [])}
+        if "home" not in sides or "away" not in sides or not ev.get("id"):
+            continue
+        kind = ((comp.get("status") or ev.get("status") or {}).get("type") or {})
+        out.append({
+            "id": str(ev["id"]), "league": league, "leagueName": title, "date": ev.get("date") or comp.get("date"),
+            "state": kind.get("state", "pre"), "completed": bool(kind.get("completed")),
+            "detail": kind.get("shortDetail", ""), "home": _team(sides["home"]), "away": _team(sides["away"]),
+        })
+    return out
+
+
+def _kickoff(m):
+    try:
+        return datetime.datetime.fromisoformat((m.get("date") or "").replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return 0
+
+
+def find_match(league, event_id, date=None):
+    """One match by ESPN id, or None. `date` (its ISO kickoff, if known) says which days to ask."""
+    days = [None]
+    try:
+        k = datetime.datetime.fromisoformat((date or "").replace("Z", "+00:00"))
+        days += [k.date(), k.date() - datetime.timedelta(days=1), k.date() + datetime.timedelta(days=1)]
+    except ValueError:
+        today = datetime.date.today()
+        days += [today, today + datetime.timedelta(days=1)]
+    failures = 0
+    for day in days:
+        try:
+            hit = next((m for m in espn_board(league, day) if m["id"] == event_id), None)
+        except Exception:
+            failures += 1
+            continue
+        if hit:
+            return hit
+    if failures == len(days):
+        raise IOError("ESPN unavailable")
+    return None
+
+
+_tonight = {"at": 0, "matches": []}
+
+
+def tonight_matches():
+    """Football on tonight and tomorrow in every league ESPN gives us, soonest first, for the host
+    to pin one for Colours. Asked in parallel and kept for five minutes (one, if there were none)."""
+    if time.time() - _tonight["at"] < (300 if _tonight["matches"] else 60):
+        return _tonight["matches"]
+    today = datetime.date.today()
+    asks = [(k, d) for k in SOCCER for d in (None, today, today + datetime.timedelta(days=1))]
+    found, failures = {}, 0
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+        for fut in [pool.submit(espn_board, k, d) for k, d in asks]:
+            try:
+                for m in fut.result():
+                    found[m["id"]] = m
+            except Exception:
+                failures += 1
+    if failures == len(asks):
+        raise ApiError(502, "Couldn't reach ESPN for tonight's matches. Check the Pi is online.")
+    now = time.time()
+    matches = sorted((m for m in found.values() if now - 3 * 3600 < _kickoff(m) < now + 36 * 3600 and not m["completed"]), key=_kickoff)
+    for m in matches:
+        for side in ("home", "away"):
+            m[side].pop("score", None)  # the room keeps its own score: no spoilers on any screen
+    _tonight.update(at=now, matches=matches)
+    return matches
 
 
 def fetch_news(conf):
@@ -755,6 +876,7 @@ class GameHub:
     to the game on the Pi, and the hub sends the wall its view and each phone its own one."""
     COLORS = ["#e9c46a", "#2fd39a", "#5aa2ff", "#ff4d6a", "#b98aff", "#ffa94d", "#efe6d2", "#5ef0ff"]
     clock = staticmethod(time.time)
+    espn = staticmethod(find_match)  # a party game's live data (Colours: its pinned match)
 
     def __init__(self, store):
         self.store = store
@@ -854,6 +976,25 @@ class GameHub:
                 if self.party:
                     self.party.changed()
 
+    def poll(self):
+        """Fetches what the party game is waiting for from the internet (Colours: ESPN's word on
+        its match), outside the lock so a slow feed never holds up the game. Called every few
+        seconds from its own thread; the game says when it wants a fetch."""
+        with self.lock:
+            party = self.party
+            ask = party.wants(self.clock()) if party and hasattr(party, "wants") else None
+        if not ask:
+            return
+        try:
+            got = self.espn(*ask)
+        except Exception:
+            got = IOError("unavailable")
+        with self.lock:
+            if self.party is party:
+                party.fetched(ask, got)
+                if party.version != self.party_sent:
+                    self._send_party()
+
     def tick(self):
         """Runs the party game's clock (called four times a second)."""
         with self.lock:
@@ -920,6 +1061,15 @@ class GameHub:
             msg["on"] = _bool(body.get("on"))
         elif kind == "pour":
             msg["to"] = _num(0, 7, True)(body.get("to"))
+        elif kind == "tap":
+            if body.get("n") is not None:  # taps a pad counted up since its last send
+                msg["n"] = _num(1, 40, True)(body["n"])
+        elif kind == "call":
+            msg["home"] = _num(0, 20, True)(body.get("home"))
+            msg["away"] = _num(0, 20, True)(body.get("away"))
+            msg["lock"] = _bool(body.get("lock", False))
+        elif kind == "goal":
+            msg["side"] = _choice("home", "away")(body.get("side"))
         elif kind not in partygames.INPUTS:
             raise ValueError
         return msg
@@ -1481,6 +1631,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, self.feeds.get(m.group(1)))
             if path == "/api/game/years":
                 return self._json(200, self._years())
+            if path == "/api/colours/matches":
+                return self._json(200, {"matches": tonight_matches(), "leagues": [[k, v[1]] for k, v in SOCCER.items()]})
             if path == "/api/live/stream":
                 return self._stream(self.live.subscribe(), self.live.unsubscribe)
             if path == "/api/live/poll":
@@ -1536,6 +1688,11 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, result or {"ok": True})
         if method == "POST" and path == "/api/game/years":
             return self._json(200, self._years(self._read_json().get("text")))
+        if method == "POST" and path == "/api/colours/season":
+            # Colours: start a new season (the grudge table goes back to nobody)
+            partygames.Season(store.data_dir).reset()
+            self.hub.roster_changed()
+            return self._json(200, {"ok": True})
         m = re.fullmatch(r"/api/live/(offer|answer|reoffer|leave)", path)
         if m and method == "POST":
             result = getattr(self.live, m.group(1))(self._read_json())
@@ -1607,7 +1764,13 @@ def main():
                 hub.prune()
                 live.prune()
 
+    def poller():
+        while True:
+            time.sleep(5)
+            hub.poll()
+
     threading.Thread(target=ticker, daemon=True).start()
+    threading.Thread(target=poller, daemon=True).start()
     threading.Thread(target=tunnel.run, daemon=True).start()
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     server.daemon_threads = True

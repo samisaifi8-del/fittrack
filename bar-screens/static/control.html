@@ -299,6 +299,14 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
       <p class="note" id="sipsNote"></p>
     </div>
     <div class="set-group">
+      <label class="field"><span class="lab">Colours: tonight's match</span><select id="coloursMatch"><option value="">No match pinned</option></select></label>
+      <p class="note" id="coloursNote">The wall splits into the two clubs' colours and guests pick a side on their phones. Pinning a match puts Colours on channel 6.</p>
+      <label class="field"><span class="lab">Forfeit for the worst call</span><input type="text" id="coloursForfeit" maxlength="32" placeholder="LOSER POURS"></label>
+      <label class="switch"><input type="checkbox" id="coloursPush"><span></span>Tap war after a goal</label>
+      <p class="note">Off: a goal just floods the wall with the scorers' colour.</p>
+      <div class="row"><button type="button" class="btn small" id="coloursSeason">New season</button><span class="note grow">Clears the season table (3 points for an exact call, 1 for the right result).</span></div>
+    </div>
+    <div class="set-group">
       <label class="field"><span class="lab">Closest Wins: your own WHAT YEAR? songs and films</span>
         <textarea id="yearsText" rows="4" placeholder="Daft Punk - One More Time - 2000" aria-describedby="yearsNote" spellcheck="false"></textarea></label>
       <div class="row"><button type="button" class="btn small" id="yearsSave">Save</button><span class="note grow" id="yearsNote">One per line: artist - title - year. Every third round of Closest Wins asks release years, and yours go in first.</span></div>
@@ -589,6 +597,10 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     $('sipsNote').textContent = sipsOn
       ? `On until ${new Date(conf.games.sipsUntil * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}. Some games hand out a sip now and then, only to guests whose phone said they're drinking. Any drink or water counts; the wall never shows who is or isn't.`
       : 'Off: no game mentions drinking. Switch it on for the night and phones ask "Drinking tonight?" when they join.';
+    const col = conf.colours || {};
+    keep($('coloursForfeit'), col.forfeit || '');
+    $('coloursPush').checked = col.push !== false;
+    renderColoursMatches();
     $('playUrl').innerHTML = `Guests join from their phones at <b>${esc(location.host)}/play</b> (same Wi-Fi).`;
     const wx = conf.weather;
     $('wxNote').textContent = wx.lat != null ? `Showing weather for ${wx.label}${wx.region ? ', ' + wx.region : ''}.` : 'Not set yet. Type your town and press Set.';
@@ -679,6 +691,48 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
   $('visStyle').addEventListener('change', (e) => patchChannels({ visuals: { style: e.target.value } }));
   $('gamePick').addEventListener('change', (e) => patchChannels({ games: { game: e.target.value } }));
   $('sipsOn').addEventListener('change', (e) => patchChannels({ games: { sips: e.target.checked } }));
+  // Colours: tonight's football from ESPN, soonest first; picking one pins it (and switches the
+  // games channel to Colours). The list is fetched when Channel settings opens.
+  let coloursList = null;
+  function renderColoursMatches() {
+    const pin = (state.channels.colours || {}).pin;
+    const sel = $('coloursMatch');
+    const list = (coloursList || []).filter((m) => !pin || m.id !== pin.id);
+    const when = (iso) => new Date(iso).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+    const label = (m) => `${m.home.name} v ${m.away.name} · ${when(m.date)}${m.state === 'in' ? ' (on now)' : ''}`;
+    const groups = new Map();
+    for (const m of list) groups.set(m.leagueName, [...(groups.get(m.leagueName) || []), m]);
+    const html = `<option value="">${coloursList ? 'No match pinned' : 'Loading tonight\'s matches…'}</option>`
+      + (pin ? `<option value="pinned">${esc(label(pin))}</option>` : '')
+      + [...groups].map(([name, ms]) => `<optgroup label="${esc(name)}">${ms.map((m) => `<option value="${esc(m.league)}|${esc(m.id)}|${esc(m.date)}">${esc(label(m))}</option>`).join('')}</optgroup>`).join('');
+    if (sel.dataset.html !== html) { sel.dataset.html = html; sel.innerHTML = html; }
+    if (sel !== document.activeElement) sel.value = pin ? 'pinned' : '';
+    $('coloursNote').textContent = pin
+      ? `Pinned: ${pin.home.name} v ${pin.away.name}, ${when(pin.date)}. Guests pick a side at /play${new Date(pin.date) > new Date() ? ' and can call the score until kickoff' : ''}.`
+      : coloursList && !coloursList.length ? 'ESPN has no football on tonight or tomorrow.' : 'The wall splits into the two clubs\' colours and guests pick a side on their phones. Pinning a match puts Colours on channel 6.';
+  }
+  async function loadColoursMatches() {
+    try { coloursList = (await api('GET', '/api/colours/matches')).matches; } catch (e) { coloursList = []; toast(e.message); }
+    renderColoursMatches();
+  }
+  $('coloursMatch').addEventListener('change', async (e) => {
+    const v = e.target.value;
+    if (v === 'pinned') return;
+    const [league, id, date] = v.split('|');
+    try {
+      await api('PATCH', '/api/channels', { colours: { pin: v ? { league, id, date } : null } });
+      if (v && screenById(cur).channel !== 'games') patchScreen(cur, { channel: 'games', pinned: null });
+      toast(v ? 'Pinned. Colours is on the wall.' : 'Unpinned.');
+    } catch (err) { toast(err.message); renderColoursMatches(); }
+  });
+  $('coloursForfeit').addEventListener('change', (e) => patchChannels({ colours: { forfeit: e.target.value } }));
+  $('coloursPush').addEventListener('change', (e) => patchChannels({ colours: { push: e.target.checked } }));
+  $('coloursSeason').addEventListener('click', async () => {
+    if (!confirm('Start a new Colours season? The table goes back to nobody.')) return;
+    try { await api('POST', '/api/colours/season'); toast('New season.'); } catch (e) { toast(e.message); }
+  });
+  $('chSettings').addEventListener('toggle', () => { if ($('chSettings').open && !coloursList) loadColoursMatches(); });
+
   function yearsNote(r) {
     $('yearsNote').textContent = `${r.count} saved.${r.bad.length ? ` Line${r.bad.length > 1 ? 's' : ''} ${r.bad.slice(0, 6).join(', ')} need${r.bad.length > 1 ? '' : 's'} "artist - title - year".` : ''} Every third round of Closest Wins asks release years, and yours go in first.`;
   }

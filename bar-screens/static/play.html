@@ -258,6 +258,7 @@ input[type="text"] {
 
   const CONTROLS = { breaker: 'slider', duel: 'slider', snake: 'dpad', quickdraw: 'tap' };
   let me = null, roster = { players: [], game: 'breaker', games: [] }, status = null, games = [], built = '';
+  let left = false; // tapped Leave: nothing joins again on its own until Join is tapped
   let party = null, clockOffset = 0; // the party game's view of this phone, from the Pi (partygames.py)
 
   // "Drinking tonight?" is remembered for the night (14 hours), then asked again.
@@ -317,12 +318,16 @@ input[type="text"] {
     inflight = true;
     post('/api/game/input', { pid, ...input }).catch(onInputError).finally(() => { inflight = false; flushMoves(); });
   }
-  function onInputError(e) { if (e.status === 403) join(true); }
+  function onInputError(e) { if (e.status === 403 && me) join(true); }
 
   async function join(quiet) {
+    if (quiet && left) return;
+    if (!quiet) left = false;
     const name = $('name').value.trim() || store.get('name') || '';
     try {
-      me = await post('/api/game/join', { pid, name, drinks: drinks() });
+      const joined = await post('/api/game/join', { pid, name, drinks: drinks() });
+      if (left) { post('/api/game/leave', { pid }).catch(() => {}); return; } // Leave was tapped meanwhile
+      me = joined;
       store.set('name', me.name);
       document.documentElement.style.setProperty('--me', me.color);
       $('meName').textContent = me.name;
@@ -772,12 +777,15 @@ input[type="text"] {
 
   $('joinBtn').addEventListener('click', () => join(false));
   $('name').addEventListener('keydown', (e) => { if (e.key === 'Enter') join(false); });
-  $('leaveBtn').addEventListener('click', async () => {
-    try { await post('/api/game/leave', { pid }); } catch (e) {}
+  $('leaveBtn').addEventListener('click', () => {
+    // Off the pad first: the roster without this phone can arrive before the reply, and it
+    // mustn't look like a dropped connection to rejoin from.
     me = null;
+    left = true;
     built = '';
     $('padView').hidden = true;
     $('joinView').hidden = false;
+    post('/api/game/leave', { pid }).catch(() => {});
   });
   $('startBtn').addEventListener('click', () => send({ kind: 'start' }));
   for (const box of [$('drinkPick'), $('drinkSwitch')]) {

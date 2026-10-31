@@ -1,4 +1,4 @@
-"""Party games the Pi referees: the shared game kit, Closest Wins and Five Clues.
+"""Party games the Pi referees: the shared game kit, Closest Wins, Five Clues and Five Lights.
 
 The arcade games (static/games.js) run on the wall and only use the Pi to pass controller input
 along. Quiz and vote games are different: everyone answers at once, nobody should see anyone
@@ -56,16 +56,19 @@ INPUTS = ("move", "dir", "tap", "start", "buzz", "next", "end", "pick", "number"
 
 # The pads play.html can show, by a pad view's "ui". Every pad view also has "key" (the pad is
 # rebuilt when it changes), and may have "title" (small gold line), "deadline" (server time the
-# countdown bar runs to), "notice" ({title, text}: a sip), "pour" ({options: [{slot, name}]}).
+# countdown bar runs to), "notice" ({title, text}: a sip), "pour" ({options: [{slot, name}]}),
+# "lights" ({lit, of}: a row of bulbs, Five Lights).
 #   wait    {big, text}                         eyes on the wall
-#   start   {big, text, label}                  a lobby: the Start button
+#   start   {big, text, label, choices?: [{id, label}], chosen, choicesTitle}   a lobby: Start,
+#           and optionally a row of settings above it (each tap sends pick {id})
 #   number  {min, max, step, year, unit, value, locked}   the dial, with LOCK
 #   pick    {options: [{id, label, color?}], cols, chosen, locked}   2x2 grid or a list of names
 #   buzz    {label, value, locked, text}        one big BUZZ
-#   yesno   {yes, no, chosen, locked}           a pair of buttons
+#   yesno   {yes, no, chosen, locked, lead?, prompt?, text?, pair?}   a pair of buttons, under an
+#           optional prompt; pair: the second one is an ivory outline (I HAVE / NEVER)
 #   toggle  {id, label, on, text}               one switch, e.g. DOUBLE
 #   result  {big, text, tone}                   how you did (tone: win / good / plain)
-#   next    {big, text, buttons: [{kind, label}]}   end of a round
+#   next    {big, text, buttons: [{kind, label, quiet?}]}   end of a round (quiet: not gold)
 PADS = ("wait", "start", "number", "pick", "buzz", "yesno", "toggle", "result", "next")
 
 DROP_FOR = 15  # seconds a sip's gold drop stays by a name on the wall
@@ -929,4 +932,314 @@ class FiveClues(PartyGame):
         return super().pad(pid)
 
 
-PARTY_GAMES = {"closest": ClosestWins, "fiveclues": FiveClues}
+# ---------------------------------------------------------------- five lights
+
+# The tiers of the Five Lights deck, mildest first. The host picks one before starting; Cheeky is
+# the ceiling (nothing sexual, nothing about bodies, money or exes).
+TIERS = {"mild": "MILD", "dubai": "DUBAI LIFE", "cheeky": "CHEEKY"}
+HOUSE_MAX = 40  # characters: a house prompt still has to fit the wall in four lines
+
+
+def parse_house(text):
+    """The group's own Five Lights prompts (house.txt, from the box on the control page): one per
+    line, the part after "Never have I ever" (which is dropped if it's typed too). Blank lines and
+    lines starting with # are skipped. Returns (items, bad line numbers: too long to fit)."""
+    items, bad, seen = [], [], set()
+    for n, raw in enumerate((text or "").splitlines(), 1):
+        line = " ".join(raw.split())
+        if not line or line.startswith("#"):
+            continue
+        line = re.sub(r"^never\s+have\s+i\s+ever[\s,.:…-]*", "", line, flags=re.I).rstrip(" .!").upper()
+        if not line:
+            continue
+        if len(line) > HOUSE_MAX:
+            bad.append(n)
+            continue
+        uid = "h-" + hashlib.sha1(line.encode()).hexdigest()[:10]
+        if uid not in seen:
+            seen.add(uid)
+            items.append({"id": uid, "text": line, "tier": "house", "room": False})
+    return items, bad
+
+
+def out_times(n):
+    """Five Lights' reveal, in seconds from its start: the count shows at once, the names light up,
+    then each "I have" bulb goes out in turn. Returns when each goes out, when TELL IT opens and
+    the end (time enough to decide to tell it)."""
+    outs = [round(2.4 + 0.75 * i, 2) for i in range(n)]
+    tell = (outs[-1] if outs else 1.6) + 0.6
+    return {"outs": outs, "tell": round(tell, 2), "end": round(tell + (5.0 if n else 3.0), 2)}
+
+
+class FiveLights(PartyGame):
+    """Never Have I Ever on the wall. Everyone starts with five gold bulbs. A prompt goes up, every
+    phone answers I HAVE or NEVER at once (changeable until the clock runs out), then the wall says
+    how many have, lights up their names and puts one bulb out for each. Losing a bulb is a sip for
+    a drinker. Anyone who has can tap TELL IT for 30 seconds of the wall. Every fifth prompt is a
+    Room prompt: only the percentage shows, no names and no bulbs. Last one lit wins; Relight
+    starts again. Players who are out keep answering for fun, and late arrivals come in with as
+    many bulbs as whoever has fewest."""
+    key = "fivelights"
+    title = "Five Lights"
+    DECK = "nights"
+    BULBS = 5
+    ASK = 10
+    CARD = 6
+    STORY = 30
+    ROOM_EVERY = 5   # every fifth prompt is a Room prompt
+    HOUSE_EVERY = 4  # one regular prompt in four is a house prompt, while there are any
+    LOWER_EVERY = 3  # and one in three comes from the milder tiers (Dubai and Cheeky nights)
+
+    def __init__(self, hub, rand=None):
+        super().__init__(hub, rand)
+        self.bulbs = {}      # pid -> bulbs still lit, this game
+        self.answers = {}    # pid -> True (I have) / False (never), this prompt
+        self.n = 0           # prompts so far this game
+        self.regular = 0     # regular (not Room) prompts so far this game
+        self.prompt = None
+        self.teller = None   # who's telling the story of this prompt
+        self.lit_before = []  # who was lit before this reveal: they share it if everyone goes out
+        self.go("lobby")
+
+    # -- settings
+
+    def tier(self):
+        tier = self.hub.store.state["channels"]["games"].get("tier")
+        return tier if tier in TIERS else "mild"
+
+    def house_file(self):
+        return os.path.join(self.hub.store.data_dir, "house.txt")
+
+    def house(self):
+        try:
+            with open(self.house_file(), encoding="utf-8") as f:
+                return parse_house(f.read())[0]
+        except OSError:
+            return []
+
+    # -- players
+
+    def players(self):
+        here = super().players()
+        if self.phase != "lobby" and self.bulbs:
+            # someone arriving mid-game comes in level with whoever has fewest bulbs still lit
+            lit = [n for n in self.bulbs.values() if n > 0]
+            for pid, _ in here:
+                if pid not in self.bulbs:
+                    self.bulbs[pid] = min(lit) if lit else 0
+        return here
+
+    def lit(self):
+        return [pid for pid, _ in self.players() if self.bulbs.get(pid, 0) > 0]
+
+    # -- picking prompts
+
+    def pick_prompt(self, room):
+        deck = load_deck(self.DECK)
+        tiers = list(TIERS)
+        tier = self.tier()
+        milder = tiers[:tiers.index(tier)]
+        used = self.hub.used
+        if room:
+            # Room prompts come from the chosen tier and the milder ones: they're the soft ones
+            pool = [i for i in deck if i.get("room") and i.get("tier") in milder + [tier]]
+            picked = used.draw(self.DECK + ":room", pool, 1, self.rand)
+            if picked:
+                return picked[0]
+        self.regular += 1
+        house = self.house()
+        if house and self.regular % self.HOUSE_EVERY == 2:
+            return used.draw("house", house, 1, self.rand)[0]
+        if milder and self.regular % self.LOWER_EVERY == 0:
+            tier = self.rand.choice(milder)
+        pool = [i for i in deck if i.get("tier") == tier and not i.get("room")]
+        picked = used.draw(self.DECK + ":" + tier, pool, 1, self.rand) or used.draw(self.DECK + ":room", [i for i in deck if i.get("room")], 1, self.rand)
+        return picked[0] if picked else None
+
+    # -- the flow
+
+    def input(self, pid, msg):
+        if msg["kind"] == "start" and self.phase == "lobby" and len(self.players()) < 2:
+            self.notices[pid] = {"title": "ONE MORE", "text": "Five Lights needs at least two phones.", "at": self.now()}
+            return self.changed()
+        super().input(pid, msg)
+
+    def next_round(self):
+        """A new game (Relight): everyone here gets five bulbs again."""
+        here = self.players()
+        if len(here) < 2:
+            return self.go("lobby")
+        self.round += 1
+        self.points = {}
+        self.bulbs = {pid: self.BULBS for pid, _ in here}
+        self.n = self.regular = 0
+        self.drops = {}
+        leaders = self.podium(self.night) if self.round > 1 else []
+        self.go("card", self.CARD, heading="FIVE LIGHTS", lines=["FIVE BULBS EACH", "LAST ONE LIT WINS", TIERS[self.tier()] + " PROMPTS"], night=leaders)
+
+    def next_prompt(self):
+        if len(self.lit()) <= 1:
+            return self.end_game()
+        self.n += 1
+        room = self.n % self.ROOM_EVERY == 0
+        item = self.pick_prompt(room)
+        if not item:
+            return self.go("lobby", note="The prompt deck is missing.")
+        room = room and bool(item.get("room"))
+        self.prompt = {"id": item["id"], "text": item["text"], "room": room, "house": item.get("tier") == "house"}
+        self.answers, self.teller = {}, None
+        self.go("ask", self.ASK, text=item["text"], room=room, n=self.n)
+
+    def reveal(self):
+        here = self.players()
+        said = {pid: self.answers[pid] for pid, _ in here if pid in self.answers}
+        have = [pid for pid, _ in here if said.get(pid)]
+        text = self.prompt["text"]
+        if self.prompt["room"]:
+            pct = round(100 * len(have) / len(said)) if said else 0
+            return self.go("reveal", 7, room=True, text=text, answered=len(said), pct=pct, n=self.n)
+        self.lit_before = self.lit()
+        losing = [pid for pid in have if self.bulbs.get(pid, 0) > 0]
+        times = out_times(len(losing))
+        start = self.now()
+        outs = []
+        for pid, at in zip(losing, times["outs"]):
+            self.bulbs[pid] -= 1
+            outs.append({"slot": self.who(pid)["slot"], "at": at, "left": self.bulbs[pid]})
+            self.award_sip(pid, "You have: a bulb out, and a sip. Any drink or water counts.", at=start + at)
+            self.wake(start + at)
+        self.wake(start + times["tell"])
+        self.go("reveal", times["end"], room=False, text=text, answered=len(said), count=len(have), n=self.n,
+                have=[self.who(pid)["slot"] for pid in have], outs=outs, times=times)
+
+    def after_prompt(self):
+        if len(self.lit()) <= 1:
+            return self.end_game()
+        self.next_prompt()
+
+    def end_game(self):
+        here = dict(self.players())
+        lit = self.lit()
+        # one left lit wins; if the last ones all went out together, they share it
+        winners = lit or [pid for pid in self.lit_before if pid in here]
+        if not winners:
+            return self.go("lobby")
+        for pid in winners:
+            self.night[pid] = self.night.get(pid, 0) + 1
+        self.go("podium", None, label="ROUND " + str(self.round),
+                winners=[{k: self.who(pid)[k] for k in ("slot", "name", "color")} for pid in winners],
+                spare=self.bulbs.get(winners[0], 0) if len(winners) == 1 else 0)
+
+    def on_timeout(self):
+        if self.phase == "card":
+            self.next_prompt()
+        elif self.phase == "ask":
+            self.reveal()
+        elif self.phase == "reveal":
+            if self.teller:
+                p = self.who(self.teller)
+                self.go("story", self.STORY, text=self.prompt["text"], slot=p["slot"], name=p["name"], color=p["color"])
+            else:
+                self.after_prompt()
+        elif self.phase == "story":
+            self.after_prompt()
+
+    def can_tell(self, pid):
+        return (self.phase == "reveal" and not self.data.get("room") and not self.teller
+                and self.who(pid)["slot"] in self.data.get("have", ()) and self.now() >= self.at + self.data["times"]["tell"])
+
+    def on_input(self, pid, msg):
+        kind = msg["kind"]
+        if self.phase == "lobby" and kind == "pick" and msg.get("id") in TIERS:
+            self.hub.store.update_channels({"games": {"tier": msg["id"]}})
+            self.changed()
+        elif self.phase == "ask" and kind == "yesno":
+            self.answers[pid] = msg["yes"]
+            self.changed()
+            # everyone has answered: two more seconds to change your mind, then the reveal
+            if all(q in self.answers for q, _ in self.players()):
+                self.until = min(self.until or 1e18, self.now() + 2.0)
+        elif kind == "buzz" and self.can_tell(pid):
+            self.teller = pid
+            self.until = min(self.until or 1e18, self.now() + 1.0)
+            self.changed()
+        elif self.phase == "story" and kind == "next" and self.who(pid)["slot"] == self.data["slot"]:
+            self.after_prompt()
+
+    # -- views
+
+    def wall(self):
+        view = super().wall()
+        here = self.players()
+        for (pid, _), p in zip(here, view["players"]):
+            p["lit"] = self.bulbs.get(pid, self.BULBS) if self.phase != "lobby" else self.BULBS
+            if self.phase == "ask":
+                p["answered"] = pid in self.answers
+        if self.phase == "lobby":
+            view["lines"] = ["NEVER HAVE I EVER", "FIVE BULBS EACH", TIERS[self.tier()] + " PROMPTS"]
+        return view
+
+    def pad(self, pid):
+        ph = self.phase
+        view = None
+        if ph == "lobby":
+            view = {"ui": "start", "big": "Five Lights", "label": "Start", "choices": [{"id": k, "label": v.split()[0].title()} for k, v in TIERS.items()],
+                    "chosen": self.tier(), "choicesTitle": "Tonight's prompts",
+                    "text": "Never Have I Ever. Everyone answers at once on their phone, and each “I have” puts out one of your five bulbs. Last one lit wins."}
+        elif ph == "card":
+            view = {"ui": "wait", "title": f"Round {self.round}", "big": "Five Lights", "text": "Eyes on the wall."}
+        elif ph == "ask":
+            room = self.data["room"]
+            view = {"ui": "yesno", "key": f"ask:{self.at}", "yes": "I have", "no": "Never", "pair": True, "chosen": self.answers.get(pid),
+                    "deadline": self.until, "lead": "Never have I ever", "prompt": self.data["text"],
+                    "title": "The room · no names" if room else f"Prompt {self.n}",
+                    "text": "Only the percentage shows. Nobody loses a bulb." if room else "Change your mind until the clock runs out."}
+        elif ph == "reveal":
+            view = self.reveal_pad(pid)
+        elif ph == "story":
+            if self.who(pid)["slot"] == self.data["slot"]:
+                view = {"ui": "next", "big": "Your story", "text": "The wall is yours for 30 seconds. Tap Done when it's told.",
+                        "buttons": [{"kind": "next", "label": "Done"}]}
+            else:
+                view = {"ui": "wait", "big": "Story time", "text": f"{self.data['name']} has the floor."}
+        elif ph == "podium":
+            won = any(w["slot"] == self.who(pid)["slot"] for w in self.data["winners"])
+            names = " & ".join(w["name"] for w in self.data["winners"])
+            view = {"ui": "next", "big": "Last one lit" if won else "Relight?", "text": "You win this one." if won else f"{names} wins this one.",
+                    "buttons": [{"kind": "next", "label": "Relight"}, {"kind": "end", "label": "Finish"}]}
+        if view is None:
+            return super().pad(pid)
+        if ph != "lobby" and pid in self.bulbs:
+            view["lights"] = {"lit": self.lit_shown(pid), "of": self.BULBS}
+        return self.base_pad(pid, view)
+
+    def lit_shown(self, pid):
+        """Bulbs lit as the phone shows them: one going out in a reveal goes out with the wall."""
+        n = self.bulbs.get(pid, 0)
+        if self.phase == "reveal" and not self.data.get("room"):
+            slot = self.who(pid)["slot"]
+            n += sum(1 for o in self.data["outs"] if o["slot"] == slot and self.now() < self.at + o["at"])
+        return n
+
+    def reveal_pad(self, pid):
+        if self.data["room"]:
+            return {"ui": "result", "big": f"{self.data['pct']}%", "text": "of the room have. No names, no bulbs.", "tone": "plain"}
+        said = self.answers.get(pid)
+        slot = self.who(pid)["slot"]
+        out = next((o for o in self.data["outs"] if o["slot"] == slot), None)
+        if self.now() < self.at + (out["at"] if out else 1.6):
+            return {"ui": "wait", "key": f"reveal:{self.at}:wait", "big": "Eyes on the wall", "text": "I have." if said else "Never." if said is False else "No answer this time."}
+        key = f"reveal:{self.at}:{'tell' if self.can_tell(pid) else 'told' if self.teller else 'done'}"
+        left = self.bulbs.get(pid, 0)
+        if said:
+            text = (f"One bulb out. {left} left." if left else "Your last bulb is out. Keep playing along.") if out else "You have. No bulbs left to lose."
+            if self.teller == pid:
+                text = "Story's yours next."
+            buttons = [{"kind": "buzz", "label": "Tell it", "quiet": True}] if self.can_tell(pid) else []
+            return {"ui": "next", "key": key, "big": "You have", "text": text, "buttons": buttons}
+        if said is False:
+            return {"ui": "result", "key": key, "big": "Never", "text": f"Still {left} lit." if left else "Clean on this one.", "tone": "good"}
+        return {"ui": "result", "key": key, "big": "No answer", "text": "Get the next one in.", "tone": "plain"}
+
+
+PARTY_GAMES = {"closest": ClosestWins, "fiveclues": FiveClues, "fivelights": FiveLights}

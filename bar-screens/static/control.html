@@ -403,6 +403,14 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
         <textarea id="yearsText" rows="4" placeholder="Daft Punk - One More Time - 2000" aria-describedby="yearsNote" spellcheck="false"></textarea></label>
       <div class="row"><button type="button" class="btn small" id="yearsSave">Save</button><span class="note grow" id="yearsNote">One per line: artist - title - year. Every third round of Closest Wins asks release years, and yours go in first.</span></div>
     </div>
+    <div class="set-group">
+      <span class="lab">Five Lights: tonight's prompts</span>
+      <div class="chips" id="flTier" role="group" aria-label="Five Lights prompts"><button type="button" class="chip" data-tier="mild">Mild</button><button type="button" class="chip" data-tier="dubai">Dubai life</button><button type="button" class="chip" data-tier="cheeky">Cheeky</button></div>
+      <p class="note">Cheeky is as far as it goes: nothing about bodies, money or exes. Phones can switch it in the lobby too.</p>
+      <label class="field"><span class="lab">Five Lights: house prompts</span>
+        <textarea id="houseText" rows="4" placeholder="Lost Omar's car keys" aria-describedby="houseNote" spellcheck="false"></textarea></label>
+      <div class="row"><button type="button" class="btn small" id="houseSave">Save</button><span class="note grow" id="houseNote">One per line, the part after "Never have I ever". Your in-jokes, mixed in about one prompt in four.</span></div>
+    </div>
   </details>
 
   <details class="card" id="setup">
@@ -688,6 +696,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     keep($('newsFeed'), conf.news.feed);
     keep($('visStyle'), conf.visuals.style);
     keep($('gamePick'), conf.games.game);
+    $('flTier').querySelectorAll('[data-tier]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tier === (conf.games.tier || 'mild'))));
     const sipsOn = (conf.games.sipsUntil || 0) * 1000 > Date.now();
     $('sipsOn').checked = sipsOn;
     $('sipsNote').textContent = sipsOn
@@ -997,14 +1006,26 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
   function yearsNote(r) {
     $('yearsNote').textContent = `${r.count} saved.${r.bad.length ? ` Line${r.bad.length > 1 ? 's' : ''} ${r.bad.slice(0, 6).join(', ')} need${r.bad.length > 1 ? '' : 's'} "artist - title - year".` : ''} Every third round of Closest Wins asks release years, and yours go in first.`;
   }
+  function houseNote(r) {
+    $('houseNote').textContent = `${r.count} saved.${r.bad.length ? ` Line${r.bad.length > 1 ? 's' : ''} ${r.bad.slice(0, 6).join(', ')} ${r.bad.length > 1 ? 'are' : 'is'} too long for the wall (40 letters at most).` : ''} Mixed in about one prompt in four.`;
+  }
   $('chSettings').addEventListener('toggle', async () => {
     if (!$('chSettings').open || $('yearsText').dataset.loaded) return;
     try {
-      const r = await api('GET', '/api/game/years');
+      const [r, h] = await Promise.all([api('GET', '/api/game/years'), api('GET', '/api/game/house')]);
       $('yearsText').value = r.text;
       $('yearsText').dataset.loaded = '1';
       if (r.count) yearsNote(r);
+      $('houseText').value = h.text;
+      if (h.count) houseNote(h);
     } catch (e) {}
+  });
+  $('houseSave').addEventListener('click', async () => {
+    try { houseNote(await api('POST', '/api/game/house', { text: $('houseText').value })); toast('Saved.'); } catch (e) { toast(e.message); }
+  });
+  $('flTier').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tier]');
+    if (b) patchChannels({ games: { tier: b.dataset.tier } });
   });
   $('yearsSave').addEventListener('click', async () => {
     try { yearsNote(await api('POST', '/api/game/years', { text: $('yearsText').value })); toast('Saved.'); } catch (e) { toast(e.message); }

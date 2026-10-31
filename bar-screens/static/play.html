@@ -150,6 +150,10 @@ input[type="text"] {
 .notice span { font-size: 17px; }
 .notice .grow { flex: 1; min-width: 0; }
 .notice .choices { grid-auto-rows: 52px; }
+/* the house pour: asking the bar for a drink, when the host allows it */
+.drinks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.drink { min-height: 48px; border-radius: 4px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font: 700 12px/1.2 var(--f-label); letter-spacing: 0.14em; text-transform: uppercase; padding: 8px; display: flex; align-items: center; gap: 8px; text-align: left; }
+.drink i { width: 10px; height: 10px; transform: rotate(45deg); background: var(--c); flex: none; }
 .toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 14px; border-radius: 4px; background: var(--fg); color: var(--bg); font: 600 16px var(--f-body); }
 </style>
 </head>
@@ -160,6 +164,11 @@ input[type="text"] {
 </header>
 
 <main>
+  <section id="barView" hidden style="display:grid;gap:10px">
+    <p class="banner"><span id="barMsg">The bar is taking requests.</span><button type="button" class="btn small" id="barOpen">Ask for a drink</button></p>
+    <div class="drinks" id="barMenu" hidden></div>
+  </section>
+
   <section id="joinView">
     <p class="eyebrow">Join the game</p>
     <h1>What should we call you?</h1>
@@ -633,8 +642,58 @@ input[type="text"] {
     } catch (err) { toast("Can't reach the bar's Pi."); }
   });
 
+  // ------------------------------------------------------------ the bar
+
+  // Only while the host has guest requests on: tonight's menu, and what this phone asked for.
+  // He says yes or not now on his phone; nothing goes on the wall without him.
+  let bar = { on: false, menu: [], mine: null };
+  const title = (n) => String(n || '').replace(/\b(\w)(\w*)/g, (m, a, b) => a + b.toLowerCase());
+  const BAR_SAYS = {
+    asked: (d) => `You asked for ${d}. The host will see it.`,
+    making: (d) => `Your ${d} is being made. Watch the wall.`,
+    served: (d) => `Your ${d} is served. Enjoy.`,
+    passed: (d) => `Not the ${d} just now. Ask at the bar.`,
+  };
+  function renderBar() {
+    $('barView').hidden = !bar.on;
+    if (!bar.on) return;
+    const mine = bar.mine;
+    $('barMsg').textContent = mine && BAR_SAYS[mine.state] ? BAR_SAYS[mine.state](title(mine.drink)) : 'The bar is taking requests.';
+    $('barOpen').textContent = mine && mine.state === 'asked' ? 'Cancel' : $('barMenu').hidden ? 'Ask for a drink' : 'Close';
+    const markup = bar.menu.map((d) => `<button type="button" class="drink" data-drink="${esc(d.id)}"><i style="--c:var(--gold)"></i>${esc(d.name)}</button>`).join('');
+    if ($('barMenu').dataset.html !== markup) { $('barMenu').dataset.html = markup; $('barMenu').innerHTML = markup; }
+  }
+  let barTimer = 0;
+  async function pollBar() {
+    clearTimeout(barTimer);
+    try { bar = await (await fetch(`/api/pour/guest?pid=${encodeURIComponent(pid)}`)).json(); } catch (e) {}
+    renderBar();
+    barTimer = setTimeout(pollBar, document.hidden ? 15000 : 4000);
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) pollBar(); });
+  $('barOpen').addEventListener('click', async () => {
+    if (bar.mine && bar.mine.state === 'asked') {
+      try { await post('/api/pour/cancel', { pid }); } catch (e) {}
+      return pollBar();
+    }
+    $('barMenu').hidden = !$('barMenu').hidden;
+    renderBar();
+  });
+  $('barMenu').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-drink]');
+    if (!b) return;
+    const name = (me && me.name) || $('name').value.trim() || store.get('name') || '';
+    if (!name) { toast('Type your name first, so the bar knows who it\'s for.'); $('name').focus(); return; }
+    try {
+      await post('/api/pour/request', { pid, name, drink: b.dataset.drink });
+      $('barMenu').hidden = true;
+    } catch (err) { toast(err.message); }
+    pollBar();
+  });
+
   $('name').value = store.get('name') || '';
   renderDrinks();
+  pollBar();
   loadState();
   connect();
   if (store.get('name')) join(true);

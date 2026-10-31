@@ -577,6 +577,12 @@
           const g = state.golive || {};
           slide.conf = { url: g.url || '', lan: g.lan || '', qr: !!g.qr, ...(kiosk ? {} : { names: g.cams || [] }) };
         }
+        if (live.channel === 'pour') {
+          // The menu, or the drink being made. An order is a card of its own, so ticking the menu
+          // while a drink pours doesn't start the pour again.
+          const bar = state.bar || {};
+          slide.conf = bar.order ? { order: bar.order } : { menu: bar.menu || [] };
+        }
       }
       const mirror = state.mirror, st = state.settings;
       if (!soloSlide && mirror && mirror.live && (st.mirrorScreen === 'all' || st.mirrorScreen === screen.id)) {
@@ -585,7 +591,9 @@
       }
       if (!soloSlide && !screen.pinned) {
         const channel = live.channel || 'rotation';
-        if (channel !== view.identKey) { view.identKey = channel; showIdent(view, screen, channel); }
+        // (a drink going up is its own title, so it doesn't get the channel's)
+        const pouring = channel === 'pour' && state.bar && state.bar.order;
+        if (channel !== view.identKey) { view.identKey = channel; if (!pouring) showIdent(view, screen, channel); }
       }
       const key = slide ? JSON.stringify([slide, screen.w, screen.h]) : `none:${screen.w}x${screen.h}`;
       if (key !== view.key) {

@@ -568,7 +568,11 @@ def fetch_scores(conf):
             continue
         path, title = LEAGUES[key]
         try:
-            data = json.loads(fetch_url(f"https://site.api.espn.com/apis/site/v2/sports/{path}/scoreboard?dates={span}&limit=200"))
+            url = f"https://site.api.espn.com/apis/site/v2/sports/{path}/scoreboard"
+            try:
+                data = json.loads(fetch_url(f"{url}?dates={span}&limit=200"))
+            except Exception:  # ESPN stopped taking date ranges (Oct 2026): then just this week's games
+                data = json.loads(fetch_url(url))
         except Exception:
             failures += 1
             continue

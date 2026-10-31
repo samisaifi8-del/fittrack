@@ -167,6 +167,10 @@ input[type="text"] {
 .drinks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .drink { min-height: 48px; border-radius: 4px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font: 700 12px/1.2 var(--f-label); letter-spacing: 0.14em; text-transform: uppercase; padding: 8px; display: flex; align-items: center; gap: 8px; text-align: left; }
 .drink i { width: 10px; height: 10px; transform: rotate(45deg); background: var(--c); flex: none; }
+.suggest { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.suggest form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.suggest input[type="text"] { min-height: 48px; font-size: 20px; }
+.suggest .note { font-size: 15px; text-align: center; }
 .toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 14px; border-radius: 4px; background: var(--fg); color: var(--bg); font: 600 16px var(--f-body); }
 </style>
 </head>
@@ -567,7 +571,30 @@ input[type="text"] {
     if (built !== 'party') {
       built = 'party';
       partyKey = '';
-      pad.innerHTML = '<div class="pp"><div id="ppNotice"></div><p class="pp-title" id="ppTitle"></p><div class="lights" id="ppLights" hidden></div><div class="pp-timer" id="ppTimer" hidden><i></i></div><div class="pp" id="ppBody"></div></div>';
+      pad.innerHTML = `<div class="pp"><div id="ppNotice"></div><p class="pp-title" id="ppTitle"></p><div class="lights" id="ppLights" hidden></div><div class="pp-timer" id="ppTimer" hidden><i></i></div><div class="pp" id="ppBody"></div>
+        <div class="suggest" id="ppSuggest" hidden><button type="button" class="btn" id="sgOpen"></button>
+          <form id="sgForm" hidden><input type="text" id="sgText" autocomplete="off" enterkeyhint="send"><button type="submit" class="btn primary">Send</button></form>
+          <p class="note" id="sgNote"></p></div></div>`;
+      // a guest's own prompt (The Verdict): typed here, sent to the host to approve
+      $('sgOpen').addEventListener('click', () => { $('sgForm').hidden = false; $('sgOpen').hidden = true; $('sgText').focus(); });
+      $('sgForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const text = $('sgText').value.trim();
+        if (text.length < 3) { $('sgText').focus(); return; }
+        send({ kind: 'suggest', text });
+        $('sgText').value = '';
+        $('sgText').blur();
+        $('sgForm').hidden = true;
+        $('sgOpen').hidden = false;
+      });
+    }
+    const sg = v.suggest;
+    $('ppSuggest').hidden = !sg;
+    if (sg) {
+      $('sgOpen').textContent = sg.label || 'Write your own';
+      $('sgText').placeholder = sg.hint || '';
+      $('sgText').maxLength = (sg.max || 32) + 24; // room for a typed "most likely to"; the Pi checks the rest
+      $('sgNote').textContent = sg.text || '';
     }
     $('ppTitle').textContent = v.title || '';
     $('ppTitle').hidden = !v.title;
@@ -622,7 +649,7 @@ input[type="text"] {
     $('offWall').hidden = roster.onWall !== false;
     const inParty = !!roster.party && party && party.phase;
     // during a party game's round the game list hides, so nobody switches games mid-question
-    $('games').hidden = !!inParty && !['lobby', 'podium'].includes(party.phase);
+    $('games').hidden = !!inParty && !['lobby', 'podium', 'card'].includes(party.phase);
     $('status').hidden = $('scores').hidden = !!roster.party;
     $('startBtn').parentElement.hidden = !!roster.party;
     if (roster.party) {

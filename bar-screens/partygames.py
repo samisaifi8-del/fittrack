@@ -1,4 +1,4 @@
-"""Party games the Pi referees: the shared game kit, Closest Wins, Five Clues and Five Lights.
+"""Party games the Pi referees: the shared game kit, Closest Wins, Five Clues, Five Lights and The Verdict.
 
 The arcade games (static/games.js) run on the wall and only use the Pi to pass controller input
 along. Quiz and vote games are different: everyone answers at once, nobody should see anyone
@@ -52,12 +52,14 @@ CONTENT = os.path.join(ROOT, "static", "content")
 #   pick {choice: n | id}    one of N options          number {value}   a dial's current value
 #   lock {value?}            final answer              yesno {yes: bool}
 #   toggle {id, on: bool}    a switch (DOUBLE)         pour {to: slot}  hand someone a sip
-INPUTS = ("move", "dir", "tap", "start", "buzz", "next", "end", "pick", "number", "lock", "yesno", "toggle", "pour")
+#   suggest {text}           a guest's own prompt (The Verdict: the host approves it first)
+INPUTS = ("move", "dir", "tap", "start", "buzz", "next", "end", "pick", "number", "lock", "yesno", "toggle", "pour", "suggest")
 
 # The pads play.html can show, by a pad view's "ui". Every pad view also has "key" (the pad is
 # rebuilt when it changes), and may have "title" (small gold line), "deadline" (server time the
 # countdown bar runs to), "notice" ({title, text}: a sip), "pour" ({options: [{slot, name}]}),
-# "lights" ({lit, of}: a row of bulbs, Five Lights).
+# "lights" ({lit, of}: a row of bulbs, Five Lights),
+# "suggest" ({label, hint, max}: a box under the pad for writing your own prompt).
 #   wait    {big, text}                         eyes on the wall
 #   start   {big, text, label, choices?: [{id, label}], chosen, choicesTitle}   a lobby: Start,
 #           and optionally a row of settings above it (each tap sends pick {id})
@@ -81,8 +83,9 @@ _decks = {}
 
 def load_deck(name, folder=CONTENT):
     """The items of static/content/<name>.json: a JSON list of objects, each with a unique "id"
-    (or an object whose values are such lists, which are joined). Re-read when the file changes;
-    a missing or broken deck is an empty one, so a bad edit can't stop the server."""
+    (or an object whose values are such lists, which are joined, each item marked with its list's
+    name as "section"). Re-read when the file changes; a missing or broken deck is an empty one, so
+    a bad edit can't stop the server."""
     if not re.fullmatch(r"[a-z0-9_-]{1,40}", name or ""):
         return []
     path = os.path.join(folder, name + ".json")
@@ -99,7 +102,7 @@ def load_deck(name, folder=CONTENT):
     except (OSError, ValueError):
         return []
     if isinstance(data, dict):
-        data = [i for v in data.values() if isinstance(v, list) for i in v]
+        data = [{"section": k, **i} if isinstance(i, dict) else i for k, v in data.items() if isinstance(v, list) for i in v]
     items, seen = [], set()
     for item in data if isinstance(data, list) else []:
         if isinstance(item, dict) and isinstance(item.get("id"), str) and item["id"] not in seen:
@@ -430,6 +433,15 @@ class PartyGame:
 
     def on_timeout(self):
         pass
+
+    def host(self):
+        """What the host's control page shows for this game (None: nothing)."""
+        return None
+
+    def host_action(self, body):
+        """An action from the host's control page (POST /api/game/host). Returns a message for the
+        host when it can't be done; raises ValueError for an unknown one."""
+        raise ValueError
 
 
 # ---------------------------------------------------------------- closest wins
@@ -1242,4 +1254,289 @@ class FiveLights(PartyGame):
         return {"ui": "result", "key": key, "big": "No answer", "text": "Get the next one in.", "tone": "plain"}
 
 
-PARTY_GAMES = {"closest": ClosestWins, "fiveclues": FiveClues, "fivelights": FiveLights}
+# ---------------------------------------------------------------- the verdict
+
+PROMPT_MAX = 32  # a prompt longer than this can't be set huge on a 256-wide wall
+LEAD = re.compile(r"^(WHO(?:'S|\u2019S| IS)?\s+)?(?:THE\s+)?MOST\s+LIKELY\s+TO\s+")
+
+
+def clean_prompt(text):
+    """A guest's prompt as the wall sets it: capitals, single spaces, without the "WHO'S MOST
+    LIKELY TO" in front (the wall says that) or a question mark after. None if it's too short or
+    too long to set huge."""
+    text = LEAD.sub("", " ".join(str(text or "").split()).upper()).rstrip(" ?.!")
+    return text if 3 <= len(text) <= PROMPT_MAX and re.search(r"[A-Z]", text) else None
+
+
+def tally(votes):
+    """The Verdict's count. votes: {voter: slot}. Returns ({slot: votes}, [top slots]): one top
+    slot is GUILTY, more than one is a HUNG JURY, none is nobody voting."""
+    counts = {}
+    for slot in votes.values():
+        counts[slot] = counts.get(slot, 0) + 1
+    top = max(counts.values(), default=0)
+    return counts, sorted(s for s, n in counts.items() if n == top and top)
+
+
+def rise_beat(top):
+    """Seconds per vote while the bars rise: a slow count, but never more than about 5 s in all."""
+    return round(min(0.8, 4.8 / max(1, top)), 3)
+
+
+class Verdict(PartyGame):
+    """A prompt about the people in the room goes up ("WHO'S MOST LIKELY TO LOSE THEIR PHONE
+    TONIGHT"), everyone votes in secret on their phone for someone who's here (never themselves),
+    and the wall reads out the verdict like a jury: the names rise as gold bars, a vote at a time,
+    then the top name is GUILTY (or it's a HUNG JURY on a tie). The host picks the deck (Pre-party
+    or Game night) and the pace (a new prompt every 2 minutes, or by hand); guests can write their
+    own prompts, which only go up once the host approves them on the control page. The convicted
+    get a sip if they're drinking; between prompts a quiet card shows the night's most convicted."""
+    key = "verdict"
+    title = "The Verdict"
+    DECK = "verdict"
+    DECKS = {"preparty": "Pre-party", "gamenight": "Game night"}
+    LEAD = "WHO'S MOST LIKELY TO"
+    VOTE = 30
+    VERDICT = 9
+    PACE = 120         # auto pace: a new prompt this many seconds after the last one went up
+    CARD_MIN = 8       # the card between prompts stays up at least this long
+    MIN_PLAYERS = 3    # with two, each can only vote for the other: always a hung jury
+    BARS = 6           # the most names that rise on the wall (the ones with the most votes)
+    WAITING_MAX = 20   # guests' prompts waiting for the host
+    PER_PHONE = 3      # of those, from any one phone
+
+    def __init__(self, hub, rand=None):
+        super().__init__(hub, rand)
+        self.prompt = None   # {"id", "text", "guest"?}
+        self.votes = {}      # voter pid -> the slot they voted for
+        self.count = 0       # prompts tonight
+        self.started = 0.0   # when the current prompt went up (the auto pace counts from here)
+        self.result = None   # the last verdict: {"slots", "votes", "names", "guilty"}
+        self.waiting = []    # guests' prompts for the host to approve: {"id", "text", "by", "pid"}
+        self.approved = []   # approved ones, played before the deck
+        self.go("lobby")
+
+    # -- the host's settings (control page, Channel settings)
+
+    def deck(self):
+        d = self.hub.store.state["channels"]["games"].get("verdictDeck")
+        return d if d in self.DECKS else "preparty"
+
+    def hand_paced(self):
+        return self.hub.store.state["channels"]["games"].get("verdictPace") == "hand"
+
+    def card_until(self):
+        return None if self.hand_paced() else max(self.started + self.PACE, self.at + self.CARD_MIN)
+
+    # -- the flow
+
+    def start(self):
+        if len(self.players()) < self.MIN_PLAYERS:
+            return self.changed()
+        self.night, self.count, self.result = {}, 0, None
+        self.next_prompt()
+
+    def draw(self):
+        if self.approved:
+            return self.approved.pop(0)
+        deck = self.deck()
+        pool = [i for i in load_deck(self.DECK) if i.get("section") == deck and isinstance(i.get("text"), str)]
+        got = self.hub.used.draw(f"{self.DECK}:{deck}", pool, 1, self.rand) if pool else []
+        return got[0] if got else None
+
+    def next_prompt(self):
+        if len(self.players()) < self.MIN_PLAYERS:
+            return self.go("lobby")
+        self.prompt = self.draw()
+        if not self.prompt:
+            return self.go("lobby", note="The prompt deck is missing.")
+        self.votes, self.result = {}, None
+        self.count += 1
+        self.started = self.now()
+        self.go("vote", self.VOTE, text=self.prompt["text"], lead=self.LEAD, guest=bool(self.prompt.get("guest")), n=self.count)
+
+    def reveal(self):
+        here = {p["slot"]: (pid, p) for pid, p in self.players()}
+        votes = {v: slot for v, slot in self.votes.items() if v in {pid for pid, _ in here.values()} and slot in here}
+        counts, top = tally(votes)
+        if not counts:
+            self.result = {"slots": [], "votes": 0, "names": [], "guilty": False}
+            return self.go("verdict", self.VERDICT / 2, text=self.prompt["text"], lead=self.LEAD, n=self.count, **self.result)
+        shown = sorted(sorted(counts, key=lambda s: (-counts[s], s))[:self.BARS])
+        most = counts[top[0]]
+        beat = rise_beat(most)
+        self.result = {"slots": top, "votes": most, "names": [here[s][1]["name"] for s in top], "guilty": len(top) == 1}
+        self.go("reveal", beat * most + 1.6, text=self.prompt["text"], lead=self.LEAD, n=self.count, beat=beat, top=most,
+                bars=[{"slot": s, "name": here[s][1]["name"], "color": here[s][1]["color"], "votes": counts[s]} for s in shown])
+
+    def verdict(self):
+        r = self.result
+        if r["guilty"]:
+            pid = next((q for q, p in self.players() if p["slot"] == r["slots"][0]), None)
+            if pid:
+                self.night[pid] = self.night.get(pid, 0) + 1
+                self.award_sip(pid, "Guilty as charged: a sip. Any drink or water counts.", title="GUILTY")
+        self.go("verdict", self.VERDICT, text=self.prompt["text"], lead=self.LEAD, n=self.count, **r)
+
+    def card(self):
+        rows = self.standings(self.night)
+        top = [r for r in rows if r["place"] == 1 and r["points"] > 0]
+        most = {"names": [r["name"] for r in top], "count": top[0]["points"]} if top else None
+        self.go("card", None, most=most, n=self.count, hand=self.hand_paced())
+        self.until = self.card_until()
+
+    def tick(self):
+        # the host can change the pace while the card is up
+        if self.phase == "card" and self.until != self.card_until():
+            self.until = self.card_until()
+            self.data["hand"] = self.hand_paced()
+            self.changed()
+        super().tick()
+
+    def on_timeout(self):
+        if self.phase == "vote":
+            self.reveal()
+        elif self.phase == "reveal":
+            self.verdict()
+        elif self.phase == "verdict":
+            self.card()
+        elif self.phase == "card":
+            self.next_prompt()
+
+    def on_input(self, pid, msg):
+        kind = msg["kind"]
+        if kind == "suggest":
+            return self.suggest(pid, msg["text"])
+        if self.phase == "vote" and kind == "pick":
+            try:
+                slot = int(msg.get("id", ""))
+            except ValueError:
+                return
+            here = self.players()
+            me = self.hub.players[pid]["slot"]
+            if slot == me or slot not in {p["slot"] for _, p in here}:
+                return
+            self.votes[pid] = slot
+            self.changed()
+            if all(q in self.votes for q, _ in here):
+                self.until = min(self.until or 1e18, self.now() + 1.5)
+        elif self.phase == "card" and kind == "next" and self.hand_paced():
+            self.next_prompt()
+        elif self.phase == "card" and kind == "end":
+            self.go("lobby")
+
+    # -- guests' prompts, and the host
+
+    def suggest(self, pid, text):
+        clean = clean_prompt(text)
+        mine = sum(1 for w in self.waiting if w["pid"] == pid)
+        if not clean:
+            note = {"title": "TRY AGAIN", "text": f"Keep it short, up to {PROMPT_MAX} letters: LOSE THEIR PHONE TONIGHT."}
+        elif mine >= self.PER_PHONE or len(self.waiting) >= self.WAITING_MAX:
+            note = {"title": "PLENTY WAITING", "text": "The host has a few to look at. Send another once those go up."}
+        elif any(w["text"] == clean for w in self.waiting + self.approved):
+            note = {"title": "ALREADY IN", "text": "That one's waiting already."}
+        else:
+            uid = hashlib.sha1(f"{clean}|{pid}|{self.now()}".encode()).hexdigest()[:10]
+            self.waiting.append({"id": uid, "text": clean, "by": self.who(pid)["name"], "pid": pid})
+            note = {"title": "SENT TO THE HOST", "text": "If they approve it, it goes up soon."}
+            self.hub.store.refresh()
+        self.notices[pid] = {**note, "at": self.now()}
+        self.changed()
+
+    def host(self):
+        return {"game": self.key, "phase": self.phase, "deck": self.deck(), "pace": "hand" if self.hand_paced() else "auto",
+                "waiting": [{"id": w["id"], "text": w["text"], "by": w["by"]} for w in list(self.waiting)],
+                "approved": [a["text"] for a in list(self.approved)]}
+
+    def host_action(self, body):
+        """approve / bin a guest's prompt (by id), or next: the next prompt now (during a vote,
+        that skips the one on the wall)."""
+        action = body.get("action")
+        if action in ("approve", "bin"):
+            w = next((w for w in self.waiting if w["id"] == body.get("id")), None)
+            if not w:
+                return
+            self.waiting.remove(w)
+            if action == "approve":
+                self.approved.append({"id": "g-" + w["id"], "text": w["text"], "guest": True})
+                self.notices[w["pid"]] = {"title": "APPROVED", "text": "The host liked yours. It goes up soon.", "at": self.now()}
+            self.changed()
+        elif action == "next":
+            if len(self.players()) < self.MIN_PLAYERS:
+                return f"The Verdict needs {self.MIN_PLAYERS} players: join on your phones at /play."
+            if self.phase == "lobby":
+                self.start()
+            else:
+                self.next_prompt()
+        else:
+            raise ValueError
+        self.hub.store.refresh()
+
+    # -- views
+
+    def wall(self):
+        view = super().wall()
+        here = self.players()
+        if self.phase == "vote":
+            view["in"] = sum(1 for q, _ in here if q in self.votes)
+            view["of"] = len(here)
+        if self.phase == "lobby":
+            view["lines"] = ["A QUESTION ABOUT THE ROOM", "VOTE IN SECRET", "THE WALL READS THE VERDICT"]
+            short = self.MIN_PLAYERS - len(here)
+            if short > 0 and not self.data.get("note"):
+                view["note"] = "NEEDS ONE MORE PLAYER" if short == 1 else f"NEEDS {self.MIN_PLAYERS} PLAYERS"
+        return view
+
+    def suggest_box(self, pid):
+        mine = sum(1 for w in self.waiting if w["pid"] == pid)
+        return {"label": "Write your own", "hint": "LOSE THEIR PHONE TONIGHT", "max": PROMPT_MAX,
+                "text": f"{mine} waiting for the host." if mine else "Finish the line: who's most likely to… The host approves it before it goes up."}
+
+    def pad(self, pid):
+        ph = self.phase
+        here = self.players()
+        me = self.hub.players.get(pid, {}).get("slot")
+        voted = self.votes.get(pid)
+        name_of = {p["slot"]: p["name"] for _, p in here}
+        you_voted = f"You voted {name_of[voted].title()}." if voted in name_of else "No vote from you this time."
+        view = None
+        if ph == "lobby":
+            short = self.MIN_PLAYERS - len(here)
+            view = {"ui": "start", "big": "The Verdict", "label": "Start",
+                    "text": "A question about the room goes up on the wall. Vote in secret for whoever fits it best, then the wall reads out the verdict."
+                            + (f" Needs {self.MIN_PLAYERS} players." if short > 0 else "")}
+        elif ph == "vote":
+            options = [{"id": str(p["slot"]), "label": p["name"], "color": p["color"]} for _, p in here if p["slot"] != me]
+            view = {"ui": "pick", "key": f"vote:{self.at}:{','.join(o['id'] for o in options)}", "options": options, "cols": 2,
+                    "chosen": str(voted) if voted is not None else None, "deadline": self.until,
+                    "title": "Your vote · secret"}
+            return self.base_pad(pid, view)
+        elif ph == "reveal":
+            view = {"ui": "wait", "big": "Eyes on the wall", "text": you_voted}
+        elif ph == "verdict":
+            r = self.result or {}
+            if not r.get("slots"):
+                view = {"ui": "result", "big": "No verdict", "text": "Nobody voted. Get the next one in.", "tone": "plain"}
+            elif r["guilty"] and r["slots"][0] == me:
+                view = {"ui": "result", "big": "Guilty", "tone": "win",
+                        "text": f"{r['votes']} vote{'s' if r['votes'] != 1 else ''}. The room has spoken."}
+            elif r["guilty"]:
+                view = {"ui": "result", "big": r["names"][0].title(), "text": f"Guilty. {you_voted}", "tone": "plain"}
+            else:
+                view = {"ui": "result", "big": "Hung jury", "tone": "plain",
+                        "text": f"{' & '.join(n.title() for n in r['names'])} tied. {you_voted}"}
+        elif ph == "card":
+            if self.hand_paced():
+                view = {"ui": "next", "big": "The Verdict", "text": "Ready for the next one?",
+                        "buttons": [{"kind": "next", "label": "Next verdict"}, {"kind": "end", "label": "Finish"}]}
+            else:
+                view = {"ui": "wait", "big": "Next verdict", "deadline": self.until,
+                        "text": "It goes up by itself. Write one of your own while you wait."}
+        if view is None:
+            return super().pad(pid)
+        view["suggest"] = self.suggest_box(pid)
+        return self.base_pad(pid, view)
+
+
+PARTY_GAMES = {"closest": ClosestWins, "fiveclues": FiveClues, "fivelights": FiveLights, "verdict": Verdict}

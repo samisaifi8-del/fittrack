@@ -116,21 +116,6 @@ phones (same Wi-Fi), type a name and join. No app needed.
   six questions; before the sixth each phone can tap **DOUBLE** (twice the points if you place,
   lose 2 if you don't). Every third round is **WHAT YEAR?**: release years of songs and films.
   Questions don't repeat until a category has been used up (remembered in `data/used.json`).
-- **Five Lights:** Never Have I Ever. Everyone starts with five gold bulbs. A prompt goes up
-  ("NEVER HAVE I EVER / MISSED A FLIGHT") and every phone answers **I HAVE** or **NEVER** at once,
-  changeable for 10 seconds. Then the wall says how many have ("3 OF 7 HAVE"), lights up their
-  names and puts out one bulb each. Anyone who has can tap **Tell it** for 30 seconds of the wall.
-  Every fifth prompt is a **Room** prompt: only the percentage shows, no names, no bulbs lost.
-  Last one lit wins (if the last ones go out together they share it); **Relight** starts again.
-  Pick the prompts before starting, on the control page or any phone in the lobby: **Mild**,
-  **Dubai life** or **Cheeky** (the ceiling: nothing about bodies, money or exes). Players who are
-  out keep answering for fun, and someone arriving mid-game comes in level with whoever has the
-  fewest bulbs.
-
-**House prompts for Five Lights.** Under **Channel settings**, add your group's own prompts, one
-per line, the part after "Never have I ever" (40 letters at most). About one prompt in four is
-one of yours. They're saved in `data/house.txt`.
-
 - **Five Clues:** a hidden footballer, rapper, DJ, film, Dubai place or pop-culture name is
   revealed one clue at a time, hardest first. The first clue is worth 5, then 4, 3, 2 and 1 as
   an easier clue stacks under it every 6 seconds. Anyone can buzz: the first buzz to reach the
@@ -141,11 +126,39 @@ one of yours. They're saved in `data/house.txt`.
   shows and nobody scores. A round is six cards, one of each type. The cards are in
   `static/content/clues.json` (add your own in the same format) and don't repeat until a type
   has been used up.
+- **Five Lights:** Never Have I Ever. Everyone starts with five gold bulbs. A prompt goes up
+  ("NEVER HAVE I EVER / MISSED A FLIGHT") and every phone answers **I HAVE** or **NEVER** at once,
+  changeable for 10 seconds. Then the wall says how many have ("3 OF 7 HAVE"), lights up their
+  names and puts out one bulb each. Anyone who has can tap **Tell it** for 30 seconds of the wall.
+  Every fifth prompt is a **Room** prompt: only the percentage shows, no names, no bulbs lost.
+  Last one lit wins (if the last ones go out together they share it); **Relight** starts again.
+  Pick the prompts before starting, on the control page or any phone in the lobby: **Mild**,
+  **Dubai life** or **Cheeky** (the ceiling: nothing about bodies, money or exes). Players who are
+  out keep answering for fun, and someone arriving mid-game comes in level with whoever has the
+  fewest bulbs.
+- **The Verdict:** a prompt about the room goes up ("WHO'S MOST LIKELY TO LOSE THEIR PHONE
+  TONIGHT") and everyone votes in secret on their phone for someone who's there (never
+  themselves). The wall reads the verdict like a jury: a gold bar per name rises a vote at a
+  time, the light ones stop first, and the top name comes up in a deco frame, **GUILTY** with
+  its votes, or **HUNG JURY** on a tie. Between prompts a quiet card shows the night's most
+  convicted. Needs three players. Voting closes after 30 seconds, or as soon as everyone's in.
 
 **Your own WHAT YEAR? questions.** Under **Channel settings** on the control page, add one song or
 film per line as `artist - title - year` (for example `Daft Punk - One More Time - 2000`). Each
 line becomes a question, and yours go into WHAT YEAR? rounds first. They're saved in
 `data/years.txt`, which you can also edit by hand.
+
+**House prompts for Five Lights.** Under **Channel settings**, add your group's own prompts, one
+per line, the part after "Never have I ever" (40 letters at most). About one prompt in four is
+one of yours. They're saved in `data/house.txt`.
+
+**The Verdict, for the host.** When The Verdict is the game, the control page shows a card for
+it: the deck (**Pre-party** or **Game night**, 80 prompts each, no repeats until a deck runs out),
+the pace (**Every 2 min**, a new prompt two minutes after the last went up, or **By hand**, when
+anyone taps **Next verdict** on their phone) and **Next prompt**, which also skips the one on the
+wall. Guests can **Write your own** on their phone between votes; it shows on the card with
+their name, and nothing of theirs reaches the wall until you **Approve** it (**Bin** drops it
+quietly). Approved ones go up next, marked FROM THE ROOM, without a name.
 
 **Sips.** Off unless you switch on **Sips tonight** (Channel settings); it switches itself off at
 6 am. While it's on, phones ask "Drinking tonight?" when they join (changeable on the phone any
@@ -155,25 +168,26 @@ only as a small gold drop by a name, and on that person's phone. In Closest Wins
 guess is a sip, and a spot-on guess lets you hand one to another drinker from your phone. In
 Five Clues a wrong buzz is a sip, and getting it on the first clue lets you hand one out. In
 Five Lights a bulb going out is a sip for a drinker (and just the bulb for everyone else); Room
-prompts never cost anything.
+prompts never cost anything. In The Verdict the convicted gets a sip (a hung jury, nobody).
 
 ### Building another party game
 
-Quiz and vote games (Closest Wins, Five Clues, Five Lights and the ones to come) are refereed by the Pi rather than the
-wall, so answers stay secret, scores are fair and every preview shows the same thing. The kit:
+Quiz and vote games (Closest Wins, Five Clues, Five Lights, The Verdict and the ones to come) are
+refereed by the Pi rather than the wall, so answers stay secret, scores are fair and every preview shows the same thing. The kit:
 
 | Piece | Where | What it gives you |
 | --- | --- | --- |
 | `PartyGame` | `partygames.py` | Phases with timers (`go`), players by phone, round and night points, `podium()`, `award_sip()`, `offer_pour()` |
 | `load_deck`, `UsedItems` | `partygames.py` | Decks from `static/content/<name>.json`; no repeats until a pool runs out, saved across restarts |
-| Phone input | `GameHub.input` | `pick`, `number`, `lock`, `buzz`, `yesno`, `toggle`, `next`, `end`, `pour` (plus the arcade ones), checked before a game sees them |
-| Phone pads | `static/play.html` | `wait`, `start` (with an optional row of settings), `number` (dial with hold-to-speed-up, drag strip, year mode), `pick` (2 x 2 or a list of names), `buzz`, `yesno`, `toggle`, `result`, `next`, plus a countdown bar, sip notes and the pour list |
+| Phone input | `GameHub.input` | `pick`, `number`, `lock`, `buzz`, `yesno`, `toggle`, `next`, `end`, `pour`, `suggest` (plus the arcade ones), checked before a game sees them |
+| Phone pads | `static/play.html` | `wait`, `start` (with an optional row of settings), `number` (dial with hold-to-speed-up, drag strip, year mode), `pick` (2 x 2 or a list of names), `buzz`, `yesno`, `toggle`, `result`, `next`, plus a countdown bar, sip notes, the pour list and a box for writing your own prompt |
+| Host controls | `PartyGame.host()`, `host_action()` | A game's own card on the control page (`state.party`), and `POST /api/game/host` for its buttons (The Verdict's approvals) |
 | Wall screens | `static/party.js` | Lobby, between-rounds card, podium, lock dots, countdown bar, sip drop, cached layers |
 
 The top of `partygames.py` and `static/party.js` walks through adding a game step by step;
 `ClosestWins` is the worked example (`FiveClues` a second one, with buzzing), and `test_party.py`
 shows how to test one without a wall. `FiveLights` is a third; its wall lives in its own file
-(`static/fivelights.js`).
+(`static/fivelights.js`). `Verdict` is the one with a host card on the control page.
 
 ## Basement Live
 

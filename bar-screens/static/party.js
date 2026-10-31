@@ -777,6 +777,313 @@
 
   RENDERERS.fiveclues = fiveclues;
 
+  // ------------------------------------------------------------ the verdict
+
+  // Voting: the prompt fills the wall in big ivory deco capitals (four words a line at most) under
+  // a gold THE VERDICT, with a gold ring draining round "6 / 8 IN". The reveal: a gold bar per
+  // name rises from the floor a vote at a time, so the light ones stop first and the last one
+  // still climbing is the verdict; then that name fills a deco frame with GUILTY, or HUNG JURY on
+  // a tie. Between prompts a quiet card shows the night's most convicted.
+  const verdict = {
+    draw(g, st, e) {
+      if (st.phase === 'vote') return voteScreen(g, st);
+      if (st.phase === 'reveal') return barsScreen(g, st, e);
+      if (st.phase === 'verdict') return verdictScreen(g, st, e);
+      if (st.phase === 'card') return convictedCard(g, st);
+      return false;
+    },
+  };
+
+  // THE VERDICT in gold deco capitals with a rule under it. Returns the y below.
+  function verdictHead(g, x, size) {
+    const { k, W, s } = g;
+    const px = Math.round(size || s * 0.085);
+    k.tracking(x, px * 0.14);
+    x.font = k.font('Poiret One', px);
+    x.fillStyle = k.GOLD;
+    x.textAlign = 'center';
+    x.textBaseline = 'top';
+    x.fillText('THE VERDICT', W / 2 + px * 0.07, Math.round(s * 0.06));
+    k.tracking(x, 0);
+    const y = Math.round(s * 0.06 + px * 1.25);
+    k.decoRule(x, W * 0.3, y, W * 0.4, s);
+    return y + Math.round(s * 0.03);
+  }
+
+  // A prompt in lines of four words at most, split where the lines come out most even, as big as
+  // fits (maxW x maxH, size at most cap). Returns { size, lines }.
+  function promptLines(g, x, text, fontName, maxW, maxH, cap, lh) {
+    const { k } = g;
+    const words = text.split(/\s+/).filter(Boolean);
+    x.font = k.font(fontName, 100);
+    const wOf = (ws) => x.measureText(ws.join(' ')).width;
+    let best = { size: 4, lines: [text] };
+    // every way to cut the words into n lines of 1-4 words (prompts are seven words at most)
+    const splits = (from, n) => {
+      if (n === 1) return words.length - from <= 4 ? [[words.slice(from)]] : [];
+      const out = [];
+      for (let take = 1; take <= 4 && from + take < words.length; take++) {
+        for (const rest of splits(from + take, n - 1)) out.push([words.slice(from, from + take), ...rest]);
+      }
+      return out;
+    };
+    for (let n = 1; n <= Math.min(4, words.length); n++) {
+      for (const cut of splits(0, n)) {
+        const widest = Math.max(...cut.map(wOf));
+        const size = Math.floor(Math.min(cap, (maxW * 100) / widest, maxH / (n * lh)));
+        if (size > best.size) best = { size, lines: cut.map((l) => l.join(' ')) };
+      }
+    }
+    // letter spacing doesn't scale with the font: step down until the widest line really fits
+    for (;;) {
+      x.font = k.font(fontName, best.size);
+      if (best.size <= 6 || Math.max(...best.lines.map((l) => x.measureText(l).width)) <= maxW) return best;
+      best.size--;
+    }
+  }
+
+  // The draining ring, drawn once as a sheet of RING_STEPS frames and stamped (no paths per frame).
+  const RING_STEPS = 90;
+  function ring(g, cx, cy, r, left) {
+    const { k } = g;
+    const cell = r * 2 + 8, cols = 10, lw = Math.max(4, Math.round(r * 0.13));
+    const sheet = g.sprite(`ring|${r}`, cell * cols, cell * Math.ceil(RING_STEPS / cols), (x) => {
+      for (let i = 0; i < RING_STEPS; i++) {
+        const ox = (i % cols) * cell + cell / 2, oy = Math.floor(i / cols) * cell + cell / 2;
+        x.lineWidth = lw;
+        x.strokeStyle = k.rgba(k.GOLD, 0.35);
+        x.beginPath();
+        x.arc(ox, oy, r - lw / 2, 0, Math.PI * 2);
+        x.stroke();
+        const f = i / (RING_STEPS - 1);
+        if (f <= 0) continue;
+        x.strokeStyle = f < 0.25 ? k.GOLD_LIGHT : k.GOLD;
+        x.beginPath();
+        x.arc(ox, oy, r - lw / 2, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2);
+        x.stroke();
+      }
+    });
+    const i = Math.max(0, Math.min(RING_STEPS - 1, Math.round(left * (RING_STEPS - 1))));
+    g.ctx.drawImage(sheet, (i % cols) * cell, Math.floor(i / cols) * cell, cell, cell, Math.round(cx - cell / 2), Math.round(cy - cell / 2), cell, cell);
+  }
+
+  function voteScreen(g, st) {
+    const { ctx, k, W, H, s } = g;
+    const ringR = Math.round(s * 0.15), ringY = Math.round(H - s * 0.06 - ringR);
+    ctx.drawImage(g.layer(`vote|${st.at}`, (x) => {
+      k.backdrop(x, W, H);
+      let y = verdictHead(g, x) + s * 0.035;
+      y = stack(g, x, y, [[st.lead || '', 'Josefin Sans', Math.round(s * 0.05), k.GOLD_LIGHT, s * 0.012]]);
+      const bottom = ringY - ringR - s * (st.guest ? 0.12 : 0.06);
+      const b = promptLines(g, x, st.text, 'Poiret One', W * 0.88, bottom - y - s * 0.02, Math.round(s * 0.2), 1.08);
+      x.font = k.font('Poiret One', b.size);
+      x.fillStyle = k.IVORY;
+      x.textAlign = 'center';
+      x.textBaseline = 'top';
+      let ty = y + (bottom - y - b.lines.length * b.size * 1.08) / 2 + b.size * 0.04;
+      for (const l of b.lines) { x.fillText(l, W / 2, Math.round(ty)); ty += b.size * 1.08; }
+      if (st.guest) stack(g, x, bottom + s * 0.025, [['FROM THE ROOM', 'Josefin Sans', Math.round(s * 0.042), k.MUTED, s * 0.02]]);
+    }), 0, 0);
+    // the ring, and how many are in (a sprite per count)
+    const left = st.until == null ? 0 : Math.max(0, Math.min(1, (st.until - g.now()) / Math.max(0.1, st.until - st.at)));
+    ring(g, W / 2, ringY, ringR, left);
+    const label = `${st.in || 0} / ${st.of || 0}`;
+    const c = g.sprite(`in|${label}|${ringR}`, ringR * 2, ringR * 2, (x) => {
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      x.font = k.font('Josefin Sans', k.fitSize(x, label, 'Josefin Sans', ringR * 1.3, ringR * 0.6));
+      x.fillStyle = k.IVORY;
+      x.fillText(label, ringR, ringR * 0.9);
+      k.tracking(x, s * 0.012);
+      x.font = k.font('Josefin Sans', Math.round(ringR * 0.3));
+      x.fillStyle = k.GOLD;
+      x.fillText('IN', ringR + s * 0.006, ringR * 1.42);
+      k.tracking(x, 0);
+    });
+    ctx.drawImage(c, Math.round(W / 2 - ringR), Math.round(ringY - ringR));
+  }
+
+  // Where the bars stand, worked out once per reveal.
+  function barsPlan(g, st) {
+    const { W, H, s } = g;
+    const bars = st.bars || [];
+    const n = Math.max(1, bars.length), gap = Math.round(s * 0.03);
+    const colW = Math.floor(Math.min(s * 0.24, (W - s * 0.12 - gap * (n - 1)) / n));
+    const x0 = Math.round(W / 2 - (colW * n + gap * (n - 1)) / 2);
+    const floor = Math.round(H - s * 0.17), top = Math.round(H * 0.33);
+    return { colW, gap, x0, floor, top, numH: Math.round(Math.min(colW * 0.8, s * 0.095)) };
+  }
+
+  // A name standing up the bar, reading upwards, in the given colour.
+  function upName(g, name, colW, len, color) {
+    const { k } = g;
+    return g.sprite(`up|${name}|${colW}|${len}|${color}`, colW, len, (x) => {
+      x.translate(colW / 2, len);
+      x.rotate(-Math.PI / 2);
+      k.tracking(x, colW * 0.04);
+      x.font = k.font('Josefin Sans', Math.min(Math.round(colW * 0.62), k.fitSize(x, name, 'Josefin Sans', len - colW * 0.3, colW * 0.62)));
+      x.fillStyle = color;
+      x.textAlign = 'left';
+      x.textBaseline = 'middle';
+      x.fillText(name, colW * 0.18, colW * 0.04);
+      k.tracking(x, 0);
+    });
+  }
+
+  function barsScreen(g, st, e) {
+    const { ctx, k, W, H, s } = g;
+    const key = `bars|${st.at}`;
+    if (!g.bars || g.bars.key !== key) g.bars = { key, ...barsPlan(g, st) };
+    const P = g.bars;
+    ctx.drawImage(g.layer(key, (x) => {
+      k.backdrop(x, W, H);
+      let y = verdictHead(g, x, s * 0.07) + s * 0.02;
+      y = stack(g, x, y, [[st.lead || '', 'Josefin Sans', Math.round(s * 0.042), k.GOLD, s * 0.01]]);
+      const b = promptLines(g, x, st.text, 'Josefin Sans', W * 0.86, P.top - s * 0.06 - y, Math.round(s * 0.075), 1.15);
+      stack(g, x, y, b.lines.map((l) => [l, 'Josefin Sans', b.size, k.IVORY, s * 0.004]));
+      x.fillStyle = k.GOLD;
+      x.fillRect(Math.round(W * 0.06), P.floor, Math.round(W * 0.88), 2);
+    }), 0, 0);
+    // every bar climbs a vote per beat; the light ones stop first
+    const t = Math.max(0, e - 0.6), level = t / st.beat;
+    const len = P.floor - P.top;
+    const done = level >= st.top;
+    (st.bars || []).forEach((bar, i) => {
+      const bx = P.x0 + i * (P.colW + P.gap);
+      const v = Math.min(bar.votes, level);
+      const h = Math.round((v / st.top) * len);
+      const lead = done && bar.votes === st.top;
+      // the name stands in its column; inside the bar it's black on gold
+      ctx.drawImage(upName(g, bar.name, P.colW, len, k.rgba(k.IVORY, 0.3)), bx, P.top);
+      if (h > 0) {
+        ctx.fillStyle = lead ? k.GOLD_LIGHT : k.GOLD;
+        ctx.fillRect(bx, P.floor - h, P.colW, h);
+        const black = upName(g, bar.name, P.colW, len, '#000');
+        ctx.drawImage(black, 0, len - h, P.colW, h, bx, P.floor - h, P.colW, h);
+        ctx.fillStyle = bar.color;
+        ctx.fillRect(bx, P.floor - 4, P.colW, 4); // the player's colour at its foot
+      }
+      // its count, under the floor, going up with it
+      const shown = Math.floor(v + 1e-6);
+      if (shown > 0) {
+        const c = g.sprite(`n|${shown}|${P.numH}|${P.colW}|${lead ? 1 : 0}`, P.colW + 20, P.numH + 4, (x) => {
+          x.textAlign = 'center';
+          x.textBaseline = 'top';
+          x.font = k.font('Josefin Sans', P.numH);
+          x.fillStyle = lead ? k.GOLD_LIGHT : k.GOLD;
+          x.fillText(String(shown), (P.colW + 20) / 2, 2);
+        });
+        ctx.drawImage(c, bx - 10, P.floor + Math.round(s * 0.025));
+      }
+    });
+  }
+
+  function verdictScreen(g, st, e) {
+    const { ctx, k, W, H, s } = g;
+    const names = st.names || [];
+    const pad = Math.round(s * 0.05);
+    let nameBox = null;
+    const layer = g.layer(`verdict|${st.at}`, (x) => {
+      x.fillStyle = '#000';
+      x.fillRect(0, 0, W, H);
+      // the deco frame: a double gold line with stepped corners
+      x.fillStyle = k.GOLD;
+      const o = pad, i2 = pad + Math.round(s * 0.025), step = Math.round(s * 0.05);
+      for (const [d, lw] of [[o, 2], [i2, 1]]) {
+        x.fillRect(d + step, d, W - 2 * (d + step), lw);
+        x.fillRect(d + step, H - d - lw, W - 2 * (d + step), lw);
+        x.fillRect(d, d + step, lw, H - 2 * (d + step));
+        x.fillRect(W - d - lw, d + step, lw, H - 2 * (d + step));
+        for (const [cx, cy, sx, sy] of [[d, d, 1, 1], [W - d, d, -1, 1], [d, H - d, 1, -1], [W - d, H - d, -1, -1]]) {
+          // each corner stepped in: the lines turn inwards round a square notch
+          x.fillRect(cx + sx * step - (sx < 0 ? lw : 0), Math.min(cy, cy + sy * step), lw, step);
+          x.fillRect(Math.min(cx, cx + sx * step), cy + sy * step - (sy < 0 ? lw : 0), step, lw);
+        }
+      }
+      let y = Math.round(s * 0.13);
+      y = stack(g, x, y, [['THE VERDICT', 'Josefin Sans', Math.round(s * 0.042), k.GOLD, s * 0.03]]);
+      const inner = W - 2 * (i2 + s * 0.06);
+      if (!names.length) {
+        y = title(g, x, 'NO VERDICT', y + s * 0.12, H * 0.3, 'Poiret One', k.GOLD_LIGHT);
+        stack(g, x, y + s * 0.06, [['NOBODY VOTED', 'Josefin Sans', Math.round(s * 0.06), k.IVORY, s * 0.02]]);
+        return;
+      }
+      const guilty = st.guilty;
+      const word = guilty ? 'GUILTY' : 'HUNG JURY';
+      k.tracking(x, s * 0.03);
+      const wb = guilty ? { size: k.fitSize(x, word, 'Poiret One', inner, s * 0.2), lines: [word] }
+        : promptLines(g, x, word, 'Poiret One', inner, s * 0.36, Math.round(s * 0.17), 1.05);
+      x.font = k.font('Poiret One', wb.size);
+      x.fillStyle = k.GOLD_LIGHT;
+      x.textAlign = 'center';
+      x.textBaseline = 'top';
+      y += s * 0.035;
+      for (const l of wb.lines) { x.fillText(l, W / 2 + s * 0.015, Math.round(y)); y += wb.size * 1.05; }
+      k.tracking(x, 0);
+      y += s * 0.04;
+      k.decoRule(x, W * 0.25, y, W * 0.5, s);
+      y += s * 0.07;
+      // the name, as big as the frame allows
+      const who = names.length > 3 ? `${names.length}-WAY TIE` : names.join(' & ');
+      const bottom = H - i2 - s * 0.36;
+      const nb = k.fitWrapped(x, who, 'Josefin Sans', inner, bottom - y, guilty ? 1 : 3, 1.08);
+      const px = Math.min(nb.size, Math.round(s * (guilty ? 0.3 : 0.17)));
+      x.font = k.font('Josefin Sans', px);
+      x.fillStyle = k.IVORY;
+      const nameY = y + (bottom - y - nb.lines.length * px * 1.08) / 2;
+      nb.lines.forEach((l, j) => x.fillText(l, W / 2, Math.round(nameY + j * px * 1.08 + px * 0.08)));
+      nameBox = { y: nameY, h: nb.lines.length * px * 1.08, w: Math.max(...nb.lines.map((l) => x.measureText(l).width)) };
+      y = bottom + s * 0.02;
+      const votes = `${st.votes} VOTE${st.votes === 1 ? '' : 'S'}${guilty ? '' : ' EACH'}`;
+      y = stack(g, x, y, [[votes, 'Josefin Sans', Math.round(s * 0.065), k.GOLD, s * 0.03]]);
+      // the prompt, small, as the charge
+      const charge = promptLines(g, x, `MOST LIKELY TO ${st.text}`, 'Josefin Sans', inner, H - i2 - s * 0.05 - (y + s * 0.03), Math.round(s * 0.045), 1.25);
+      stack(g, x, y + s * 0.03, charge.lines.map((l) => [l, 'Josefin Sans', charge.size, k.MUTED, s * 0.006]));
+      g.verdictName = { key: st.at, ...nameBox };
+    });
+    // it lands: fades in and settles from slightly larger
+    const u = ease(e / 0.5);
+    const z = 1 + 0.06 * (1 - u);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = u;
+    ctx.drawImage(layer, Math.round((W - W * z) / 2), Math.round((H - H * z) / 2), Math.round(W * z), Math.round(H * z));
+    ctx.globalAlpha = 1;
+    // a sip for the convicted shows as a small gold drop by the name
+    const nb = g.verdictName;
+    if (st.guilty && nb && nb.key === st.at && e > 1.2 && g.dropOn((st.slots || [])[0])) {
+      const r = Math.max(4, Math.round(s * 0.022));
+      drop(g, ctx, Math.round(W / 2 + nb.w / 2 - r), Math.round(nb.y - r * 2.2), r); // over the name's last letter
+    }
+  }
+
+  // Between prompts: a quiet card with the night's most convicted.
+  function convictedCard(g, st) {
+    const { ctx, k, W, H, s } = g;
+    const most = st.most;
+    ctx.drawImage(g.layer(`card|${st.at}|${st.hand ? 1 : 0}`, (x) => {
+      k.backdrop(x, W, H);
+      let y = verdictHead(g, x) + s * 0.14;
+      if (!most) {
+        y = stack(g, x, y, [['NO VERDICTS', 'Josefin Sans', Math.round(s * 0.06), k.IVORY, s * 0.02], ['YET', 'Josefin Sans', Math.round(s * 0.06), k.IVORY, s * 0.02]]);
+      } else {
+        y = stack(g, x, y, [['MOST CONVICTED', 'Josefin Sans', Math.round(s * 0.05), k.GOLD_LIGHT, s * 0.025], ['TONIGHT', 'Josefin Sans', Math.round(s * 0.05), k.GOLD_LIGHT, s * 0.025]]);
+        const who = most.names.length > 2 ? `${most.names.length}-WAY TIE` : most.names.join(' & ');
+        y = title(g, x, who, y + s * 0.05, H * 0.2, 'Poiret One', k.IVORY) + s * 0.03;
+        y = stack(g, x, y, [[`${most.count} VERDICT${most.count === 1 ? '' : 'S'}${most.names.length > 1 ? ' EACH' : ''}`, 'Josefin Sans', Math.round(s * 0.05), k.MUTED, s * 0.025]]);
+      }
+      y = Math.max(y + s * 0.08, H * 0.74);
+      k.decoRule(x, W * 0.3, y, W * 0.4, s);
+      stack(g, x, y + s * 0.07, [
+        [st.hand ? 'NEXT ONE ON YOUR PHONE' : 'NEXT ONE SOON', 'Josefin Sans', Math.round(s * 0.042), k.MUTED, s * 0.012],
+        ['WRITE YOUR OWN THERE TOO', 'Josefin Sans', Math.round(s * 0.042), k.MUTED, s * 0.012],
+      ]);
+    }), 0, 0);
+    if (!st.hand) countdown(g, st, H - Math.round(s * 0.05));
+  }
+
+  RENDERERS.verdict = verdict;
+
   window.BarParty = {
     register(name, renderer) { RENDERERS[name] = renderer; },
     has(name) { return name in RENDERERS; },

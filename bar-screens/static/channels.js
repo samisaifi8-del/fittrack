@@ -1273,19 +1273,14 @@
         lines.forEach((l, i) => label(l.toUpperCase(), qy + q + s * (0.135 + i * 0.045), s * 0.03, MUTED));
         return;
       }
-      // No secure link yet: the home Wi-Fi address, and why it may not be enough. Set a little
-      // lower, so the shorter card sits in the middle of the wall.
-      top += Math.round(s * 0.16);
-      label('ON YOUR PHONE, OPEN', top + s * 0.06, s * 0.034, MUTED);
-      const lan = shortLink(conf.lan || '').toUpperCase() || 'THE PI’S ADDRESS /LIVE';
-      const dot = lan.indexOf('.');
-      const lines = dot > 0 && lan.length > 18 ? [lan.slice(0, dot), lan.slice(dot)] : [lan];
-      lines.forEach((l, i) => label(l, top + s * (0.15 + i * 0.075), s * 0.06, IVORY));
-      const y = top + s * (0.2 + lines.length * 0.075);
-      decoRule(x, W / 2 - W * 0.12, Math.round(y), W * 0.24, s);
-      label('THE SECURE LINK ISN’T', y + s * 0.07, s * 0.032, MUTED);
-      label('READY YET. PHONES NEED IT', y + s * 0.115, s * 0.032, MUTED);
-      label('TO USE THE CAMERA.', y + s * 0.16, s * 0.032, MUTED);
+      // No secure link yet: only the status. The home Wi-Fi address wouldn't give guests a
+      // camera (phones need the secure link for that), so it isn't offered. Set a little lower,
+      // so the shorter card sits in the middle of the wall.
+      top += Math.round(s * 0.22);
+      label('CAMERAS NEED', top + s * 0.06, s * 0.06, IVORY);
+      label('THE SECURE LINK', top + s * 0.14, s * 0.06, IVORY);
+      decoRule(x, W / 2 - W * 0.12, Math.round(top + s * 0.25), W * 0.24, s);
+      label('ASK THE HOST', top + s * 0.35, s * 0.05, GOLD);
     });
   }
 
@@ -2121,7 +2116,7 @@
           x.fill();
         } else {
           x.strokeStyle = 'rgba(236,240,240,0.6)';
-          x.lineWidth = 1;
+          x.lineWidth = 2; // no hairlines: they shimmer on the LEDs
           x.stroke();
         }
         x.restore();
@@ -2156,14 +2151,16 @@
       x.strokeStyle = color;
       x.lineWidth = Math.max(2, r * 0.22);
       x.beginPath(); x.arc(rx, ry, r - x.lineWidth / 2, 0, Math.PI * 2); x.stroke();
-      x.strokeStyle = mix(color, '#ffffff', 0.7);
-      x.lineWidth = 1;
-      x.beginPath();
-      for (let i = 0; i < 6; i++) {
-        const a = (i * Math.PI) / 3;
-        x.moveTo(rx, ry); x.lineTo(rx + Math.cos(a) * r * 0.7, ry + Math.sin(a) * r * 0.7);
+      if (r >= 8) { // the segments, only where the wheel is big enough for 2 px spokes
+        x.strokeStyle = mix(color, '#ffffff', 0.7);
+        x.lineWidth = 2;
+        x.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const a = (i * Math.PI) / 3;
+          x.moveTo(rx, ry); x.lineTo(rx + Math.cos(a) * r * 0.7, ry + Math.sin(a) * r * 0.7);
+        }
+        x.stroke();
       }
-      x.stroke();
     } else if (kind === 'lime') { // a wedge, sat on the rim
       const r = Math.max(5, gh * 0.09);
       x.fillStyle = mix(color, '#ffffff', 0.2);
@@ -2253,7 +2250,7 @@
       drinks.forEach((d, i) => {
         const y = top + i * rowH, cy = y + rowH / 2;
         if (i > 0) {
-          x.fillStyle = rgba(GOLD, 0.3);
+          x.fillStyle = rgba(GOLD, 0.6); // 1 px, bright enough to hold on the LEDs
           x.fillRect(Math.round(W * 0.08), Math.round(y), Math.round(W * 0.84), hair(s));
         }
         const icon = icons(d, iconW, iconH);

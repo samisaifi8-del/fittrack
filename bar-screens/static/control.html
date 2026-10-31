@@ -352,6 +352,8 @@ textarea.field { resize: none; line-height: 1.35; }
     [7, 'Basement Live', 'live'], [8, 'Now Showing', 'nowshowing'], [9, 'The House Pour', 'pour'],
   ];
   const GAME_CH = ['games', 'colours', 'verdict'];
+  // The number the wall itself shows: the pour tile is channel 10, and the games tile is 6, 9 or 11 by game.
+  const shownNum = (n, ch) => (n === 9 ? 10 : n === 6 ? ({ colours: 9, verdict: 11 }[ch] || 6) : n);
   const tileOf = (ch) => (GAME_CH.includes(ch) ? 6 : (TILES.find((t) => t[2] === ch) || TILES[0])[0]);
   const GAME_INFO = {
     closest: ['Guess the number. The best opener.', 'party'],
@@ -679,7 +681,7 @@ textarea.field { resize: none; line-height: 1.35; }
     else if (sc.pinned && slideById(sc.pinned)) { head = slideById(sc.pinned).name; mode = `<span>Held on screen</span><button type="button" data-act="unpin">Back to ${sc.channel === 'rotation' ? 'rotation' : 'the channel'}</button>`; }
     else if (differ) mode = `<span>Left · right wall on ${esc(TILES[tileOf(s2.channel) - 1][1])}</span>`;
     else if (sc.channel === 'rotation') mode = rot.length ? `<span>Rotating · ${rot.length}</span>${rot.length > 1 ? '<button type="button" data-act="next">Next</button>' : ''}` : '<span>Nothing in rotation yet</span>';
-    else mode = `<span>Channel ${tile}</span>`;
+    else mode = `<span>Channel ${shownNum(tile, sc.channel)}</span>`;
     if (tile === 6 && !msg && !S.settings.blackout && !sc.pinned && S.displayOn) head = gameName();
     const scopeTxt = !bothOn() ? (s1.enabled ? 'Left wall' : 'Right wall') : UI.scope === 's1' ? 'Left wall' : UI.scope === 's2' ? 'Right wall' : split() ? 'Walls differ' : 'Both walls';
     const filmTile = sc.channel === 'nowshowing';
@@ -713,7 +715,7 @@ textarea.field { resize: none; line-height: 1.35; }
       <div class="sect"><span class="cap">Channels</span></div>
       <div class="grid">${TILES.map(([n, name]) => {
         const on = differ ? (n === leftT || n === rightT) : n === tile;
-        return `<button type="button" class="ch ${on ? 'on' : ''}" data-act="ch" data-v="${n}" aria-pressed="${on}" aria-label="Channel ${n}, ${name}"><span class="n">${n}</span>${badge(n)}<span class="nm">${name}</span></button>`;
+        return `<button type="button" class="ch ${on ? 'on' : ''}" data-act="ch" data-v="${n}" aria-pressed="${on}" aria-label="Channel ${shownNum(n, sc.channel)}, ${name}"><span class="n">${shownNum(n, sc.channel)}</span>${badge(n)}<span class="nm">${name}</span></button>`;
       }).join('')}</div>`;
     setHTML($('p-walls'), html);
   }
@@ -804,7 +806,7 @@ textarea.field { resize: none; line-height: 1.35; }
       <div class="sect"><span class="cap">Tonight</span></div>
       <div class="list">
         ${li('Rotation', `${rotOn} on`, 'sheet', 'rotation', 'Channel 1 · photos, video, text, clock')}
-        ${li('Drinks menu', `${S.bar.menu.length} on`, 'sheet', 'menu', 'Channel 9 · The House Pour')}
+        ${li('Drinks menu', `${S.bar.menu.length} on`, 'sheet', 'menu', 'Channel 10 · The House Pour')}
         ${liSwitch('Guests can ask for drinks', '', S.channels.pour.guestOrders, 'guestOrders')}
         ${liSwitch('Sips', 'Games drinking rules · off at 6 am', sipsOn(), 'sips')}
       </div>

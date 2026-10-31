@@ -142,6 +142,23 @@ phones (same Wi-Fi), type a name and join. No app needed.
   time, the light ones stop first, and the top name comes up in a deco frame, **GUILTY** with
   its votes, or **HUNG JURY** on a tie. Between prompts a quiet card shows the night's most
   convicted. Needs three players. Voting closes after 30 seconds, or as soon as everyone's in.
+- **Colours:** for match nights. Under **Channel settings**, pick tonight's match from the list
+  (football from ESPN, tonight and tomorrow); that pins it and puts Colours on the wall. The wall
+  splits into the two clubs' colours, home on top and away below (darkened for a dim room; a
+  near-black or clashing colour falls back to the club's second colour, then to gold against
+  ivory), with a gold band between them. Guests pick **home**, **away** or **neutral** on their
+  phones and their names go on that half (neutrals on the band). Before kickoff everyone can call
+  the score (optional: +/- and Lock). The score on the wall comes only from the room: whoever sees
+  a goal taps **GOAL**, so a delayed stream is never spoiled (taps for the same club within 45
+  seconds count once, and **Disallowed** takes a goal back for 5 minutes). After a goal the
+  scorers get a **TAP** button and the other side **SAVE** for 20 seconds; if the scorers push the
+  band to the far edge, their colour floods the wall with their names. Switch **Tap war after a
+  goal** off and a goal just floods the wall. When the match ends, someone taps **Full time** (or
+  it settles itself 8 minutes after ESPN has the result): ESPN's result settles the calls, 3
+  points for the exact score and 1 for the right result, into a season table kept in
+  `data/colours.json` (a crown on the leader; **New season** clears it). The worst call gets the
+  forfeit you set (default "LOSER POURS"). If ESPN can't be reached, the room's score stands 20
+  minutes after Full time. The wall never shows ESPN's live score.
 
 **Your own WHAT YEAR? questions.** Under **Channel settings** on the control page, add one song or
 film per line as `artist - title - year` (for example `Daft Punk - One More Time - 2000`). Each
@@ -179,15 +196,17 @@ refereed by the Pi rather than the wall, so answers stay secret, scores are fair
 | --- | --- | --- |
 | `PartyGame` | `partygames.py` | Phases with timers (`go`), players by phone, round and night points, `podium()`, `award_sip()`, `offer_pour()` |
 | `load_deck`, `UsedItems` | `partygames.py` | Decks from `static/content/<name>.json`; no repeats until a pool runs out, saved across restarts |
-| Phone input | `GameHub.input` | `pick`, `number`, `lock`, `buzz`, `yesno`, `toggle`, `next`, `end`, `pour`, `suggest` (plus the arcade ones), checked before a game sees them |
-| Phone pads | `static/play.html` | `wait`, `start` (with an optional row of settings), `number` (dial with hold-to-speed-up, drag strip, year mode), `pick` (2 x 2 or a list of names), `buzz`, `yesno`, `toggle`, `result`, `next`, plus a countdown bar, sip notes, the pour list and a box for writing your own prompt |
+| Phone input | `GameHub.input` | `pick`, `number`, `lock`, `buzz`, `yesno`, `toggle`, `next`, `end`, `pour`, `suggest`, `tap {n}`, `call`, `goal`, `undo`, `fulltime`, `resume` (plus the arcade ones), checked before a game sees them |
+| Phone pads | `static/play.html` | `wait`, `start` (with an optional row of settings), `number` (dial with hold-to-speed-up, drag strip, year mode), `pick` (2 x 2 or a list of names), `buzz`, `yesno`, `toggle`, `result`, `next`, `mash` (one huge button, taps batched), `call` and `goal` (Colours), plus a countdown bar, sip notes, the pour list and a box for writing your own prompt |
 | Host controls | `PartyGame.host()`, `host_action()` | A game's own card on the control page (`state.party`), and `POST /api/game/host` for its buttons (The Verdict's approvals) |
+| Live data | `GameHub.poll` | A game with `wants(now)` / `fetched(ask, got)` gets internet data (Colours: ESPN) fetched off the game's lock every few seconds |
 | Wall screens | `static/party.js` | Lobby, between-rounds card, podium, lock dots, countdown bar, sip drop, cached layers |
 
 The top of `partygames.py` and `static/party.js` walks through adding a game step by step;
 `ClosestWins` is the worked example (`FiveClues` a second one, with buzzing), and `test_party.py`
 shows how to test one without a wall. `FiveLights` is a third; its wall lives in its own file
-(`static/fivelights.js`). `Verdict` is the one with a host card on the control page.
+(`static/fivelights.js`). `Verdict` is the one with a host card on the control page, and
+`test_colours.py` tests Colours with a stand-in for ESPN.
 
 ## Basement Live
 

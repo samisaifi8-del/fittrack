@@ -965,6 +965,7 @@ class GameHub:
         self.used = partygames.UsedItems(os.path.join(store.data_dir, "used.json"))
         self.party = None  # the party game being refereed, if one is picked
         self.party_sent = -1
+        self.later = []    # a game's calls into the Store, run once this hub's lock is let go
         self._sync_party()
 
     def sips_on(self):
@@ -987,6 +988,23 @@ class GameHub:
         return {"type": "roster", "game": game, "joinUrl": self.join_url, "onWall": on_wall,
                 "party": self.party is not None, "sips": self.sips_on(),
                 "players": [{"slot": p["slot"], "name": p["name"], "color": p["color"]} for p in players]}
+
+    def after(self, fn):
+        """For a game: call into the Store (fn) once the hub's lock is let go. The Store's snapshot
+        asks this hub for its players' names (The House Pour) under the Store's lock, so the order
+        is always store, then hub; calling the Store with the hub's lock held would deadlock."""
+        self.later.append(fn)
+
+    def _run_later(self):
+        with self.lock:
+            todo, self.later = self.later, []
+        for fn in todo:
+            fn()
+        if todo:
+            with self.lock:
+                if self.party:  # its views may read what fn changed (Five Lights: the tier)
+                    self.party.changed()
+                    self._send_party()
 
     def names(self):
         with self.lock:
@@ -1157,6 +1175,12 @@ class GameHub:
         return msg
 
     def input(self, body):
+        try:
+            self._input(body)
+        finally:
+            self._run_later()
+
+    def _input(self, body):
         with self.lock:
             pid = body.get("pid")
             player = self.players.get(pid)
@@ -1182,6 +1206,12 @@ class GameHub:
 
     def host(self, body):
         """The host's controls for the party game, from the control page."""
+        try:
+            self._host(body)
+        finally:
+            self._run_later()
+
+    def _host(self, body):
         with self.lock:
             if not self.party:
                 raise ApiError(409, "No party game is running.")

@@ -1171,7 +1171,8 @@ class FiveLights(PartyGame):
     def on_input(self, pid, msg):
         kind = msg["kind"]
         if self.phase == "lobby" and kind == "pick" and msg.get("id") in TIERS:
-            self.hub.store.update_channels({"games": {"tier": msg["id"]}})
+            tier = msg["id"]
+            self.hub.after(lambda: self.hub.store.update_channels({"games": {"tier": tier}}))
             self.changed()
         elif self.phase == "ask" and kind == "yesno":
             self.answers[pid] = msg["yes"]
@@ -1448,7 +1449,7 @@ class Verdict(PartyGame):
             uid = hashlib.sha1(f"{clean}|{pid}|{self.now()}".encode()).hexdigest()[:10]
             self.waiting.append({"id": uid, "text": clean, "by": self.who(pid)["name"], "pid": pid})
             note = {"title": "SENT TO THE HOST", "text": "If they approve it, it goes up soon."}
-            self.hub.store.refresh()
+            self.hub.after(self.hub.store.refresh)
         self.notices[pid] = {**note, "at": self.now()}
         self.changed()
 
@@ -1479,7 +1480,7 @@ class Verdict(PartyGame):
                 self.next_prompt()
         else:
             raise ValueError
-        self.hub.store.refresh()
+        self.hub.after(self.hub.store.refresh)
 
     # -- views
 

@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0a08">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Basement Live</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poiret+One&family=Josefin+Sans:wght@300;600;700&family=Barlow+Condensed:wght@500;600&display=swap">
+<style>
+/* Layout: one full-height phone column. Header, then either the setup form, the live view
+   (self-preview and END), or a message (ended, blocked, full). Self-contained: through the secure
+   link this is the only page the Pi serves. */
+:root {
+  --bg: #0b0a08; --surface: #15130f; --raise: #1e1b15; --line: #332d22;
+  --fg: #efe6d2; --muted: #a59a84; --gold: #c5a467; --gold-ink: #15100a; --danger: #ff8a80;
+  --f-display: "Poiret One", Georgia, serif;
+  --f-label: "Josefin Sans", system-ui, sans-serif;
+  --f-body: "Barlow Condensed", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg); font: 500 18px/1.35 var(--f-body);
+  display: flex; flex-direction: column; overscroll-behavior: none;
+  padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(16px, env(safe-area-inset-left, 0px));
+}
+[hidden] { display: none !important; }
+button, input { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-block: 14px 10px; border-bottom: 3px double var(--gold); }
+.brand { font: 400 24px/1 var(--f-display); letter-spacing: 0.1em; }
+.sub { font: 700 11px/1 var(--f-label); letter-spacing: 0.3em; color: var(--gold); }
+
+main { flex: 1; display: flex; flex-direction: column; gap: 16px; padding-block: 18px; min-height: 0; }
+.view { display: flex; flex-direction: column; gap: 14px; flex: 1; min-height: 0; }
+.eyebrow { margin: 0; font: 700 12px/1.2 var(--f-label); letter-spacing: 0.24em; text-transform: uppercase; color: var(--gold); }
+h1 { margin: 0; font: 400 34px/1.1 var(--f-display); letter-spacing: 0.06em; }
+.note { margin: 0; color: var(--muted); font-size: 16px; }
+.note b { color: var(--fg); font-weight: 600; }
+
+.btn {
+  min-height: 52px; padding: 12px 18px; border-radius: 4px; border: 1px solid var(--gold);
+  background: transparent; color: var(--fg); cursor: pointer; font: 700 15px/1 var(--f-label); letter-spacing: 0.22em; text-transform: uppercase;
+}
+.btn.primary { background: var(--gold); color: var(--gold-ink); }
+.btn.big { min-height: 64px; font-size: 18px; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+input[type="text"] {
+  width: 100%; min-height: 56px; padding: 10px 14px; border-radius: 4px; border: 1px solid var(--line);
+  background: var(--surface); font: 600 24px var(--f-body); letter-spacing: 0.04em; text-transform: uppercase;
+}
+.seg { display: flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.seg button { flex: 1 1 0; min-height: 50px; border: 0; border-right: 1px solid var(--line); background: var(--surface); cursor: pointer; font: 700 13px/1 var(--f-label); letter-spacing: 0.2em; text-transform: uppercase; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--raise); color: var(--gold); box-shadow: inset 0 -2px 0 var(--gold); }
+.field { display: grid; gap: 8px; }
+
+/* the live view: the picture as the wall gets it, portrait, in a thin gold frame */
+.stage { flex: 1; min-height: 200px; display: flex; align-items: center; justify-content: center; }
+.frame { position: relative; height: 100%; max-height: 62vh; aspect-ratio: 9 / 16; max-width: 100%; border: 1px solid var(--gold); padding: 4px; background: #000; }
+.frame video { display: block; width: 100%; height: 100%; object-fit: cover; background: #000; }
+.frame video.mirror { transform: scaleX(-1); }
+.state { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 28px; margin: 0; font: 700 13px/1.2 var(--f-label); letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); text-align: center; }
+.state::before { content: ""; width: 9px; height: 9px; transform: rotate(45deg); border: 1px solid currentColor; flex: none; }
+.state.live { color: var(--gold); }
+.state.live::before { background: var(--gold); animation: breathe 2.4s ease-in-out infinite; }
+@keyframes breathe { 50% { opacity: 0.35; } }
+.state-note { margin: -6px 0 0; min-height: 1.35em; text-align: center; color: var(--muted); font-size: 16px; }
+.controls { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+
+.msg { display: grid; gap: 14px; align-content: start; }
+.msg ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; color: var(--muted); font-size: 16px; }
+.msg ol b { color: var(--fg); font-weight: 600; }
+.rule { height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); margin: 4px 0; }
+.toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 14px; border-radius: 4px; background: var(--fg); color: var(--bg); font: 600 16px var(--f-body); }
+@media (prefers-reduced-motion: reduce) { .state.live::before { animation: none; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="brand" id="brand">THE BASEMENT</span>
+  <span class="sub">LIVE</span>
+</header>
+
+<main>
+  <section class="view" id="setupView">
+    <p class="eyebrow">Go live on the wall</p>
+    <h1>What should we call you?</h1>
+    <input type="text" id="name" maxlength="16" autocomplete="nickname" placeholder="YOUR NAME" aria-label="Your name">
+    <div class="field">
+      <span class="eyebrow" id="camLabel">Camera</span>
+      <div class="seg" role="group" aria-labelledby="camLabel">
+        <button type="button" data-facing="user" aria-pressed="true">Front</button>
+        <button type="button" data-facing="environment" aria-pressed="false">Back</button>
+      </div>
+    </div>
+    <button type="button" class="btn primary big" id="goBtn">Go live</button>
+    <p class="note">Your camera shows on the wall, in portrait. <b>Picture only:</b> no sound is sent. Up to four phones can be live at once.</p>
+  </section>
+
+  <section class="view" id="liveView" hidden>
+    <div class="stage"><div class="frame"><video id="preview" playsinline autoplay muted></video></div></div>
+    <p class="state" id="state" role="status">Connecting</p>
+    <p class="state-note" id="stateNote"></p>
+    <div class="controls">
+      <button type="button" class="btn" id="flipBtn">Flip</button>
+      <button type="button" class="btn primary big" id="endBtn">End</button>
+    </div>
+  </section>
+
+  <section class="view msg" id="msgView" hidden>
+    <p class="eyebrow" id="msgEyebrow"></p>
+    <h1 id="msgTitle"></h1>
+    <div class="rule"></div>
+    <p class="note" id="msgText"></p>
+    <ol id="msgSteps" hidden></ol>
+    <button type="button" class="btn primary big" id="againBtn">Go live again</button>
+  </section>
+</main>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get(k) { try { return localStorage.getItem('basement:' + k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem('basement:' + k, v); } catch (e) {} },
+  };
+  const STUN = [{ urls: 'stun:stun.l.google.com:19302' }];
+  // A new id for every visit: a camera that's been away comes back as a fresh one.
+  const cid = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, '0')).join('');
+
+  let facing = store.get('facing') === 'environment' ? 'environment' : 'user';
+  let want = false;          // the guest wants to be on the wall
+  let stream = null, pc = null, gen = 0, since = 0, statusKey = '', status = null;
+  let pollAbort = null, polling = false, offering = false, retryTimer = 0;
+
+  $('name').value = store.get('name') || '';
+
+  let toastTimer = 0;
+  function toast(msg) {
+    $('toast').textContent = msg;
+    $('toast').hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { $('toast').hidden = true; }, 3500);
+  }
+
+  function show(view) {
+    for (const v of ['setupView', 'liveView', 'msgView']) $(v).hidden = v !== view;
+  }
+
+  function message(kind) {
+    const M = {
+      ended: ['Thank you', 'You\'re off the wall', 'Your camera is off. Come back any time.'],
+      blocked: ['Camera blocked', 'Allow the camera', 'The wall needs your camera to show you. Your phone is blocking it for this page:'],
+      nocam: ['No camera', 'Couldn\'t start the camera', 'Another app may be using it. Close it and try again.'],
+      full: ['The wall is full', 'Four phones are live', 'That\'s as many as the wall shows at once. Try again when someone ends.'],
+      insecure: ['Secure link needed', 'Scan the code on the wall', 'Phones only allow the camera on the secure link. Point your camera at the QR code on the wall (channel 7) and open it from there.'],
+    }[kind];
+    $('msgEyebrow').textContent = M[0];
+    $('msgTitle').textContent = M[1];
+    $('msgText').textContent = M[2];
+    const steps = $('msgSteps');
+    steps.hidden = kind !== 'blocked';
+    if (kind === 'blocked') {
+      steps.innerHTML = '<li><b>iPhone:</b> tap <b>aA</b> in the address bar, then <b>Website Settings</b> &rsaquo; <b>Camera</b> &rsaquo; <b>Allow</b>. Or Settings &rsaquo; Safari &rsaquo; Camera.</li>'
+        + '<li><b>Android:</b> tap the icon left of the address, then <b>Permissions</b> &rsaquo; <b>Camera</b> &rsaquo; <b>Allow</b>.</li>'
+        + '<li>Then tap <b>Try again</b>.</li>';
+    }
+    $('againBtn').textContent = kind === 'ended' ? 'Go live again' : kind === 'insecure' ? 'Reload' : 'Try again';
+    $('againBtn').dataset.kind = kind;
+    show('msgView');
+  }
+
+  // ------------------------------------------------------------ status line
+
+  function setState() {
+    const el = $('state'), note = $('stateNote');
+    const connected = pc && pc.connectionState === 'connected';
+    let text = 'Connecting', sub = 'Finding the wall…', live = false;
+    if (connected && status && status.onWall) { text = 'Live on the wall'; sub = 'Everyone can see you.'; live = true; }
+    else if (status && !status.onWall) { text = 'Ready'; sub = 'The wall is showing something else. Ask the host for channel 7, Basement Live.'; }
+    else if (status && !status.display) { text = 'Waiting for the wall'; sub = 'The wall\'s display isn\'t connected yet.'; }
+    el.textContent = text;
+    el.classList.toggle('live', live);
+    note.textContent = sub;
+  }
+
+  // ------------------------------------------------------------ the camera
+
+  async function startCamera() {
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+    stream = null;
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: { ideal: facing }, width: { ideal: 480 }, height: { ideal: 854 }, frameRate: { ideal: 30, max: 30 } },
+    });
+    const track = stream.getVideoTracks()[0];
+    if (track && 'contentHint' in track) track.contentHint = 'motion';
+    track.addEventListener('ended', () => { if (want && document.visibilityState === 'visible') recover(); });
+    const v = $('preview');
+    v.srcObject = stream;
+    v.classList.toggle('mirror', facing === 'user');
+    v.play().catch(() => {});
+    return track;
+  }
+
+  function cameraError(e) {
+    want = false;
+    stopAll();
+    if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) message('blocked');
+    else message('nocam');
+  }
+
+  // ------------------------------------------------------------ talking to the Pi
+
+  async function post(path, body) {
+    const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    let data = null;
+    try { data = await res.json(); } catch (e) {}
+    if (!res.ok) throw Object.assign(new Error((data && data.error) || 'Something went wrong.'), { status: res.status });
+    return data;
+  }
+
+  // The whole offer at once: wait until the phone has found all its addresses (a few seconds at
+  // most), so the Pi only has to pass along one message each way.
+  function gathered(conn, ms) {
+    if (conn.iceGatheringState === 'complete') return Promise.resolve();
+    return new Promise((resolve) => {
+      const done = () => { clearTimeout(timer); conn.removeEventListener('icegatheringstatechange', check); resolve(); };
+      const check = () => { if (conn.iceGatheringState === 'complete') done(); };
+      const timer = setTimeout(done, ms);
+      conn.addEventListener('icegatheringstatechange', check);
+    });
+  }
+
+  async function offer() {
+    if (!want || offering) return;
+    offering = true;
+    clearTimeout(retryTimer);
+    try {
+      const track = stream && stream.getVideoTracks()[0];
+      if (!track || track.readyState !== 'live') await startCamera();
+      if (pc) pc.close();
+      const conn = pc = new RTCPeerConnection({ iceServers: STUN });
+      const sender = conn.addTransceiver(stream.getVideoTracks()[0], { direction: 'sendonly', streams: [stream] }).sender;
+      conn.addEventListener('connectionstatechange', () => {
+        if (conn !== pc) return;
+        setState();
+        if (conn.connectionState === 'failed' && want) { clearTimeout(retryTimer); retryTimer = setTimeout(offer, 1500); }
+      });
+      await conn.setLocalDescription(await conn.createOffer());
+      await gathered(conn, 4000);
+      if (conn !== pc || !want) return;
+      const res = await post('/api/live/offer', { cid, name: $('name').value.trim(), sdp: conn.localDescription.sdp });
+      gen = res.gen;
+      since = Math.min(since, res.seq);
+      status = res.status;
+      setState();
+      try { // gentle on the Pi, which decodes up to four of these at once
+        const p = sender.getParameters();
+        if (p.encodings && p.encodings[0]) { p.encodings[0].maxBitrate = 1200000; p.encodings[0].maxFramerate = 30; await sender.setParameters(p); }
+      } catch (e) {}
+      if (!polling) poll();
+    } catch (e) {
+      if (e.status === 409) { want = false; stopAll(); message('full'); }
+      else if (e.name === 'NotAllowedError' || e.name === 'NotFoundError' || e.name === 'NotReadableError' || e.name === 'SecurityError') cameraError(e);
+      else if (want) { setState(); retryTimer = setTimeout(offer, 3000); }
+    } finally {
+      offering = false;
+    }
+  }
+
+  async function answer(m) {
+    if (!pc || m.gen !== gen || pc.signalingState !== 'have-local-offer') return;
+    try { await pc.setRemoteDescription({ type: 'answer', sdp: m.sdp }); } catch (e) { retryTimer = setTimeout(offer, 1500); }
+  }
+
+  // Long-polls the Pi for the wall's answer, and for requests to start over (the display was
+  // reloaded). Each poll also tells the Pi this phone is still here.
+  async function poll() {
+    polling = true;
+    while (want) {
+      pollAbort = new AbortController();
+      try {
+        const q = `cid=${cid}&since=${since}&st=${encodeURIComponent(statusKey)}`;
+        const res = await fetch(`/api/live/poll?${q}`, { signal: pollAbort.signal, cache: 'no-store' });
+        const data = await res.json();
+        if (!want) break;
+        if (data.status) {
+          status = data.status;
+          statusKey = status.key;
+          if (status.bar) $('brand').textContent = status.bar;
+        }
+        if (data.gone) { since = 0; offer(); await wait(1000); continue; }
+        since = data.seq;
+        for (const m of data.msgs || []) {
+          if (m.type === 'answer') await answer(m);
+          if (m.type === 'reoffer') offer();
+        }
+        setState();
+      } catch (e) {
+        if (!want) break;
+        await wait(2000);
+      }
+    }
+    polling = false;
+  }
+
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  function stopAll() {
+    clearTimeout(retryTimer);
+    if (pollAbort) pollAbort.abort();
+    if (pc) pc.close();
+    pc = null;
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+    stream = null;
+    $('preview').srcObject = null;
+  }
+
+  // ------------------------------------------------------------ buttons
+
+  async function goLive() {
+    const name = $('name').value.trim();
+    if (!name) { $('name').focus(); toast('Type your name first.'); return; }
+    store.set('name', name.toUpperCase());
+    if (!window.isSecureContext || !navigator.mediaDevices || !window.RTCPeerConnection) { message('insecure'); return; }
+    $('goBtn').disabled = true;
+    try {
+      await startCamera();
+    } catch (e) {
+      $('goBtn').disabled = false;
+      cameraError(e);
+      return;
+    }
+    $('goBtn').disabled = false;
+    want = true;
+    status = null;
+    show('liveView');
+    setState();
+    offer();
+  }
+
+  function end() {
+    if (!want) return;
+    want = false;
+    post('/api/live/leave', { cid }).catch(() => {});
+    stopAll();
+    message('ended');
+  }
+
+  // After the phone slept or the camera was taken away: a fresh camera and a fresh connection.
+  function recover() {
+    if (!want) return;
+    const track = stream && stream.getVideoTracks()[0];
+    if (!track || track.readyState !== 'live' || !pc || ['failed', 'closed', 'disconnected'].includes(pc.connectionState)) offer();
+    if (!polling) poll();
+  }
+
+  $('goBtn').addEventListener('click', goLive);
+  $('name').addEventListener('keydown', (e) => { if (e.key === 'Enter') goLive(); });
+  $('endBtn').addEventListener('click', end);
+  $('againBtn').addEventListener('click', () => {
+    if ($('againBtn').dataset.kind === 'insecure') location.reload();
+    else if ($('againBtn').dataset.kind === 'ended') show('setupView');
+    else goLive();
+  });
+  document.querySelector('.seg').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-facing]');
+    if (!b) return;
+    facing = b.dataset.facing;
+    store.set('facing', facing);
+    document.querySelectorAll('[data-facing]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  });
+  // Flipping swaps the picture on the same connection; the wall doesn't notice a thing.
+  $('flipBtn').addEventListener('click', async () => {
+    facing = facing === 'user' ? 'environment' : 'user';
+    store.set('facing', facing);
+    document.querySelectorAll('[data-facing]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.facing === facing)));
+    $('flipBtn').disabled = true;
+    try {
+      const track = await startCamera();
+      const sender = pc && pc.getSenders().find((s) => s.track === null || s.track.kind === 'video');
+      if (sender) await sender.replaceTrack(track); else offer();
+    } catch (e) {
+      toast('Couldn\'t switch cameras.');
+    }
+    $('flipBtn').disabled = false;
+  });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') recover(); });
+  window.addEventListener('pagehide', () => {
+    if (!want) return;
+    const body = new Blob([JSON.stringify({ cid })], { type: 'application/json' });
+    if (!(navigator.sendBeacon && navigator.sendBeacon('/api/live/leave', body))) post('/api/live/leave', { cid }).catch(() => {});
+  });
+  // Keep the screen awake while live, so the phone doesn't lock mid-broadcast.
+  if (navigator.wakeLock) {
+    const lock = () => { if (want) navigator.wakeLock.request('screen').catch(() => {}); };
+    $('goBtn').addEventListener('click', () => setTimeout(lock, 500));
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') lock(); });
+  }
+  if (!window.isSecureContext) message('insecure');
+})();
+</script>
+</body>
+</html>

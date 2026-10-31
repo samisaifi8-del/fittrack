@@ -30,6 +30,7 @@
 <div id="dim"></div>
 <script src="/static/channels.js"></script>
 <script src="/static/games.js"></script>
+<script src="/static/livewall.js"></script>
 <script>
 (() => {
   'use strict';
@@ -228,6 +229,10 @@
       if (slide.channel === 'games' && window.BarGames) {
         bus = gameBus();
         channel = window.BarGames.create(slide.conf && slide.conf.game, canvas, W, H, { bus, barName: slide.barName });
+      } else if (slide.channel === 'live' && window.BarChannels) {
+        // Only the real display receives the cameras; previews on phones show the channel's card.
+        bus = kiosk && window.BarLive ? window.BarLive.acquire() : null;
+        channel = window.BarChannels.create('live', canvas, W, H, { conf: slide.conf, barName: slide.barName, live: bus });
       } else if (window.BarChannels) {
         channel = window.BarChannels.create(slide.channel, canvas, W, H, { conf: slide.conf, barName: slide.barName, side: slide.side });
       }
@@ -559,6 +564,12 @@
         const inUse = state.screens.filter((s) => s.enabled).map((s) => s.id);
         const side = inUse.length > 1 ? (screen.id === inUse[0] ? 'left' : 'right') : '';
         slide = { type: 'channel', channel: live.channel, conf: (state.channels || {})[live.channel], barName: state.settings.barName, side };
+        if (live.channel === 'live') {
+          // The link for the QR code. Who's live comes from the cameras themselves on the Pi, so
+          // people joining don't rebuild the channel; previews just list their names.
+          const g = state.golive || {};
+          slide.conf = { url: g.url || '', lan: g.lan || '', qr: !!g.qr, ...(kiosk ? {} : { names: g.cams || [] }) };
+        }
       }
       const mirror = state.mirror, st = state.settings;
       if (!soloSlide && mirror && mirror.live && (st.mirrorScreen === 'all' || st.mirrorScreen === screen.id)) {

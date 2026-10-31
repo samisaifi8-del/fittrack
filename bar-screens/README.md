@@ -3,8 +3,8 @@
 Runs the LED walls at The Basement from a Raspberry Pi instead of ViPlex. The Pi plugs into the
 NovaStar TB6's **HDMI IN**, shows a full-screen display page, and you control it from your phone
 over the home Wi-Fi. It has TV-style channels (your own photos and videos, scores, news, weather,
-deco visuals and party games), live mirroring from an iPhone, quick messages, brightness and
-blackout.
+deco visuals, party games and guests' phone cameras), live mirroring from an iPhone, quick
+messages, brightness and blackout.
 
 ```
 Phone (home Wi-Fi) ──> Raspberry Pi ──HDMI──> NovaStar TB6 (HDMI IN) ──> LED wall
@@ -80,6 +80,7 @@ The control page works like a TV remote. Pick a channel for each wall:
 | 4 · Weather | Now, the next few hours and the next few days for your town. |
 | 5 · Visuals | The Basement sign, a 1930s lift dial that settles on B, a deco clock, the city at dusk, champagne bubbles and deco fans. |
 | 6 · Games | Party games on the wall, with phones as the controllers. |
+| 7 · Basement Live | Guests' phone cameras on the wall, up to four, cut together automatically. |
 
 Set leagues, news section, your town, the visual style, the game and the bar's name under
 **Channel settings**. Scores, news and weather need the Pi to be online.
@@ -107,6 +108,32 @@ phones (same Wi-Fi), type a name and join. No app needed.
 - **Serpentine:** everyone gets a snake. Eat cherries to grow; gold coins are worth three.
 - **Quick Draw:** wait for DRAW, then tap first. Too early is a false start. First to 5 wins.
 
+## Basement Live
+
+Put a wall on channel 7. With nobody live it shows a QR code; guests scan it, type a name, choose
+the front or back camera and press **Go live**. Up to four phones at once (a fifth is told the wall
+is full). Picture only: no sound is sent.
+
+The wall directs itself: one person fills the wall, with a slow push-in now and then. With two or
+more, each takes a turn on the whole wall, with the occasional two stacked and, with three or four,
+everyone at once. Someone new gets a short curtain reveal with their name. Each picture has a gold
+frame and a small nameplate.
+
+The same link and QR code are on the control page under **Go live**, with Share and Copy buttons.
+
+**The secure link.** Phones only allow the camera on a secure (https) link, so the installer adds
+a Cloudflare quick tunnel (free, no account): the `bar-screens-tunnel` service. It gives the Pi an
+address like `https://some-random-words.trycloudflare.com`, which changes every time the Pi (or
+the service) restarts; the wall and the control page always show the current one. The server reads
+it from cloudflared's local metrics port (`127.0.0.1:3998/quicktunnel`), or failing that from the
+service's log for its current run (`journalctl -u bar-screens-tunnel`). The Pi needs to be online.
+
+Only the camera page is reachable through that link. Anything else that arrives through it (the
+control page, uploads, settings) gets "403 Forbidden", so the remote stays on the home Wi-Fi.
+
+The video goes straight from each phone to the Pi's display over WebRTC (with Google's public STUN
+server to find the way); the server only passes the connection details along.
+
 ## Live from your phone
 
 On an iPhone, open **Control Centre**, tap **Screen Mirroring** and choose **The Basement**. Your
@@ -133,8 +160,9 @@ at the same time.
 
 What the installer changes on the Pi:
 
-- It adds background services called `bar-screens` and `bar-screens-airplay` (the AirPlay
-  receiver).
+- It adds background services called `bar-screens`, `bar-screens-airplay` (the AirPlay
+  receiver) and `bar-screens-tunnel` (the secure link for Basement Live). It installs `ffmpeg`,
+  `qrencode` and, if it isn't there yet, Cloudflare's `cloudflared`.
 - It adds a startup entry that opens the display. The entry does nothing while Bar Screens is off.
 - It sets the Pi to boot to the desktop and log in automatically, because the display needs the
   desktop.
@@ -168,5 +196,11 @@ Your uploads and settings are kept either way.
   `systemctl status bar-screens-airplay`. This is the one part that couldn't be tested before it
   reached your Pi, so if it misbehaves, send the output of
   `journalctl -u bar-screens-airplay -n 50` to whoever is helping you.
+- **The wall says the secure link isn't ready.** Check the tunnel with
+  `systemctl status bar-screens-tunnel` and `journalctl -u bar-screens-tunnel -n 30`. It needs the
+  Pi to be online; restarting it (`sudo systemctl restart bar-screens-tunnel`) gets a new address.
+- **A phone says the camera is blocked.** On an iPhone tap **aA** in Safari's address bar, then
+  Website Settings > Camera > Allow. On Android tap the icon left of the address, then
+  Permissions > Camera.
 - **Anyone on your Wi-Fi can open the control page.** Keep that in mind if guests use your
   network.

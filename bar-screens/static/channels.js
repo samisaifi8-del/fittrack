@@ -19,6 +19,7 @@
     weather: { n: 4, name: 'WEATHER', accent: GOLD },
     visuals: { n: 5, name: 'VISUALS', accent: GOLD },
     games: { n: 6, name: 'GAMES', accent: GOLD },
+    live: { n: 7, name: 'BASEMENT LIVE', accent: GOLD },
   };
 
   let fontStr = (name, px) => `600 ${px}px sans-serif`;
@@ -1081,6 +1082,453 @@
     return { stop };
   }
 
+  // ------------------------------------------------------------ basement live
+
+  // Guests' phone cameras (static/live.html), received on the Pi by livewall.js. An automatic
+  // director cuts between them: each person on the whole wall in turn, now and then two stacked,
+  // and with three or four live, everyone at once. Frames, nameplates and the curtain are drawn
+  // once into small canvases and stamped on, so a frame is little more than drawing the video.
+  const LIVE_SOLO = 7;      // seconds per person (give or take one)
+  const LIVE_GROUP = 6;     // seconds for a two-up or the grid
+  const LIVE_WIPE = 0.55;   // the deco wipe between layouts
+  const LIVE_REVEAL = 2.2;  // the curtain for someone joining
+
+  function offscreen(w, h, draw) {
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w));
+    c.height = Math.max(1, Math.round(h));
+    draw(c.getContext('2d'), c.width, c.height);
+    return c;
+  }
+
+  function cached(map, key, make) {
+    if (!map.has(key)) map.set(key, make());
+    return map.get(key);
+  }
+
+  const ease = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u));
+
+  // Cover-fits a camera into a box by cropping its source (no clipping needed). Portrait phone
+  // video loses more from the bottom than the top, because faces sit high in the picture; `zoom`
+  // pushes in, drifting a little upwards as it does.
+  function drawCam(ctx, v, x, y, w, h, zoom) {
+    const vw = v.videoWidth, vh = v.videoHeight;
+    if (!vw || !vh) return;
+    const k = Math.max(w / vw, h / vh) * (zoom || 1);
+    const sw = Math.min(vw, w / k), sh = Math.min(vh, h / k);
+    const fy = vh > vw ? 0.3 : 0.4;
+    ctx.drawImage(v, (vw - sw) / 2, (vh - sh) * fy, sw, sh, x, y, w, h);
+  }
+
+  // Each person's picture sits in a black matte with a gold line and stepped deco corners.
+  function camFrame(w, h) {
+    return offscreen(w, h, (x) => {
+      x.fillStyle = '#000';
+      x.fillRect(0, 0, w, 2); x.fillRect(0, h - 2, w, 2); x.fillRect(0, 0, 2, h); x.fillRect(w - 2, 0, 2, h);
+      x.fillStyle = GOLD;
+      x.fillRect(2, 2, w - 4, 1); x.fillRect(2, h - 3, w - 4, 1); x.fillRect(2, 2, 1, h - 4); x.fillRect(w - 3, 2, 1, h - 4);
+      const L = Math.max(6, Math.round(Math.min(w, h) * 0.07));
+      for (const [tx, ty, sx, sy] of [[0, 0, 1, 1], [w, 0, -1, 1], [0, h, 1, -1], [w, h, -1, -1]]) {
+        x.save();
+        x.translate(tx, ty);
+        x.scale(sx, sy);
+        // two stepped brackets, each with a black edge inside it so it reads over a bright picture
+        for (const [o, len] of [[5, L], [8, Math.round(L * 0.55)]]) {
+          x.fillStyle = 'rgba(0,0,0,0.7)';
+          x.fillRect(o + 1, o + 1, len - 1, 1); x.fillRect(o + 1, o + 1, 1, len - 1);
+          x.fillStyle = GOLD;
+          x.fillRect(o, o, len, 1); x.fillRect(o, o, 1, len);
+        }
+        x.restore();
+      }
+    });
+  }
+
+  // The name in ivory capitals on a small black plate, under a gold rule with a diamond.
+  function namePlate(name, px, maxW) {
+    const m = document.createElement('canvas').getContext('2d');
+    tracking(m, px * 0.16);
+    let size = px;
+    m.font = font('Josefin Sans', size);
+    const w0 = m.measureText(name).width;
+    if (w0 > maxW - px * 1.6) size = Math.max(MIN_TEXT, Math.floor((size * (maxW - px * 1.6)) / w0));
+    m.font = font('Josefin Sans', size);
+    tracking(m, size * 0.16);
+    const tw = m.measureText(name).width;
+    const w = Math.min(maxW, Math.round(tw + size * 1.6)), h = Math.round(size * 2.1);
+    return offscreen(w, h, (x) => {
+      x.fillStyle = 'rgba(0,0,0,0.82)';
+      x.fillRect(0, 0, w, h);
+      x.fillStyle = GOLD;
+      const cx = Math.floor(w / 2);
+      x.fillRect(0, 0, cx - 3, 1); x.fillRect(cx + 4, 0, w - cx - 4, 1);
+      x.fillRect(cx - 1, 0, 3, 1); x.fillRect(cx, 1, 1, 1);                   // the diamond's lower half
+      x.font = font('Josefin Sans', size);
+      tracking(x, size * 0.16);
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      x.fillStyle = IVORY;
+      x.fillText(name, w / 2 + size * 0.08, h / 2 + 1 + size * 0.06);
+      tracking(x, 0);
+    });
+  }
+
+  // The small gold LIVE in the top corner, on a black chip so it reads over any picture.
+  function liveMark() {
+    const size = 8;
+    const m = document.createElement('canvas').getContext('2d');
+    m.font = font('Josefin Sans', size);
+    tracking(m, 2);
+    const tw = Math.ceil(m.measureText('LIVE').width);
+    const w = tw + 14, h = 13;
+    return offscreen(w, h, (x) => {
+      x.fillStyle = 'rgba(0,0,0,0.78)';
+      x.fillRect(0, 0, w, h);
+      x.fillStyle = GOLD;
+      x.beginPath(); x.moveTo(5, 3.5); x.lineTo(8, 6.5); x.lineTo(5, 9.5); x.lineTo(2, 6.5); x.closePath(); x.fill();
+      x.font = font('Josefin Sans', size);
+      tracking(x, 2);
+      x.textBaseline = 'middle';
+      x.fillText('LIVE', 11, h / 2 + 1);
+      tracking(x, 0);
+    });
+  }
+
+  // Draws a QR code (rows of "1"/"0" from the Pi's qrencode) with whole-pixel modules on an ivory
+  // panel. Returns its size.
+  function drawQR(x, rows, left, top, maxSize) {
+    const n = rows.length, quiet = 2;
+    const cell = Math.max(1, Math.floor(maxSize / (n + quiet * 2)));
+    const size = cell * (n + quiet * 2);
+    x.fillStyle = IVORY;
+    x.fillRect(left, top, size, size);
+    x.fillStyle = '#000';
+    rows.forEach((row, r) => {
+      for (let c = 0; c < n; c++) if (row[c] === '1') x.fillRect(left + (c + quiet) * cell, top + (r + quiet) * cell, cell, cell);
+    });
+    return size;
+  }
+
+  const qrCache = new Map();
+  function loadQR(url) {
+    if (!url) return Promise.resolve(null);
+    if (!qrCache.has(url)) {
+      qrCache.set(url, fetch('/api/live/qr').then((r) => r.json()).then((j) => (j.url === url && j.rows ? j.rows : null)).catch(() => null));
+    }
+    return qrCache.get(url);
+  }
+
+  const shortLink = (url) => (url || '').replace(/^https?:\/\//, '');
+
+  // Nobody live: the channel's card, with the code to scan.
+  function liveIdle(W, H, conf, rows, names) {
+    const s = Math.min(W, H);
+    return offscreen(W, H, (x) => {
+      x.fillStyle = '#000';
+      x.fillRect(0, 0, W, H);
+      frame(x, W, H);
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      const titleY = Math.round(H * 0.11);
+      tracking(x, s * 0.02);
+      x.font = font('Poiret One', fitSize(x, 'BASEMENT', 'Poiret One', W * 0.76, s * 0.13));
+      x.fillStyle = IVORY;
+      x.fillText('BASEMENT', W / 2 + s * 0.01, titleY);
+      tracking(x, s * 0.05);
+      x.font = font('Josefin Sans', Math.max(MIN_TEXT, Math.round(s * 0.042)));
+      x.fillStyle = GOLD;
+      x.fillText('LIVE', W / 2 + s * 0.025, titleY + s * 0.1);
+      tracking(x, 0);
+      decoRule(x, W / 2 - W * 0.2, Math.round(titleY + s * 0.16), W * 0.4, s);
+      const label = (text, y, px, color) => {
+        tracking(x, px * 0.18);
+        x.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(x, text, 'Josefin Sans', W * 0.84, px)));
+        x.fillStyle = color;
+        x.fillText(text, W / 2 + px * 0.09, Math.round(y));
+        tracking(x, 0);
+      };
+      let top = Math.round(titleY + s * 0.24);
+      if (names && names.length) { // a preview on the control page: who's on the wall
+        label('ON THE WALL NOW', top + s * 0.04, s * 0.036, MUTED);
+        names.slice(0, 4).forEach((n, i) => label(n, top + s * (0.16 + i * 0.12), s * 0.06, IVORY));
+        return;
+      }
+      if (rows) {
+        const max = Math.min(W * 0.74, H * 0.5); // as big as fits: it's scanned from across the room
+        const cell = Math.max(1, Math.floor(max / (rows.length + 4)));
+        const q = cell * (rows.length + 4);
+        const qx = Math.round((W - q) / 2), qy = top;
+        x.fillStyle = GOLD;
+        x.fillRect(qx - 3, qy - 3, q + 6, 1); x.fillRect(qx - 3, qy + q + 2, q + 6, 1);
+        x.fillRect(qx - 3, qy - 3, 1, q + 6); x.fillRect(qx + q + 2, qy - 3, 1, q + 6);
+        drawQR(x, rows, qx, qy, max);
+        label('SCAN TO GO LIVE', qy + q + s * 0.075, s * 0.04, IVORY);
+        const link = shortLink(conf.url);
+        const dot = link.indexOf('.');
+        const lines = dot > 0 ? [link.slice(0, dot), link.slice(dot)] : [link];
+        lines.forEach((l, i) => label(l.toUpperCase(), qy + q + s * (0.135 + i * 0.045), s * 0.03, MUTED));
+        return;
+      }
+      // No secure link yet: the home Wi-Fi address, and why it may not be enough. Set a little
+      // lower, so the shorter card sits in the middle of the wall.
+      top += Math.round(s * 0.16);
+      label('ON YOUR PHONE, OPEN', top + s * 0.06, s * 0.034, MUTED);
+      const lan = shortLink(conf.lan || '').toUpperCase() || 'THE PI’S ADDRESS /LIVE';
+      const dot = lan.indexOf('.');
+      const lines = dot > 0 && lan.length > 18 ? [lan.slice(0, dot), lan.slice(dot)] : [lan];
+      lines.forEach((l, i) => label(l, top + s * (0.15 + i * 0.075), s * 0.06, IVORY));
+      const y = top + s * (0.2 + lines.length * 0.075);
+      decoRule(x, W / 2 - W * 0.12, Math.round(y), W * 0.24, s);
+      label('THE SECURE LINK ISN’T', y + s * 0.07, s * 0.032, MUTED);
+      label('READY YET. PHONES NEED IT', y + s * 0.115, s * 0.032, MUTED);
+      label('TO USE THE CAMERA.', y + s * 0.16, s * 0.032, MUTED);
+    });
+  }
+
+  // The fourth square of the grid when three are live: an invitation, with the code.
+  function liveInvite(w, h, rows) {
+    const s = Math.min(w, h);
+    return offscreen(w, h, (x) => {
+      x.fillStyle = '#000';
+      x.fillRect(0, 0, w, h);
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      tracking(x, 1);
+      x.font = font('Josefin Sans', MIN_TEXT + 1);
+      x.fillStyle = GOLD;
+      x.fillText('ONE MORE', w / 2 + 0.5, Math.round(h * 0.16));
+      tracking(x, 0);
+      x.font = font('Poiret One', fitSize(x, 'GO LIVE', 'Poiret One', w * 0.8, s * 0.16));
+      x.fillStyle = IVORY;
+      x.fillText('GO LIVE', w / 2, Math.round(h * 0.27));
+      if (rows) {
+        const max = Math.min(w * 0.82, h * 0.6);
+        const cell = Math.max(1, Math.floor(max / (rows.length + 4)));
+        const q = cell * (rows.length + 4);
+        drawQR(x, rows, Math.round((w - q) / 2), Math.round(h * 0.38), max);
+      } else {
+        decoRule(x, w * 0.3, Math.round(h * 0.4), w * 0.4, s * 2);
+      }
+    });
+  }
+
+  // Someone joining: the house curtain parts on them, under a spotlight.
+  function curtain(w, h, side) {
+    return offscreen(w, h, (x) => {
+      x.fillStyle = '#000';
+      x.fillRect(0, 0, w, h);
+      for (let i = 0; i < w; i++) { // folds: a soft rise and fall of gold, column by column
+        const a = 0.05 + 0.13 * (0.5 + 0.5 * Math.sin((i / 9) * Math.PI * 2));
+        x.fillStyle = rgba(GOLD, a);
+        x.fillRect(i, 0, 1, h);
+      }
+      x.fillStyle = GOLD;
+      const edge = side === 'left' ? w - 1 : 0;
+      x.fillRect(edge, 0, 1, h);
+      x.fillStyle = '#000';
+      x.fillRect(side === 'left' ? w - 3 : 1, 0, 2, h);
+      x.fillStyle = rgba(GOLD, 0.8);
+      x.fillRect(0, 10, w, 1);
+      x.fillRect(0, h - 11, w, 1);
+    });
+  }
+
+  function spotlight(W, H) {
+    return offscreen(W * 2, H * 2, (x, w, h) => {
+      const r = Math.min(W, H) * 0.32;
+      const g = x.createRadialGradient(w / 2, h / 2, r * 0.55, w / 2, h / 2, r * 1.25);
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(1, 'rgba(0,0,0,0.92)');
+      x.fillStyle = g;
+      x.fillRect(0, 0, w, h);
+    });
+  }
+
+  function revealCard(W, H, name) {
+    const s = Math.min(W, H);
+    return offscreen(W, H, (x) => {
+      const cy = Math.round(H * 0.68); // below the face, which the spotlight finds
+      x.fillStyle = 'rgba(0,0,0,0.88)';
+      x.fillRect(0, cy - s * 0.2, W, s * 0.4);
+      x.fillStyle = rgba(GOLD, 0.9);
+      x.fillRect(0, Math.round(cy - s * 0.2), W, 1);
+      x.fillRect(0, Math.round(cy + s * 0.2) - 1, W, 1);
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      tracking(x, s * 0.016);
+      x.font = font('Josefin Sans', Math.max(MIN_TEXT, Math.round(s * 0.036)));
+      x.fillStyle = GOLD;
+      x.fillText('PRESENTING', W / 2 + s * 0.008, Math.round(cy - s * 0.11));
+      tracking(x, s * 0.012);
+      x.font = font('Poiret One', fitSize(x, name, 'Poiret One', W * 0.84, s * 0.15));
+      x.fillStyle = IVORY;
+      x.fillText(name, W / 2, Math.round(cy + s * 0.01));
+      tracking(x, 0);
+      decoRule(x, W / 2 - W * 0.16, Math.round(cy + s * 0.11), W * 0.32, s);
+    });
+  }
+
+  function live(canvas, W, H, opts) {
+    const ctx = canvas.getContext('2d');
+    const s = Math.min(W, H);
+    const conf = opts.conf || {};
+    const rx = opts.live;
+    let rows = null, idle = null, idleShown = false;
+    const frames = new Map(), plates = new Map(), cards = new Map(), invites = new Map();
+    const mark = liveMark();
+    let curtains = null, spot = null;
+    if (conf.url && conf.qr) loadQR(conf.url).then((r) => { rows = r; idle = null; invites.clear(); });
+
+    const frameFor = (w, h) => cached(frames, `${w}x${h}`, () => camFrame(w, h));
+    const plateFor = (name, px, maxW) => cached(plates, `${name}|${px}|${maxW}`, () => namePlate(name, px, maxW));
+
+    // ---- the director
+    const d = { shot: null, prev: null, wipe: false, k: 0, rr: 0, pp: 0, groups: 0, seen: new Set(), reveals: [] };
+
+    function next(on) {
+      const n = on.length;
+      if (n === 1) return { kind: 'solo', ids: [on[0].cid], len: Infinity };
+      d.k++;
+      if (d.k % (n + 1) === 0) { // after a round of everyone on their own, a group shot
+        d.groups++;
+        if (n >= 3 && d.groups % 2 === 1) return { kind: 'grid', ids: on.slice(0, 4).map((c) => c.cid), len: LIVE_GROUP + 1 };
+        const a = on[d.pp % n], b = on[(d.pp + 1) % n];
+        d.pp += n === 4 ? 2 : 1;
+        return { kind: 'pair', ids: [a.cid, b.cid], len: LIVE_GROUP };
+      }
+      let c = on[d.rr++ % n];
+      if (d.shot && d.shot.kind === 'solo' && d.shot.ids[0] === c.cid) c = on[d.rr++ % n];
+      return { kind: 'solo', ids: [c.cid], len: LIVE_SOLO - 1 + Math.random() * 2 };
+    }
+
+    function cut(shot, t, wipe) {
+      d.prev = d.shot;
+      d.shot = { ...shot, at: t };
+      d.wipe = !!(wipe && d.prev);
+      canvas.dataset.shot = `${shot.kind}${shot.reveal ? '+reveal' : ''}${d.wipe ? '+wipe' : ''}:${shot.ids.length}`; // for checking the director
+    }
+
+    function plan(on, t) {
+      const ids = on.map((c) => c.cid);
+      for (const c of on) {
+        if (!d.seen.has(c.cid)) { d.seen.add(c.cid); if (c.announce) d.reveals.push(c.cid); }
+      }
+      for (const id of [...d.seen]) if (!ids.includes(id)) d.seen.delete(id);
+      d.reveals = d.reveals.filter((id) => ids.includes(id));
+      const cur = d.shot;
+      const revealing = cur && cur.reveal && t - cur.at < LIVE_REVEAL + 0.6;
+      if (d.reveals.length && !revealing) return cut({ kind: 'solo', ids: [d.reveals.shift()], reveal: true, len: LIVE_SOLO + 1 }, t, false);
+      if (!cur || cur.ids.some((id) => !ids.includes(id))) return cut(next(on), t, false); // someone left: straight to the next shot
+      // (a lone camera's shot has no end; once there's company, it gets three seconds at least)
+      if (on.length > 1 && t - cur.at > (cur.len === Infinity ? 3 : cur.len)) {
+        const n = next(on);
+        cut(n, t, n.kind !== 'solo' || cur.kind !== 'solo');
+      }
+    }
+
+    // ---- drawing
+    function tile(c, x, y, w, h, zoom, plateAlpha, px) {
+      drawCam(ctx, c.video, x, y, w, h, zoom);
+      ctx.drawImage(frameFor(w, h), x, y);
+      if (plateAlpha > 0) {
+        const p = plateFor(c.name, px, w - 24);
+        ctx.globalAlpha = plateAlpha;
+        ctx.drawImage(p, Math.round(x + (w - p.width) / 2), Math.round(y + h - p.height - Math.max(8, h * 0.035)));
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    function drawShot(shot, byId, t, count) {
+      const age = t - shot.at;
+      const plateIn = ease((age - (shot.reveal ? LIVE_REVEAL - 0.4 : 0.2)) / 0.5);
+      if (shot.kind === 'solo') {
+        const c = byId.get(shot.ids[0]);
+        if (!c) return;
+        let zoom = 1;
+        if (count === 1) { // alone: every half minute, a slow push in, a hold, and back out
+          const p = (age % 30) / 30;
+          zoom = 1 + 0.09 * (ease((p - 0.35) / 0.25) - ease((p - 0.8) / 0.2));
+        } else if (!shot.reveal) {
+          zoom = 1 + 0.04 * ease(age / shot.len);
+        }
+        tile(c, 0, 0, W, H, zoom, plateIn, Math.round(s * 0.055));
+        if (shot.reveal && age < LIVE_REVEAL) drawReveal(c, age);
+      } else if (shot.kind === 'pair') {
+        shot.ids.forEach((id, i) => {
+          const c = byId.get(id);
+          if (c) tile(c, 0, Math.round((i * H) / 2), W, Math.round(H / 2), 1, plateIn, Math.round(s * 0.045));
+        });
+      } else {
+        const w = Math.round(W / 2), h = Math.round(H / 2);
+        for (let i = 0; i < 4; i++) {
+          const c = byId.get(shot.ids[i]);
+          const x = (i % 2) * w, y = Math.floor(i / 2) * h;
+          if (c) tile(c, x, y, w, h, 1, plateIn, Math.round(s * 0.038));
+          else {
+            ctx.drawImage(cached(invites, `${w}x${h}|${!!rows}`, () => liveInvite(w, h, rows)), x, y);
+            ctx.drawImage(frameFor(w, h), x, y);
+          }
+        }
+      }
+    }
+
+    function drawReveal(c, age) {
+      if (!curtains) curtains = [curtain(W / 2, H, 'left'), curtain(W - Math.round(W / 2), H, 'right')];
+      if (!spot) spot = spotlight(W, H);
+      // the spotlight opens out over the person as the curtain parts
+      const open = ease((age - 0.45) / 1.0);
+      const widen = ease((age - 1.1) / 1.0);
+      const f = 1 + 3 * widen;
+      ctx.globalAlpha = 1 - widen;
+      ctx.drawImage(spot, W / 2 - W * f, H * 0.42 - H * f, W * 2 * f, H * 2 * f);
+      ctx.globalAlpha = 1;
+      const off = Math.round((W / 2) * open);
+      if (open < 1) {
+        ctx.drawImage(curtains[0], -off, 0);
+        ctx.drawImage(curtains[1], Math.round(W / 2) + off, 0);
+      }
+      const a = Math.min(ease(age / 0.3), 1 - ease((age - 1.45) / 0.4));
+      if (a > 0) {
+        ctx.globalAlpha = a;
+        ctx.drawImage(cached(cards, c.name, () => revealCard(W, H, c.name)), 0, 0);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    const stop = animate((t) => {
+      const on = rx ? rx.cams().slice(0, 4) : [];
+      if (!on.length) {
+        d.shot = null;
+        if (!idle) { idle = liveIdle(W, H, conf, rows, rx ? null : conf.names); idleShown = false; }
+        if (!idleShown) { ctx.drawImage(idle, 0, 0); idleShown = true; }
+        return;
+      }
+      idleShown = false;
+      plan(on, t);
+      const byId = new Map(on.map((c) => [c.cid, c]));
+      const shot = d.shot;
+      drawShot(shot, byId, t, on.length);
+      const w = (t - shot.at) / LIVE_WIPE;
+      if (d.wipe && d.prev && w < 1) { // a deco wipe: the new shot comes down behind a gold line
+        const y = Math.round(H * ease(w));
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, y, W, H - y);
+        ctx.clip();
+        drawShot(d.prev, byId, t, on.length);
+        ctx.restore();
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, y - 2, W, 5);
+        ctx.fillStyle = GOLD;
+        ctx.fillRect(0, y, W, 1);
+        ctx.fillStyle = rgba(GOLD, 0.5);
+        ctx.fillRect(0, y - 3, W, 1);
+      }
+      if (!(shot.reveal && t - shot.at < 1.4)) ctx.drawImage(mark, W - mark.width - 13, 12);
+    }, 30);
+    return { stop };
+  }
+
   // ------------------------------------------------------------ channel ident
 
   // Shown for a few seconds when the channel changes: a quiet black title slide.
@@ -1115,7 +1563,7 @@
     tracking(ctx, 0);
   }
 
-  const FACTORIES = { scores, news, weather, visuals };
+  const FACTORIES = { scores, news, weather, visuals, live };
 
   window.BarChannels = {
     THEMES,

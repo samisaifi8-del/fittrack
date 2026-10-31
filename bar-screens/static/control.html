@@ -135,8 +135,8 @@ input[type="color"] { width: 44px; height: 36px; padding: 2px; border: 1px solid
 .up { display: grid; gap: 4px; font-size: 14px; }
 .up progress { width: 100%; height: 6px; accent-color: var(--accent); }
 
-.remote { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-@media (min-width: 560px) { .remote { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.remote { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+@media (min-width: 600px) { .remote { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
 .ch { display: grid; justify-items: center; gap: 6px; padding: 8px 2px 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--raise); cursor: pointer; min-width: 0; }
 .ch-n { display: grid; place-items: center; width: 38px; height: 30px; border-radius: 3px; background: #000; color: var(--c); font: 400 22px/1 var(--f-display); }
 .ch-name { font: 600 14px/1 var(--f-label); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -155,6 +155,10 @@ details.card[open] > summary::after { content: "Hide"; }
 .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .field { display: grid; gap: 4px; min-width: 0; }
 .field > span { font: 600 13px var(--f-label); color: var(--muted); }
+.golive { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 14px; align-items: start; }
+.golive img { width: 132px; height: 132px; display: block; border-radius: 6px; background: #fff; padding: 6px; image-rendering: pixelated; }
+.golive .link { font: 600 16px/1.3 var(--f-label); overflow-wrap: anywhere; user-select: all; }
+@media (max-width: 360px) { .golive { grid-template-columns: 1fr; } }
 ol.steps { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; font-size: 15px; }
 
 dialog { padding: 0; border: 0; background: transparent; color: var(--fg); max-width: 720px; width: 100%; max-height: 100%; height: 100%; margin: 0 auto; }
@@ -213,6 +217,22 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
       <label class="field" style="flex:1 1 140px"><span class="lab">Show it on</span><select id="mirrorScreen"></select></label>
       <label class="field" style="flex:1 1 140px"><span class="lab">Fit</span><select id="mirrorFit"><option value="contain">Whole picture</option><option value="cover">Fill the wall</option></select></label>
     </div>
+  </section>
+
+  <section class="card" aria-labelledby="hGoLive">
+    <h2 id="hGoLive">Go live: Basement Live</h2>
+    <p class="eyebrow" id="goLiveNow" hidden></p>
+    <div class="golive" id="goLiveLink" hidden>
+      <img id="goLiveQr" alt="QR code for the Basement Live link">
+      <div style="display:grid;gap:8px;min-width:0">
+        <span class="link" id="goLiveUrl"></span>
+        <div class="row">
+          <button type="button" class="btn small primary" id="goLiveShare">Share link</button>
+          <button type="button" class="btn small" id="goLiveCopy">Copy</button>
+        </div>
+      </div>
+    </div>
+    <p class="note" id="goLiveNote"></p>
   </section>
 
   <section class="card" aria-label="Brightness">
@@ -327,6 +347,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     ['weather', 4, 'Weather', 'Conditions now, the next few hours and the next few days.', '#b89a63'],
     ['visuals', 5, 'Visuals', 'Banana leaves in gold, The Basement sign, the lift dial, a deco clock and more.', '#b89a63'],
     ['games', 6, 'Games', 'Party games on the wall. Guests use their phones as controllers.', '#b89a63'],
+    ['live', 7, 'Live', 'Guests\' phone cameras on the wall, up to four, cut together automatically.', '#b89a63'],
   ];
   const STYLE_NAMES = { mix: 'Mix (changes every 45 seconds)', botanical: 'Banana leaves in gold', skyline: 'Dark deco city', deco: 'The Basement sign', lift: 'Lift floor indicator', clockface: 'Deco wall clock', fans: 'Art deco fans', bubbles: 'Champagne bubbles' };
 
@@ -444,6 +465,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     $('chDesc').textContent = `CH ${channel[1]} · ${channel[2]}: ${channel[3]}`;
     renderChannelSettings();
     renderMirror();
+    renderGoLive();
 
     const b = $('brightness');
     if (document.activeElement !== b) b.value = state.settings.brightness;
@@ -576,6 +598,38 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     if (document.activeElement !== sel) sel.value = state.settings.mirrorScreen || 'all';
     if (document.activeElement !== $('mirrorFit')) $('mirrorFit').value = state.settings.mirrorFit || 'contain';
   }
+  // Basement Live: the secure link guests open to put their camera on the wall (channel 7).
+  function renderGoLive() {
+    const g = state.golive || {};
+    const cams = g.cams || [];
+    $('goLiveNow').hidden = !cams.length;
+    $('goLiveNow').textContent = `Live now: ${cams.join(' · ')} (${cams.length} of 4)`;
+    $('goLiveLink').hidden = !g.url;
+    if (g.url) {
+      $('goLiveUrl').textContent = g.url;
+      const qr = $('goLiveQr');
+      qr.hidden = !g.qr;
+      const src = `/api/live/qr.svg?u=${encodeURIComponent(g.url)}`;
+      if (g.qr && qr.dataset.src !== src) { qr.dataset.src = src; qr.src = src; }
+    }
+    const onLive = state.screens.some((s) => s.enabled && s.channel === 'live');
+    $('goLiveNote').innerHTML = (g.url
+      ? 'Guests scan the code (it\'s on the wall too) or open the link, type a name and press <b>Go live</b>. Picture only, no sound. The link changes each time the Pi restarts.'
+      : `The secure link isn't ready yet. Phones only allow the camera on a secure (https) link, which the Pi gets from Cloudflare once it's online. If it doesn't appear, run <b>install.sh</b> again. On the home Wi-Fi the page is at ${esc((g.lan || '').replace(/^http:\/\//, ''))}, but phones won't open the camera there.`)
+      + (onLive ? '' : ' Put a wall on <b>channel 7</b> to show the cameras.');
+  }
+  $('goLiveShare').addEventListener('click', async () => {
+    const url = (state.golive || {}).url;
+    if (!url) return;
+    if (navigator.share) { try { await navigator.share({ title: 'Basement Live', text: 'Go live on the wall', url }); } catch (e) {} return; }
+    $('goLiveCopy').click();
+  });
+  $('goLiveCopy').addEventListener('click', async () => {
+    const url = (state.golive || {}).url;
+    if (!url) return;
+    try { await navigator.clipboard.writeText(url); toast('Link copied.'); } catch (e) { toast(url); }
+  });
+
   $('mirrorScreen').addEventListener('change', (e) => run(api('PATCH', '/api/settings', { mirrorScreen: e.target.value })));
   $('mirrorFit').addEventListener('change', (e) => run(api('PATCH', '/api/settings', { mirrorFit: e.target.value })));
 

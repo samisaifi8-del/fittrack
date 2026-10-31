@@ -24,6 +24,8 @@ import xml.etree.ElementTree as ET
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlencode, urlparse
 
+import partygames
+
 ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(ROOT, "static")
 
@@ -67,7 +69,8 @@ NEWS_FEEDS = {
     "sport": ("https://feeds.bbci.co.uk/sport/rss.xml", "Sport"),
 }
 VISUAL_STYLES = ["mix", "botanical", "deco", "lift", "clockface", "skyline", "bubbles", "fans"]
-GAMES = [["breaker", "Brick Breaker"], ["duel", "Deco Duel"], ["snake", "Serpentine"], ["quickdraw", "Quick Draw"]]
+GAMES = [["breaker", "Brick Breaker"], ["duel", "Deco Duel"], ["snake", "Serpentine"], ["quickdraw", "Quick Draw"],
+         ["closest", "Closest Wins"]]  # the last ones are party games the Pi referees (partygames.py)
 
 for ext, ctype in ((".webp", "image/webp"), (".avif", "image/avif"), (".mp4", "video/mp4"),
                    (".m4v", "video/mp4"), (".webm", "video/webm"), (".mkv", "video/x-matroska")):
@@ -171,7 +174,7 @@ def default_channels():
         "news": {"feed": "top"},
         "weather": {"place": "", "label": "", "lat": None, "lon": None},
         "visuals": {"style": "mix"},
-        "games": {"game": "breaker"},
+        "games": {"game": "breaker", "sipsUntil": 0},  # sips are on for the night until sipsUntil
     }
 
 
@@ -472,6 +475,8 @@ class Store:
             games = patch.get("games")
             if isinstance(games, dict) and games.get("game") in [g[0] for g in GAMES]:
                 conf["games"]["game"] = games["game"]
+            if isinstance(games, dict) and isinstance(games.get("sips"), bool):
+                conf["games"]["sipsUntil"] = partygames.sips_until(time.time()) if games["sips"] else 0
             if found is not None:
                 conf["weather"] = found
             self._changed()
@@ -744,23 +749,45 @@ class Mirror:
 class GameHub:
     """Phones join the current game and send controller input; the wall runs the game and reports
     the score back. Players are kept while their phone stays connected (with a short grace period
-    for flaky Wi-Fi), so nothing here is saved to disk."""
+    for flaky Wi-Fi), so nothing here is saved to disk.
+
+    Party games (quiz and vote games, partygames.py) are refereed here instead: their input goes
+    to the game on the Pi, and the hub sends the wall its view and each phone its own one."""
     COLORS = ["#e9c46a", "#2fd39a", "#5aa2ff", "#ff4d6a", "#b98aff", "#ffa94d", "#efe6d2", "#5ef0ff"]
+    clock = staticmethod(time.time)
 
     def __init__(self, store):
         self.store = store
         self.lock = threading.Lock()
-        self.players = {}  # pid -> {"slot", "name", "color", "gone"}
+        self.players = {}  # pid -> {"slot", "name", "color", "drinks", "gone"}
         self.subs = []     # [queue, role, pid]
         self.status = None
         self.kiosk_at = 0.0
         self.join_url = ""
+        self.used = partygames.UsedItems(os.path.join(store.data_dir, "used.json"))
+        self.party = None  # the party game being refereed, if one is picked
+        self.party_sent = -1
+        self._sync_party()
+
+    def sips_on(self):
+        """Whether the host has switched sips on for tonight (control page, Channel settings)."""
+        return self.store.state["channels"]["games"].get("sipsUntil", 0) > self.clock()
+
+    def _sync_party(self):
+        game = self.store.state["channels"]["games"]["game"]
+        cls = partygames.PARTY_GAMES.get(game)
+        if cls is None:
+            self.party = None
+        elif type(self.party) is not cls:
+            self.party = cls(self)
+        self.party_sent = -1
 
     def _roster(self):
         game = self.store.state["channels"]["games"]["game"]
         players = sorted(self.players.values(), key=lambda p: p["slot"])
         on_wall = any(s["enabled"] and s.get("channel") == "games" for s in self.store.state["screens"])
         return {"type": "roster", "game": game, "joinUrl": self.join_url, "onWall": on_wall,
+                "party": self.party is not None, "sips": self.sips_on(),
                 "players": [{"slot": p["slot"], "name": p["name"], "color": p["color"]} for p in players]}
 
     def _send(self, msg, role=None):
@@ -772,9 +799,27 @@ class GameHub:
                 except queue.Full:
                     pass
 
+    def _party_msg(self, role, pid):
+        view = self.party.wall() if role == "display" else self.party.pad(pid)
+        return json.dumps({"type": "party", **view})
+
+    def _send_party(self):
+        """The party game's views: one for the wall, and each phone its own."""
+        if not self.party:
+            return
+        self.party_sent = self.party.version
+        wall = self._party_msg("display", None)
+        for q, role, pid in list(self.subs):
+            try:
+                q.put_nowait(wall if role == "display" else self._party_msg(role, pid))
+            except queue.Full:
+                pass
+
     def roster_changed(self):
         with self.lock:
+            self._sync_party()
             self._send(self._roster())
+            self._send_party()
 
     def subscribe(self, role, pid):
         q = queue.Queue(maxsize=300)
@@ -785,6 +830,8 @@ class GameHub:
             q.put_nowait(json.dumps(self._roster()))
             if role == "pad" and self.status:
                 q.put_nowait(json.dumps(self.status))
+            if self.party:
+                q.put_nowait(self._party_msg(role, pid))
         return q
 
     def unsubscribe(self, q):
@@ -804,6 +851,16 @@ class GameHub:
                 del self.players[pid]
             if stale:
                 self._send(self._roster())
+                if self.party:
+                    self.party.changed()
+
+    def tick(self):
+        """Runs the party game's clock (called four times a second)."""
+        with self.lock:
+            if self.party:
+                self.party.tick()
+                if self.party.version != self.party_sent:
+                    self._send_party()
 
     def join(self, body):
         pid = body.get("pid")
@@ -817,35 +874,72 @@ class GameHub:
                 slot = next((i for i in range(8) if i not in used), None)
                 if slot is None:
                     raise ApiError(409, "This game is full: eight players already.")
-                player = {"slot": slot, "color": self.COLORS[slot], "gone": None}
+                player = {"slot": slot, "color": self.COLORS[slot], "gone": None, "drinks": None}
                 self.players[pid] = player
             player["name"] = name or f"PLAYER {player['slot'] + 1}"
             player["gone"] = None
+            # "Drinking tonight?": True, False or None (not asked, which counts as no)
+            if "drinks" in body:
+                player["drinks"] = body["drinks"] if isinstance(body["drinks"], bool) else None
             self._send(self._roster())
-            return {"slot": player["slot"], "name": player["name"], "color": player["color"]}
+            if self.party:
+                self.party.changed()
+                self._send_party()
+            return {"slot": player["slot"], "name": player["name"], "color": player["color"], "drinks": player["drinks"]}
 
     def leave(self, body):
         with self.lock:
             if self.players.pop(body.get("pid"), None):
                 self._send(self._roster())
+                if self.party:
+                    self.party.changed()
+                    self._send_party()
+
+    @staticmethod
+    def _check_input(kind, body):
+        """A phone's input as the games see it (partygames.INPUTS lists the kinds)."""
+        msg = {"kind": kind}
+        if kind == "move":
+            msg["x"] = _num(0, 1)(body.get("x", 0.5))
+        elif kind == "dir":
+            msg["dir"] = _choice("up", "down", "left", "right")(body.get("dir"))
+        elif kind == "pick":
+            if body.get("id") is not None:
+                msg["id"] = _str(40)(body["id"])
+            if body.get("choice") is not None:
+                msg["choice"] = _num(0, 63, True)(body["choice"])
+            if len(msg) == 1:
+                raise ValueError
+        elif kind in ("number", "lock"):
+            if kind == "number" or body.get("value") is not None:
+                msg["value"] = _num(-1e12, 1e12)(body.get("value"))
+        elif kind == "yesno":
+            msg["yes"] = _bool(body.get("yes"))
+        elif kind == "toggle":
+            msg["id"] = _str(40)(body.get("id"))
+            msg["on"] = _bool(body.get("on"))
+        elif kind == "pour":
+            msg["to"] = _num(0, 7, True)(body.get("to"))
+        elif kind not in partygames.INPUTS:
+            raise ValueError
+        return msg
 
     def input(self, body):
         with self.lock:
-            player = self.players.get(body.get("pid"))
+            pid = body.get("pid")
+            player = self.players.get(pid)
             if not player:
                 raise ApiError(403, "Join the game first.")
-            kind = body.get("kind")
-            msg = {"type": "input", "slot": player["slot"], "kind": kind}
             try:
-                if kind == "move":
-                    msg["x"] = _num(0, 1)(body.get("x", 0.5))
-                elif kind == "dir":
-                    msg["dir"] = _choice("up", "down", "left", "right")(body.get("dir"))
-                elif kind not in ("tap", "start"):
-                    raise ValueError
+                msg = self._check_input(body.get("kind"), body)
             except ValueError:
                 raise ApiError(400, "Unknown input.")
-            self._send(msg, role="display")
+            if self.party:
+                self.party.input(pid, msg)
+                if self.party.version != self.party_sent:
+                    self._send_party()
+                return
+            self._send({"type": "input", "slot": player["slot"], **msg}, role="display")
 
     def report(self, body):
         # The wall on the Pi is the referee; previews on phones only count when it isn't running.
@@ -1331,6 +1425,24 @@ class Handler(BaseHTTPRequestHandler):
         title = os.path.splitext(name)[0].replace("_", " ").strip() or kind.title()
         return self.store.add_media(kind, filename, title, qs.get("addTo", [None])[0])
 
+    def _years(self, text=None):
+        """The owner's own WHAT YEAR? lines for Closest Wins (data/years.txt), read or replaced."""
+        path = os.path.join(self.store.data_dir, "years.txt")
+        if text is not None:
+            if not isinstance(text, str) or len(text) > 200_000:
+                raise ApiError(400, "Bad list.")
+            tmp = path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(text.replace("\r\n", "\n"))
+            os.replace(tmp, path)
+        try:
+            with open(path, encoding="utf-8") as f:
+                text = f.read()
+        except OSError:
+            text = ""
+        items, bad = partygames.parse_years(text)
+        return {"text": text, "count": len(items), "bad": bad}
+
     # -- routing
 
     def _route(self):
@@ -1367,6 +1479,8 @@ class Handler(BaseHTTPRequestHandler):
             m = re.fullmatch(r"/api/feed/(scores|news|weather)", path)
             if m:
                 return self._json(200, self.feeds.get(m.group(1)))
+            if path == "/api/game/years":
+                return self._json(200, self._years())
             if path == "/api/live/stream":
                 return self._stream(self.live.subscribe(), self.live.unsubscribe)
             if path == "/api/live/poll":
@@ -1420,6 +1534,8 @@ class Handler(BaseHTTPRequestHandler):
         if m and method == "POST":
             result = getattr(self.hub, m.group(1))(self._read_json())
             return self._json(200, result or {"ok": True})
+        if method == "POST" and path == "/api/game/years":
+            return self._json(200, self._years(self._read_json().get("text")))
         m = re.fullmatch(r"/api/live/(offer|answer|reoffer|leave)", path)
         if m and method == "POST":
             result = getattr(self.live, m.group(1))(self._read_json())
@@ -1484,6 +1600,7 @@ def main():
         while True:
             time.sleep(0.25)
             store.tick()
+            hub.tick()
             beats += 1
             store.set_mirroring(mirror.live)
             if beats % 4 == 0:

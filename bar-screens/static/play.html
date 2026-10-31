@@ -88,6 +88,68 @@ input[type="text"] {
 .tapper button:active { background: var(--gold); color: var(--gold-ink); }
 .foot { display: flex; gap: 10px; }
 .foot .btn { flex: 1; }
+/* party games: pads the Pi asks for (partygames.py, PADS) */
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.seg button { min-height: 52px; border-radius: 4px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font: 700 14px/1 var(--f-label); letter-spacing: 0.2em; text-transform: uppercase; }
+.seg button[aria-pressed="true"] { border-color: var(--gold); background: var(--gold); color: var(--gold-ink); }
+.drinkrow { display: flex; align-items: center; gap: 10px; font-size: 16px; color: var(--muted); }
+.drinkrow .seg { flex: none; grid-template-columns: auto auto; gap: 6px; }
+.drinkrow .seg button { min-height: 34px; padding: 0 12px; font-size: 11px; }
+.pp { flex: 1; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+.pp-title { margin: 0; font: 700 12px/1.2 var(--f-label); letter-spacing: 0.24em; text-transform: uppercase; color: var(--gold); text-align: center; }
+.pp-timer { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.pp-timer i { display: block; height: 100%; width: 100%; margin: 0 auto; background: var(--gold); }
+.pp-big { margin: 0; font: 400 clamp(40px, 13vw, 64px)/1.05 var(--f-display); letter-spacing: 0.04em; text-align: center; }
+.pp-text { margin: 0; color: var(--muted); font-size: 19px; text-align: center; }
+.pp-center { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
+.pp-go { min-height: 64px; font-size: 18px; }
+.pp-result.win .pp-big { color: var(--gold); }
+.pp-result .pp-text { color: var(--fg); font-size: 22px; }
+.dial { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; min-height: 0; }
+.dial-unit { text-align: center; font: 700 13px/1 var(--f-label); letter-spacing: 0.3em; color: var(--gold); }
+.dial-num { display: block; text-align: center; font: 600 96px/1 var(--f-body); font-variant-numeric: tabular-nums; letter-spacing: 0.01em; white-space: nowrap; overflow: hidden; }
+.dial-num.idle { color: var(--muted); }
+.dial-hint { text-align: center; font-size: 15px; color: var(--muted); min-height: 1.3em; }
+.dial-row { display: grid; grid-template-columns: 76px 1fr 76px; gap: 10px; height: 84px; }
+.dial-row button { border: 1px solid var(--gold); border-radius: 6px; background: var(--surface); color: var(--gold); font: 400 44px/1 var(--f-body); cursor: pointer; touch-action: none; }
+.dial-row button:active, .dial-row button.held { background: var(--gold); color: var(--gold-ink); }
+.strip {
+  position: relative; border: 1px solid var(--line); border-radius: 6px; touch-action: none; cursor: ew-resize; overflow: hidden;
+  background: repeating-linear-gradient(90deg, transparent 0 11px, rgba(197,164,103,0.35) 11px 12px) var(--surface);
+}
+.strip::after { content: "DRAG"; position: absolute; inset: auto 0 6px; text-align: center; font: 700 10px var(--f-label); letter-spacing: 0.3em; color: var(--muted); }
+.strip::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--gold); }
+.dial.locked .dial-num { color: var(--gold); }
+.dial.locked .dial-row { opacity: 0.35; pointer-events: none; }
+.lockbtn { min-height: 64px; font-size: 18px; }
+.lockbtn:disabled { background: transparent; color: var(--gold); cursor: default; }
+.choices { flex: 1; display: grid; gap: 10px; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); grid-auto-rows: minmax(64px, 1fr); }
+.choices.list { grid-auto-rows: minmax(52px, auto); align-content: start; overflow-y: auto; }
+.choices button { border: 1px solid var(--line); border-left: 6px solid var(--c, var(--gold)); border-radius: 6px; background: var(--surface); cursor: pointer; font: 600 22px/1.1 var(--f-body); letter-spacing: 0.03em; text-transform: uppercase; padding: 8px 10px; }
+.choices button[aria-pressed="true"] { background: var(--gold); color: var(--gold-ink); border-color: var(--gold); }
+.choices.locked button:not([aria-pressed="true"]) { opacity: 0.35; }
+.buzz { flex: 1; display: grid; place-items: center; }
+.buzz button {
+  width: min(84vw, 52vh); aspect-ratio: 1; border-radius: 50%; border: 3px solid var(--gold); background: radial-gradient(circle, #3a2b12, #0b0a08 70%);
+  font: 400 64px/1 var(--f-display); letter-spacing: 0.1em; color: var(--fg); cursor: pointer; touch-action: none;
+}
+.buzz button small { display: block; margin-top: 8px; font: 700 14px/1 var(--f-label); letter-spacing: 0.24em; color: var(--gold); }
+.buzz button:active { background: var(--gold); color: var(--gold-ink); }
+.buzz button:disabled { border-color: var(--line); background: var(--surface); color: var(--muted); font-size: 30px; }
+.yesno { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.yesno button { border: 1px solid var(--gold); border-radius: 6px; background: var(--surface); font: 400 40px/1 var(--f-display); letter-spacing: 0.08em; cursor: pointer; }
+.yesno button[aria-pressed="true"] { background: var(--gold); color: var(--gold-ink); }
+.yesno.locked button:not([aria-pressed="true"]) { opacity: 0.35; }
+.toggle { width: min(70vw, 300px); aspect-ratio: 1; margin: 0 auto; border-radius: 8px; border: 2px solid var(--gold); background: var(--surface); color: var(--gold); font: 400 46px/1 var(--f-display); letter-spacing: 0.08em; cursor: pointer; }
+.toggle small { display: block; margin-top: 12px; font: 700 13px/1 var(--f-label); letter-spacing: 0.24em; }
+.toggle[aria-pressed="true"] { background: var(--gold); color: var(--gold-ink); }
+.pp-buttons { display: grid; gap: 10px; }
+.notice { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid var(--gold); border-radius: 6px; background: #1c160b; }
+.notice::before { content: ""; flex: none; width: 16px; height: 16px; background: var(--gold); border-radius: 0 50% 50% 50%; transform: rotate(45deg); margin: 2px 4px 0; }
+.notice b { display: block; font: 700 13px/1.2 var(--f-label); letter-spacing: 0.24em; color: var(--gold); }
+.notice span { font-size: 17px; }
+.notice .grow { flex: 1; min-width: 0; }
+.notice .choices { grid-auto-rows: 52px; }
 .toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 14px; border-radius: 4px; background: var(--fg); color: var(--bg); font: 600 16px var(--f-body); }
 </style>
 </head>
@@ -102,6 +164,11 @@ input[type="text"] {
     <p class="eyebrow">Join the game</p>
     <h1>What should we call you?</h1>
     <input type="text" id="name" maxlength="16" autocomplete="nickname" placeholder="YOUR NAME" aria-label="Your name">
+    <div id="drinkAsk" hidden style="display:grid;gap:8px">
+      <p class="eyebrow">Drinking tonight?</p>
+      <div class="seg" id="drinkPick" role="group" aria-label="Drinking tonight?"><button type="button" data-drinks="yes" aria-pressed="false">Yes</button><button type="button" data-drinks="no" aria-pressed="false">No</button></div>
+      <p class="note">Some games hand out a sip now and then, only to people who said yes. Any drink or water counts, and nobody else sees your answer.</p>
+    </div>
     <button type="button" class="btn primary" id="joinBtn">Join</button>
     <p class="note">Your phone becomes the controller. The game plays out on the wall.</p>
   </section>
@@ -112,6 +179,7 @@ input[type="text"] {
       <div class="grow"><b id="meName"></b><br><span id="meSlot"></span></div>
       <button type="button" class="btn small" id="leaveBtn">Leave</button>
     </div>
+    <div class="drinkrow" id="drinkRow" hidden><span class="grow">Drinking tonight?</span><div class="seg" id="drinkSwitch" role="group" aria-label="Drinking tonight?"><button type="button" data-drinks="yes" aria-pressed="false">Yes</button><button type="button" data-drinks="no" aria-pressed="false">No</button></div></div>
     <div class="games" id="games" role="group" aria-label="Choose the game"></div>
     <p class="banner" id="offWall" hidden><span>Games aren't on the wall right now.</span><button type="button" class="btn small" id="toWall">Put them on</button></p>
     <p class="status" id="status" role="status">Tap Start to play.</p>
@@ -141,6 +209,28 @@ input[type="text"] {
 
   const CONTROLS = { breaker: 'slider', duel: 'slider', snake: 'dpad', quickdraw: 'tap' };
   let me = null, roster = { players: [], game: 'breaker', games: [] }, status = null, games = [], built = '';
+  let party = null, clockOffset = 0; // the party game's view of this phone, from the Pi (partygames.py)
+
+  // "Drinking tonight?" is remembered for the night (14 hours), then asked again.
+  function drinks() {
+    const at = Number(store.get('drinksAt') || 0);
+    const v = store.get('drinks');
+    return Date.now() - at < 14 * 3600e3 && (v === 'yes' || v === 'no') ? v === 'yes' : null;
+  }
+  function setDrinks(yes) {
+    store.set('drinks', yes ? 'yes' : 'no');
+    store.set('drinksAt', String(Date.now()));
+    renderDrinks();
+    if (me) join(true);
+  }
+  function renderDrinks() {
+    const d = drinks();
+    for (const box of [$('drinkPick'), $('drinkSwitch')]) {
+      box.querySelectorAll('[data-drinks]').forEach((b) => b.setAttribute('aria-pressed', String(d === (b.dataset.drinks === 'yes'))));
+    }
+    $('drinkAsk').hidden = !roster.sips;
+    $('drinkRow').hidden = !roster.sips || !me;
+  }
 
   let toastTimer = 0;
   function toast(msg) {
@@ -160,14 +250,15 @@ input[type="text"] {
     return data;
   }
 
-  // Slider moves are "latest wins": while one is on its way, only the newest position waits.
+  // Slider moves and dial values are "latest wins": while one is on its way, only the newest waits.
   let inflight = false, queued = null;
   function send(input) {
-    if (input.kind === 'move') {
+    if (input.kind === 'move' || input.kind === 'number') {
       queued = input;
       if (!inflight) flushMoves();
       return;
     }
+    if (input.kind === 'lock') queued = null; // a lock carries its own value
     post('/api/game/input', { pid, ...input }).catch(onInputError);
   }
   function flushMoves() {
@@ -182,13 +273,14 @@ input[type="text"] {
   async function join(quiet) {
     const name = $('name').value.trim() || store.get('name') || '';
     try {
-      me = await post('/api/game/join', { pid, name });
+      me = await post('/api/game/join', { pid, name, drinks: drinks() });
       store.set('name', me.name);
       document.documentElement.style.setProperty('--me', me.color);
       $('meName').textContent = me.name;
       $('meSlot').textContent = `Player ${me.slot + 1}`;
       $('joinView').hidden = true;
       $('padView').hidden = false;
+      renderDrinks();
       render();
     } catch (e) {
       if (!quiet) toast(e.message === 'Failed to fetch' ? "Can't reach the bar's Pi. Check you're on the Wi-Fi." : e.message);
@@ -205,6 +297,8 @@ input[type="text"] {
         if (me && !m.players.some((p) => p.slot === me.slot && p.name === me.name)) join(true);
       }
       if (m.type === 'status') status = m;
+      if (m.type === 'party') { party = m; clockOffset = m.now - Date.now() / 1000; }
+      if (m.type === 'roster') renderDrinks();
       render();
     };
     es.onerror = () => { if (es.readyState === EventSource.CLOSED) setTimeout(connect, 3000); };
@@ -267,12 +361,233 @@ input[type="text"] {
     });
   }
 
+  // ------------------------------------------------------------ party pads
+
+  // Party games are refereed by the Pi, which tells each phone which pad to show (partygames.py,
+  // PADS). Each builder fills the pad and returns an update function for changes that don't need
+  // a rebuild (a lock confirmed, a choice made). Phones never show the question: eyes on the wall.
+  const tap = (el, fn) => el.addEventListener('pointerdown', (e) => { e.preventDefault(); fn(e); if (navigator.vibrate) navigator.vibrate(12); });
+  const serverNow = () => Date.now() / 1000 + clockOffset;
+  const fmtNum = (v, year) => (year ? String(Math.round(v)) : Math.round(v).toLocaleString('en-GB'));
+  // 1, 2 or 5 times a power of ten, at least `x`
+  const nice = (x) => { const p = 10 ** Math.floor(Math.log10(Math.max(1, x))); return [1, 2, 5, 10].map((m) => m * p).find((m) => m >= x); };
+
+  const PADS = {
+    wait(el, v) {
+      el.innerHTML = `<div class="pp-center"><p class="pp-big">${esc(v.big || '')}</p><p class="pp-text">${esc(v.text || '')}</p></div>`;
+    },
+    start(el, v) {
+      el.innerHTML = `<div class="pp-center"><p class="pp-big">${esc(v.big || '')}</p><p class="pp-text">${esc(v.text || '')}</p></div><button type="button" class="btn primary pp-go">${esc(v.label || 'Start')}</button>`;
+      el.querySelector('.pp-go').addEventListener('click', () => send({ kind: 'start' }));
+    },
+    result(el, v) {
+      el.innerHTML = `<div class="pp-center pp-result ${esc(v.tone || '')}"><p class="pp-big">${esc(v.big || '')}</p><p class="pp-text">${esc(v.text || '')}</p></div>`;
+    },
+    next(el, v) {
+      el.innerHTML = `<div class="pp-center"><p class="pp-big">${esc(v.big || '')}</p><p class="pp-text">${esc(v.text || '')}</p></div>
+        <div class="pp-buttons">${(v.buttons || []).map((b, i) => `<button type="button" class="btn${i ? '' : ' primary pp-go'}" data-kind="${esc(b.kind)}">${esc(b.label)}</button>`).join('')}</div>`;
+      el.querySelectorAll('[data-kind]').forEach((b) => b.addEventListener('click', () => send({ kind: b.dataset.kind })));
+    },
+    // The number dial: giant digits, +/- (hold to speed up), a drag strip for big jumps, LOCK.
+    number(el, v) {
+      const lo = v.min, hi = v.max, step = v.step || 1, range = Math.max(step, hi - lo);
+      const snap = (x, to) => Math.min(hi, Math.max(lo, Math.round(x / to) * to));
+      let value = v.value != null ? v.value : v.start, touched = v.value != null, locked = !!v.locked;
+      el.innerHTML = `<div class="dial">
+        <div class="dial-unit">${esc(v.unit || '')}</div>
+        <output class="dial-num" aria-live="polite"></output>
+        <div class="dial-hint"></div>
+        <div class="dial-row"><button type="button" aria-label="Less">−</button><div class="strip" aria-hidden="true"></div><button type="button" aria-label="More">+</button></div>
+        <button type="button" class="btn primary lockbtn">Lock</button></div>`;
+      const dial = el.querySelector('.dial'), num = el.querySelector('.dial-num'), hint = el.querySelector('.dial-hint');
+      const [minus, plus] = el.querySelectorAll('.dial-row button'), strip = el.querySelector('.strip'), lockBtn = el.querySelector('.lockbtn');
+      const show = () => {
+        const text = fmtNum(value, v.year);
+        num.textContent = text;
+        num.style.fontSize = `${Math.min(96, Math.floor((el.clientWidth || 320) / (text.length * 0.5)))}px`;
+        num.classList.toggle('idle', !touched && !locked);
+        hint.textContent = locked ? 'Locked in. Eyes on the wall.' : touched ? '' : 'Set your guess, then lock it.';
+        dial.classList.toggle('locked', locked);
+        lockBtn.disabled = locked;
+        lockBtn.textContent = locked ? 'Locked in' : 'Lock';
+        strip.style.backgroundPosition = `${-((value - lo) / step) * (range / step > 400 ? 400 / (range / step) : 1) * 3}px 0`;
+      };
+      const set = (x) => {
+        const next = snap(x, step);
+        touched = true;
+        if (next !== value) { value = next; send({ kind: 'number', value }); }
+        show();
+      };
+      // holding +/- repeats, and after a while moves in bigger round steps
+      const hold = (btn, dir) => {
+        let timer = 0, count = 0;
+        const go = () => {
+          count++;
+          const jump = count > 28 ? nice(range / 10) : count > 12 ? nice(range / 50) : step;
+          const by = Math.max(step, jump);
+          set(by > step ? (dir > 0 ? Math.floor(value / by) * by + by : Math.ceil(value / by) * by - by) : value + dir * step);
+        };
+        const stop = () => { clearTimeout(timer); timer = 0; btn.classList.remove('held'); };
+        btn.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          if (locked) return;
+          btn.setPointerCapture(e.pointerId);
+          btn.classList.add('held');
+          count = 0;
+          go();
+          if (navigator.vibrate) navigator.vibrate(8);
+          const repeat = () => { go(); timer = setTimeout(repeat, count > 12 ? 60 : 90); };
+          timer = setTimeout(repeat, 420);
+        });
+        for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) btn.addEventListener(ev, stop);
+      };
+      hold(minus, -1);
+      hold(plus, 1);
+      // the strip: a full-width drag moves about four fifths of the range, in round steps
+      let drag = null;
+      strip.addEventListener('pointerdown', (e) => { if (locked) return; strip.setPointerCapture(e.pointerId); drag = { x: e.clientX, from: value }; });
+      strip.addEventListener('pointermove', (e) => {
+        if (!drag) return;
+        const w = strip.getBoundingClientRect().width || 1;
+        const jump = Math.max(step, v.year ? 1 : nice(range / 120));
+        const next = snap(drag.from + ((e.clientX - drag.x) / w) * range * 0.8, jump);
+        if (next !== value) { set(next); if (navigator.vibrate) navigator.vibrate(4); }
+      });
+      for (const ev of ['pointerup', 'pointercancel']) strip.addEventListener(ev, () => { drag = null; });
+      lockBtn.addEventListener('click', () => {
+        if (locked) return;
+        touched = true;
+        locked = true;
+        send({ kind: 'lock', value });
+        show();
+      });
+      requestAnimationFrame(show);
+      show();
+      return (nv) => { if (nv.locked && !locked) { locked = true; show(); } };
+    },
+    // One of N: a 2 x 2 grid of options, or (cols: 1) a list of names.
+    pick(el, v) {
+      const opts = v.options || [];
+      el.innerHTML = `<div class="choices${v.cols === 1 ? ' list' : ''}" style="--cols:${v.cols || 2}">${opts.map((o, i) =>
+        `<button type="button" data-i="${i}" aria-pressed="false"${o.color ? ` style="--c:${esc(o.color)}"` : ''}>${esc(o.label)}</button>`).join('')}</div>`;
+      const box = el.firstElementChild;
+      const update = (nv) => {
+        box.classList.toggle('locked', !!nv.locked);
+        box.querySelectorAll('[data-i]').forEach((b) => {
+          const o = opts[Number(b.dataset.i)];
+          b.setAttribute('aria-pressed', String(nv.chosen != null && (nv.chosen === o.id || nv.chosen === Number(b.dataset.i))));
+          b.disabled = !!nv.locked;
+        });
+      };
+      box.querySelectorAll('[data-i]').forEach((b) => tap(b, () => {
+        const i = Number(b.dataset.i);
+        send({ kind: 'pick', choice: i, ...(opts[i].id != null ? { id: String(opts[i].id) } : {}) });
+        update({ ...v, chosen: opts[i].id != null ? opts[i].id : i, locked: v.lockOnPick });
+      }));
+      update(v);
+      return update;
+    },
+    buzz(el, v) {
+      el.innerHTML = '<div class="buzz"><button type="button"></button></div>';
+      const btn = el.querySelector('button');
+      const update = (nv) => {
+        btn.disabled = !!nv.locked;
+        btn.innerHTML = nv.locked ? esc(nv.text || 'Locked out') : `${esc(nv.label || 'BUZZ')}${nv.value != null ? `<small>${esc(nv.value)}</small>` : ''}`;
+      };
+      tap(btn, () => { if (!btn.disabled) send({ kind: 'buzz' }); });
+      update(v);
+      return update;
+    },
+    yesno(el, v) {
+      el.innerHTML = `<div class="yesno"><button type="button" data-yes="1" aria-pressed="false">${esc(v.yes || 'Yes')}</button><button type="button" data-yes="0" aria-pressed="false">${esc(v.no || 'No')}</button></div>`;
+      const box = el.firstElementChild;
+      const update = (nv) => {
+        box.classList.toggle('locked', !!nv.locked);
+        box.querySelectorAll('[data-yes]').forEach((b) => { b.setAttribute('aria-pressed', String(nv.chosen != null && nv.chosen === (b.dataset.yes === '1'))); b.disabled = !!nv.locked; });
+      };
+      box.querySelectorAll('[data-yes]').forEach((b) => tap(b, () => { const yes = b.dataset.yes === '1'; send({ kind: 'yesno', yes }); update({ ...v, chosen: yes }); }));
+      update(v);
+      return update;
+    },
+    toggle(el, v) {
+      el.innerHTML = `<div class="pp-center"><button type="button" class="toggle" aria-pressed="false"></button><p class="pp-text"></p></div>`;
+      const btn = el.querySelector('.toggle');
+      let on = !!v.on;
+      const update = (nv) => {
+        on = !!nv.on;
+        btn.setAttribute('aria-pressed', String(on));
+        btn.innerHTML = `${esc(nv.label || '')}<small>${on ? 'ON · TAP TO UNDO' : 'TAP TO SWITCH ON'}</small>`;
+        el.querySelector('.pp-text').textContent = nv.text || '';
+      };
+      btn.addEventListener('click', () => { send({ kind: 'toggle', id: v.id, on: !on }); update({ ...v, on: !on }); if (navigator.vibrate) navigator.vibrate(15); });
+      update(v);
+      return update;
+    },
+  };
+
+  let partyKey = '', partyUpdate = null, partyBox = null;
+  function renderParty() {
+    const pad = $('pad');
+    const v = party;
+    if (!v || !me) return;
+    if (built !== 'party') {
+      built = 'party';
+      partyKey = '';
+      pad.innerHTML = '<div class="pp"><div id="ppNotice"></div><p class="pp-title" id="ppTitle"></p><div class="pp-timer" id="ppTimer" hidden><i></i></div><div class="pp" id="ppBody"></div></div>';
+    }
+    $('ppTitle').textContent = v.title || '';
+    $('ppTitle').hidden = !v.title;
+    // a sip, or a sip to hand out, above whatever the pad is
+    const pour = v.pour && v.pour.options.length ? v.pour : null;
+    const note = pour ? { title: 'POUR ONE OUT', text: 'Spot on. Who gets a sip? Any drink or water counts.' } : v.notice;
+    const noteHtml = note ? `<div class="notice" role="status"><div class="grow"><b>${esc(note.title)}</b><span>${esc(note.text)}</span>${pour
+      ? `<div class="choices" style="--cols:2;margin-top:10px">${pour.options.map((o) => `<button type="button" data-to="${o.slot}">${esc(o.name)}</button>`).join('')}</div>` : ''}</div></div>` : '';
+    const box = $('ppNotice');
+    if (box.dataset.html !== noteHtml) {
+      box.dataset.html = noteHtml;
+      box.innerHTML = noteHtml;
+      box.querySelectorAll('[data-to]').forEach((b) => b.addEventListener('click', () => send({ kind: 'pour', to: Number(b.dataset.to) })));
+      if (noteHtml && navigator.vibrate) navigator.vibrate([30, 60, 30]);
+    }
+    // the countdown runs on the phone, to the Pi's deadline
+    const timer = $('ppTimer');
+    const timerKey = v.deadline ? `${v.key}|${v.deadline}` : '';
+    if (timer.dataset.key !== timerKey) {
+      timer.dataset.key = timerKey;
+      timer.hidden = !v.deadline;
+      if (v.deadline) {
+        const bar = timer.firstElementChild;
+        const left = Math.max(0, v.deadline - serverNow());
+        const total = Math.max(left, v.deadline - (v.at || serverNow() - left));
+        bar.style.transition = 'none';
+        bar.style.width = `${(left / Math.max(1, total)) * 100}%`;
+        requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.transition = `width ${left}s linear`; bar.style.width = '0%'; }));
+      }
+    }
+    if (v.key !== partyKey || partyBox !== $('ppBody')) {
+      partyKey = v.key;
+      partyBox = $('ppBody');
+      partyUpdate = (PADS[v.ui] || PADS.wait)(partyBox, v) || null;
+    } else if (partyUpdate) partyUpdate(v);
+  }
+
   // ------------------------------------------------------------ screen
 
   function render() {
     const game = roster.game || 'breaker';
-    $('games').innerHTML = games.map(([key, name]) => `<button type="button" class="game" data-game="${key}" aria-pressed="${key === game}">${esc(name)}</button>`).join('');
+    const gamesHtml = games.map(([key, name]) => `<button type="button" class="game" data-game="${key}" aria-pressed="${key === game}">${esc(name)}</button>`).join('');
+    if ($('games').dataset.html !== gamesHtml) { $('games').dataset.html = gamesHtml; $('games').innerHTML = gamesHtml; }
     $('offWall').hidden = roster.onWall !== false;
+    const inParty = !!roster.party && party && party.phase;
+    // during a party game's round the game list hides, so nobody switches games mid-question
+    $('games').hidden = !!inParty && !['lobby', 'podium'].includes(party.phase);
+    $('status').hidden = $('scores').hidden = !!roster.party;
+    $('startBtn').parentElement.hidden = !!roster.party;
+    if (roster.party) {
+      if (me) $('meSlot').textContent = `Player ${me.slot + 1}${party && party.points ? ` · ${party.points} pts this round` : ''}`;
+      renderParty();
+      return;
+    }
     const seat = status && status.game === 'duel' && me && (status.seats || []).find((s) => s.slot === me.slot);
     const kind = `${CONTROLS[game] || 'slider'}${seat && (seat.side === 'left' || seat.side === 'right') ? '-v' : ''}`;
     if (kind !== built && me) {
@@ -302,6 +617,9 @@ input[type="text"] {
     $('joinView').hidden = false;
   });
   $('startBtn').addEventListener('click', () => send({ kind: 'start' }));
+  for (const box of [$('drinkPick'), $('drinkSwitch')]) {
+    box.addEventListener('click', (e) => { const b = e.target.closest('[data-drinks]'); if (b) setDrinks(b.dataset.drinks === 'yes'); });
+  }
   $('games').addEventListener('click', async (e) => {
     const b = e.target.closest('[data-game]');
     if (!b) return;
@@ -316,6 +634,7 @@ input[type="text"] {
   });
 
   $('name').value = store.get('name') || '';
+  renderDrinks();
   loadState();
   connect();
   if (store.get('name')) join(true);

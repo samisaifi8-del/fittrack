@@ -30,6 +30,7 @@
 <div id="dim"></div>
 <script src="/static/channels.js"></script>
 <script src="/static/games.js"></script>
+<script src="/static/party.js"></script>
 <script src="/static/livewall.js"></script>
 <script>
 (() => {
@@ -260,12 +261,13 @@
   }
 
   // One connection to the game server, shared by every game on this page. Phones' controller
-  // input arrives here; the game reports scores back for the phones to show.
+  // input arrives here; the game reports scores back for the phones to show. For party games the
+  // Pi sends the game's view instead ('party'); the latest one is kept for games starting up.
   let sharedBus = null;
   function gameBus() {
     if (sharedBus) { sharedBus.refs++; return sharedBus; }
     const listeners = new Set();
-    let roster = { type: 'roster', players: [], joinUrl: '' };
+    let roster = { type: 'roster', players: [], joinUrl: '' }, party = null;
     let es = null, closed = false;
     const open = () => {
       es = new EventSource('/api/game/stream?role=display');
@@ -273,6 +275,7 @@
         let m;
         try { m = JSON.parse(e.data); } catch (err) { return; }
         if (m.type === 'roster') roster = m;
+        if (m.type === 'party') party = m;
         listeners.forEach((fn) => fn(m));
       };
       es.onerror = () => { if (es.readyState === EventSource.CLOSED && !closed) setTimeout(open, 3000); };
@@ -280,7 +283,7 @@
     open();
     sharedBus = {
       refs: 1,
-      on(fn) { listeners.add(fn); fn(roster); return () => listeners.delete(fn); },
+      on(fn) { listeners.add(fn); fn(roster); if (party) fn(party); return () => listeners.delete(fn); },
       report(status) {
         fetch('/api/game/report', {
           method: 'POST',

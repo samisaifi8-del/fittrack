@@ -107,6 +107,41 @@ phones (same Wi-Fi), type a name and join. No app needed.
 - **Deco Duel:** two players, one ball, first to 7. Play alone and the house plays you.
 - **Serpentine:** everyone gets a snake. Eat cherries to grow; gold coins are worth three.
 - **Quick Draw:** wait for DRAW, then tap first. Too early is a false start. First to 5 wins.
+- **Closest Wins:** a question with a number answer goes up ("BURJ KHALIFA, METRES?") and
+  everyone guesses on a big dial on their phone; the closest guess wins, so nobody needs to know
+  the answer. The reveal drops everyone's dot onto a number line down the wall, furthest first,
+  then the answer falls as a gold line. Closest gets 3, second 2, third 1, spot on 5. A round is
+  six questions; before the sixth each phone can tap **DOUBLE** (twice the points if you place,
+  lose 2 if you don't). Every third round is **WHAT YEAR?**: release years of songs and films.
+  Questions don't repeat until a category has been used up (remembered in `data/used.json`).
+
+**Your own WHAT YEAR? questions.** Under **Channel settings** on the control page, add one song or
+film per line as `artist - title - year` (for example `Daft Punk - One More Time - 2000`). Each
+line becomes a question, and yours go into WHAT YEAR? rounds first. They're saved in
+`data/years.txt`, which you can also edit by hand.
+
+**Sips.** Off unless you switch on **Sips tonight** (Channel settings); it switches itself off at
+6 am. While it's on, phones ask "Drinking tonight?" when they join (changeable on the phone any
+time). Only people who said yes are ever given a sip, it's always one sip of anything (water
+counts), and nothing escalates. The wall never shows who is or isn't drinking: a sip shows there
+only as a small gold drop by a name, and on that person's phone. In Closest Wins the furthest
+guess is a sip, and a spot-on guess lets you hand one to another drinker from your phone.
+
+### Building another party game
+
+Quiz and vote games (Closest Wins, and the ones to come) are refereed by the Pi rather than the
+wall, so answers stay secret, scores are fair and every preview shows the same thing. The kit:
+
+| Piece | Where | What it gives you |
+| --- | --- | --- |
+| `PartyGame` | `partygames.py` | Phases with timers (`go`), players by phone, round and night points, `podium()`, `award_sip()`, `offer_pour()` |
+| `load_deck`, `UsedItems` | `partygames.py` | Decks from `static/content/<name>.json`; no repeats until a pool runs out, saved across restarts |
+| Phone input | `GameHub.input` | `pick`, `number`, `lock`, `buzz`, `yesno`, `toggle`, `next`, `end`, `pour` (plus the arcade ones), checked before a game sees them |
+| Phone pads | `static/play.html` | `wait`, `start`, `number` (dial with hold-to-speed-up, drag strip, year mode), `pick` (2 x 2 or a list of names), `buzz`, `yesno`, `toggle`, `result`, `next`, plus a countdown bar, sip notes and the pour list |
+| Wall screens | `static/party.js` | Lobby, between-rounds card, podium, lock dots, countdown bar, sip drop, cached layers |
+
+The top of `partygames.py` and `static/party.js` walks through adding a game step by step;
+`ClosestWins` is the worked example, and `test_party.py` shows how to test one without a wall.
 
 ## Basement Live
 
@@ -169,7 +204,8 @@ What the installer changes on the Pi:
 - It turns off screen blanking.
 - It uses port 80, or 8080 if something else already uses 80.
 
-Uploads and settings live in `bar-screens/data/`.
+Uploads and settings live in `bar-screens/data/` (so do `years.txt` and `used.json`, the party
+games' own question list and memory).
 
 ## Updating
 

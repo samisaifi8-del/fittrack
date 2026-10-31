@@ -1,6 +1,7 @@
 // Party games for the LED walls. The wall runs each game; phones on the Wi-Fi are the controllers
-// (static/play.html). Inputs arrive over the game bus as { slot, kind, x | dir }, and each game
-// reports its status back so the phones can show scores and what to do next.
+// (static/play.html). Inputs arrive over the game bus as { slot, kind, x | dir | ... }, and each
+// game reports its status back so the phones can show scores and what to do next. Quiz and vote
+// games are refereed by the Pi instead and drawn by static/party.js.
 (() => {
   'use strict';
 
@@ -649,6 +650,7 @@
     create(name, canvas, W, H, opts) {
       canvas.width = W;
       canvas.height = H;
+      if (!GAMES[name] && window.BarParty && window.BarParty.has(name)) return window.BarParty.create(name, canvas, W, H, opts);
       return (GAMES[name] || breaker)(canvas, W, H, opts);
     },
   };

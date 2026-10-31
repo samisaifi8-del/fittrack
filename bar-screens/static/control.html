@@ -295,6 +295,13 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     <div class="set-group">
       <label class="field"><span class="lab">6 · Games: which game</span><select id="gamePick"></select></label>
       <p class="note" id="playUrl">Guests join from their phones at /play.</p>
+      <label class="switch"><input type="checkbox" id="sipsOn"><span></span>Sips tonight</label>
+      <p class="note" id="sipsNote"></p>
+    </div>
+    <div class="set-group">
+      <label class="field"><span class="lab">Closest Wins: your own WHAT YEAR? songs and films</span>
+        <textarea id="yearsText" rows="4" placeholder="Daft Punk - One More Time - 2000" aria-describedby="yearsNote" spellcheck="false"></textarea></label>
+      <div class="row"><button type="button" class="btn small" id="yearsSave">Save</button><span class="note grow" id="yearsNote">One per line: artist - title - year. Every third round of Closest Wins asks release years, and yours go in first.</span></div>
     </div>
   </details>
 
@@ -577,6 +584,11 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     keep($('newsFeed'), conf.news.feed);
     keep($('visStyle'), conf.visuals.style);
     keep($('gamePick'), conf.games.game);
+    const sipsOn = (conf.games.sipsUntil || 0) * 1000 > Date.now();
+    $('sipsOn').checked = sipsOn;
+    $('sipsNote').textContent = sipsOn
+      ? `On until ${new Date(conf.games.sipsUntil * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}. Some games hand out a sip now and then, only to guests whose phone said they're drinking. Any drink or water counts; the wall never shows who is or isn't.`
+      : 'Off: no game mentions drinking. Switch it on for the night and phones ask "Drinking tonight?" when they join.';
     $('playUrl').innerHTML = `Guests join from their phones at <b>${esc(location.host)}/play</b> (same Wi-Fi).`;
     const wx = conf.weather;
     $('wxNote').textContent = wx.lat != null ? `Showing weather for ${wx.label}${wx.region ? ', ' + wx.region : ''}.` : 'Not set yet. Type your town and press Set.';
@@ -666,6 +678,22 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
   $('newsFeed').addEventListener('change', (e) => patchChannels({ news: { feed: e.target.value } }));
   $('visStyle').addEventListener('change', (e) => patchChannels({ visuals: { style: e.target.value } }));
   $('gamePick').addEventListener('change', (e) => patchChannels({ games: { game: e.target.value } }));
+  $('sipsOn').addEventListener('change', (e) => patchChannels({ games: { sips: e.target.checked } }));
+  function yearsNote(r) {
+    $('yearsNote').textContent = `${r.count} saved.${r.bad.length ? ` Line${r.bad.length > 1 ? 's' : ''} ${r.bad.slice(0, 6).join(', ')} need${r.bad.length > 1 ? '' : 's'} "artist - title - year".` : ''} Every third round of Closest Wins asks release years, and yours go in first.`;
+  }
+  $('chSettings').addEventListener('toggle', async () => {
+    if (!$('chSettings').open || $('yearsText').dataset.loaded) return;
+    try {
+      const r = await api('GET', '/api/game/years');
+      $('yearsText').value = r.text;
+      $('yearsText').dataset.loaded = '1';
+      if (r.count) yearsNote(r);
+    } catch (e) {}
+  });
+  $('yearsSave').addEventListener('click', async () => {
+    try { yearsNote(await api('POST', '/api/game/years', { text: $('yearsText').value })); toast('Saved.'); } catch (e) { toast(e.message); }
+  });
   async function setPlace() {
     const place = $('wxPlace').value.trim();
     if (!place) { $('wxPlace').focus(); return; }

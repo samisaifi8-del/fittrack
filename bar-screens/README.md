@@ -81,6 +81,7 @@ The control page works like a TV remote. Pick a channel for each wall:
 | 5 · Visuals | The Basement sign, a 1930s lift dial that settles on B, a deco clock, the city at dusk, champagne bubbles and deco fans. |
 | 6 · Games | Party games on the wall, with phones as the controllers. |
 | 7 · Basement Live | Guests' phone cameras on the wall, up to four, cut together automatically. |
+| 8 · Now Showing | Movie night: tonight's poster, a two-minute countdown, then the wall goes dark for the film. |
 
 Set leagues, news section, your town, the visual style, the game and the bar's name under
 **Channel settings**. Scores, news and weather need the Pi to be online.
@@ -168,6 +169,31 @@ control page, uploads, settings) gets "403 Forbidden", so the remote stays on th
 
 The video goes straight from each phone to the Pi's display over WebRTC (with Google's public STUN
 server to find the way); the server only passes the connection details along.
+
+## Now Showing
+
+Movie night on the walls. Under **Now Showing** on the control page, type the film and pick it
+from the top five matches: its poster goes on the wall in a thin gold frame, with the title, year
+and running time, turning every 20 seconds to a type-only card ("The Basement presents"). Then
+four buttons run the night:
+
+- **Start the feature:** a two-minute countdown, the gold curtains close, and the wall fades down
+  to a faint gold line at about 4% for the whole film.
+- **Intermission (5, 10 or 15 min):** the wall comes back up to about 40% with INTERMISSION, a
+  gold ring that drains and "we resume in 9:41". When it runs out, the wall goes dark again by
+  itself.
+- **Resume:** back to the film early (during the countdown, it skips straight to dark).
+- **The End:** THE END as a classic title card for 15 seconds, then back to The Bar. Mid-film it
+  takes a second tap.
+
+The buttons put every wall in use on channel 8. Anyone on the Wi-Fi can call an intermission from
+**http://<pi-name>.local/film**, a small page with just those buttons.
+
+Posters and details (year, running time) come from Wikipedia and Wikidata: free, no key, but the
+Pi needs to be online the first time. Each film's poster and details are then kept in
+`data/films/`, so a rewatch works with no internet (it's under **Shown before**). Sometimes
+Wikipedia only has a still, or nothing; the wall then shows the type-only card, which is meant to
+look that way.
 
 ## Live from your phone
 

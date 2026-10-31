@@ -234,6 +234,10 @@
         // Only the real display receives the cameras; previews on phones show the channel's card.
         bus = kiosk && window.BarLive ? window.BarLive.acquire() : null;
         channel = window.BarChannels.create('live', canvas, W, H, { conf: slide.conf, barName: slide.barName, live: bus });
+      } else if (slide.channel === 'nowshowing' && window.BarChannels) {
+        // Movie night moves on by itself (countdown, film, intermission), so the channel reads the
+        // latest state each frame instead of being rebuilt, and makes its own slow fades.
+        channel = window.BarChannels.create('nowshowing', canvas, W, H, { barName: slide.barName, cinema: () => state && state.cinema });
       } else if (window.BarChannels) {
         channel = window.BarChannels.create(slide.channel, canvas, W, H, { conf: slide.conf, barName: slide.barName, side: slide.side });
       }
@@ -619,11 +623,18 @@
     }).catch(() => {});
   }
 
+  // Movie night's countdowns use the Pi's clock: how far this device's clock is from it, in
+  // seconds. (Previews on the control page get the phone's figure along with the state.)
+  function setClock(st) {
+    if (st.cinema && typeof st.cinema.now === 'number') st.cinema.clock = st.cinema.now - Date.now() / 1000;
+  }
+
   function connect() {
     const es = new EventSource('/api/events');
     es.onopen = reportSize;
     es.onmessage = (e) => {
       try { state = JSON.parse(e.data); } catch (err) { return; }
+      setClock(state);
       render();
     };
     // Keep showing the last picture if the server goes away, and reconnect when it's back.

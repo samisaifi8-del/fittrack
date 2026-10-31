@@ -20,6 +20,7 @@
     visuals: { n: 5, name: 'VISUALS', accent: GOLD },
     games: { n: 6, name: 'GAMES', accent: GOLD },
     live: { n: 7, name: 'BASEMENT LIVE', accent: GOLD },
+    nowshowing: { n: 8, name: 'NOW SHOWING', accent: GOLD },
   };
 
   let fontStr = (name, px) => `600 ${px}px sans-serif`;
@@ -1529,6 +1530,435 @@
     return { stop };
   }
 
+  // ------------------------------------------------------------ now showing
+
+  // Movie night (channel 8). Before the film, tonight's poster in a gold frame, turning now and
+  // then to a type-only card; "Start the feature" gives two minutes, the gold curtains close and
+  // the wall goes almost dark for the whole film. An intermission brings it back up a little with
+  // a draining ring, and THE END closes the night. The Pi keeps where the night is (opts.cinema,
+  // with wall-clock times); the channel follows it and fades between scenes itself. Every card is
+  // drawn once into a small canvas, and the wall is only redrawn when something on it changes.
+  const NS_POSTER = 20;   // seconds of poster before the type-only card
+  const NS_CARD = 8;      // seconds of the type-only card
+  const NS_TURN = 1.5;    // the fade between them
+  const NS_CLOSE = 3;     // the curtains close over the countdown's last three seconds
+  const NS_HOLD = 1.2;    // closed, before the wall fades down
+  const NS_DOWN = 4;      // the fade down (done before the Pi moves on to the film, 6 s after 0:00)
+  const NS_DARK = 0.04;   // the film: a faint gold hairline at about 4%, like an exit sign
+  const NS_BREAK = 0.4;   // the intermission: about 40%
+  const NS_FADES = { film: 4, intermission: 2.5, end: 2 }; // into each scene; 1 s otherwise
+
+  function filmMeta(f) {
+    const parts = [];
+    if (f.year) parts.push(String(f.year));
+    if (f.runtime) {
+      const h = Math.floor(f.runtime / 60), m = f.runtime % 60;
+      parts.push(h ? `${h}H${m ? ` ${m}M` : ''}` : `${m}M`);
+    }
+    return parts.join('  ·  ');
+  }
+
+  const clockStr = (secs) => {
+    const n = Math.max(0, Math.ceil(secs));
+    return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
+  };
+
+  // Spaced capitals, centred.
+  function nsLabel(x, text, cx, y, px, color, maxW) {
+    tracking(x, px * 0.2);
+    x.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(x, text, 'Josefin Sans', maxW, px)));
+    x.fillStyle = color;
+    x.fillText(text, cx + px * 0.1, Math.round(y));
+    tracking(x, 0);
+  }
+
+  // The title in Poiret One capitals, as big as fits in the box, on up to `lines` lines, broken
+  // where the lines come out most even (so never a lone word on the last line).
+  function nsTitle(x, text, cx, cy, maxW, maxH, lines, color) {
+    const words = text.toUpperCase().split(/\s+/).filter(Boolean);
+    tracking(x, 0);
+    x.font = font('Poiret One', 100);
+    // the size at which a line fills maxW (the letter spacing is 1 px whatever the size)
+    const fits = (ws) => { const t = ws.join(' '); return ((maxW - t.length) * 100) / x.measureText(t).width; };
+    let box = { size: 4, lines: [words.join(' ')], spread: Infinity };
+    const tryLines = (parts) => {
+      const each = parts.map(fits);
+      const size = Math.floor(Math.min(...each, maxH / (parts.length * 1.08)));
+      const spread = Math.max(...each) - Math.min(...each); // how uneven the lines are
+      if (size > box.size || (size === box.size && spread < box.spread)) box = { size, lines: parts.map((p) => p.join(' ')), spread };
+    };
+    tryLines([words]);
+    for (let i = 1; i < words.length && lines >= 2; i++) {
+      tryLines([words.slice(0, i), words.slice(i)]);
+      for (let j = i + 1; j < words.length && lines >= 3; j++) tryLines([words.slice(0, i), words.slice(i, j), words.slice(j)]);
+    }
+    tracking(x, 1);
+    x.font = font('Poiret One', box.size);
+    x.fillStyle = color || IVORY;
+    const y0 = cy - ((box.lines.length - 1) * box.size * 1.08) / 2;
+    box.lines.forEach((l, i) => x.fillText(l, cx, Math.round(y0 + i * box.size * 1.08)));
+    tracking(x, 0);
+    return box.lines.length * box.size * 1.08;
+  }
+
+  // Halves a big picture step by step before the last draw, so it isn't jagged.
+  function drawCover(x, img, dx, dy, dw, dh) {
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    if (!iw || !ih) return;
+    const k = Math.max(dw / iw, dh / ih);
+    let src = img, sw = iw, sh = ih;
+    while (sw / 2 >= iw * k && sh / 2 >= ih * k) {
+      const from = src;
+      src = offscreen(sw / 2, sh / 2, (c, w, h) => { c.imageSmoothingQuality = 'high'; c.drawImage(from, 0, 0, w, h); });
+      sw = src.width; sh = src.height;
+    }
+    const cw = (dw / k) * (sw / iw), ch = (dh / k) * (sh / ih);
+    x.imageSmoothingEnabled = true;
+    x.imageSmoothingQuality = 'high';
+    x.drawImage(src, (sw - cw) / 2, (sh - ch) * 0.3, cw, ch, dx, dy, dw, dh);
+  }
+
+  // The poster fills the wall inside a thin gold frame; the bottom of it (the small print) goes
+  // under a black plate with tonight's title.
+  function posterCard(W, H, film, img) {
+    const s = Math.min(W, H);
+    return offscreen(W, H, (x) => {
+      x.fillStyle = '#000';
+      x.fillRect(0, 0, W, H);
+      drawCover(x, img, 4, 4, W - 8, H - 8);
+      const top = H - Math.round(H * 0.25);
+      const g = x.createLinearGradient(0, top - H * 0.16, 0, top);
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(0.6, 'rgba(0,0,0,0.85)');
+      g.addColorStop(1, 'rgba(0,0,0,1)');
+      x.fillStyle = g;
+      x.fillRect(0, Math.round(top - H * 0.16), W, Math.ceil(H * 0.16));
+      x.fillStyle = '#000';
+      x.fillRect(0, top, W, H - top);
+      x.fillStyle = GOLD;
+      x.fillRect(2, 2, W - 4, 1); x.fillRect(2, H - 3, W - 4, 1); x.fillRect(2, 2, 1, H - 4); x.fillRect(W - 3, 2, 1, H - 4);
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      nsLabel(x, 'NOW SHOWING', W / 2, top + s * 0.015, small(s), GOLD, W * 0.7);
+      const meta = filmMeta(film);
+      nsTitle(x, film.title, W / 2, top + (H - top) * (meta ? 0.46 : 0.55), W * 0.86, (H - top) * 0.5, 2);
+      if (meta) nsLabel(x, meta, W / 2, H - s * 0.07, Math.round(s * 0.042), GOLD_LIGHT, W * 0.8);
+    });
+  }
+
+  // The type-only card: the house presents tonight's film. With no film chosen, it's movie night.
+  function presentsCard(W, H, film, barName) {
+    const s = Math.min(W, H);
+    return offscreen(W, H, (x) => {
+      x.fillStyle = '#000';
+      x.fillRect(0, 0, W, H);
+      frame(x, W, H);
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      nsLabel(x, (barName || 'THE BASEMENT').toUpperCase(), W / 2, H * 0.15, Math.round(s * 0.05), GOLD, W * 0.8);
+      nsLabel(x, 'PRESENTS', W / 2, H * 0.2, small(s), MUTED, W * 0.6);
+      decoRule(x, W / 2 - W * 0.16, Math.round(H * 0.255), W * 0.32, s);
+      nsTitle(x, film ? film.title : 'Movie night', W / 2, H * 0.47, W * 0.84, H * 0.3, 3);
+      decoRule(x, W / 2 - W * 0.16, Math.round(H * 0.69), W * 0.32, s);
+      if (!film) {
+        nsLabel(x, 'TONIGHT', W / 2, H * 0.76, Math.round(s * 0.045), GOLD_LIGHT, W * 0.8);
+        return;
+      }
+      const meta = filmMeta(film);
+      if (meta) nsLabel(x, meta, W / 2, H * 0.75, Math.round(s * 0.045), GOLD_LIGHT, W * 0.8);
+      if (film.director) {
+        nsLabel(x, 'A FILM BY', W / 2, H * 0.81, small(s), MUTED, W * 0.6);
+        nsLabel(x, film.director.toUpperCase(), W / 2, H * 0.855, Math.round(s * 0.042), IVORY, W * 0.82);
+      }
+    });
+  }
+
+  // The countdown's card, without the time itself.
+  function countdownCard(W, H, film) {
+    const s = Math.min(W, H);
+    return offscreen(W, H, (x) => {
+      x.fillStyle = '#000';
+      x.fillRect(0, 0, W, H);
+      frame(x, W, H);
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      nsLabel(x, 'THE FEATURE', W / 2, H * 0.17, Math.round(s * 0.05), GOLD, W * 0.8);
+      nsLabel(x, 'BEGINS IN', W / 2, H * 0.22, small(s), MUTED, W * 0.6);
+      decoRule(x, W / 2 - W * 0.16, Math.round(H * 0.62), W * 0.32, s);
+      nsTitle(x, film.title, W / 2, H * 0.73, W * 0.84, H * 0.13, 2);
+      const meta = filmMeta(film);
+      if (meta) nsLabel(x, meta, W / 2, H * 0.84, Math.round(s * 0.04), GOLD_LIGHT, W * 0.8);
+    });
+  }
+
+  // One half of the house curtain: deep folds of gold, a hem, and a bright leading edge.
+  function goldCurtain(w, h, side) {
+    return offscreen(w, h, (x) => {
+      x.fillStyle = '#000';
+      x.fillRect(0, 0, w, h);
+      for (let i = 0; i < w; i++) {
+        const from = side === 'left' ? w - 1 - i : i; // the folds line up at the middle
+        // two rhythms of fold, so the drape is uneven like cloth, a little deeper towards the middle
+        const v = 0.5 + 0.5 * Math.cos((from / 15) * Math.PI * 2 + 0.9 * Math.sin(from / 23));
+        const depth = 0.75 + 0.25 * Math.min(1, from / (w * 0.6));
+        x.fillStyle = rgba(GOLD, (0.1 + 0.7 * Math.pow(v, 1.6)) * depth);
+        x.fillRect(i, 0, 1, h);
+      }
+      x.fillStyle = 'rgba(0,0,0,0.45)';
+      x.fillRect(0, h - 14, w, 14);
+      x.fillStyle = GOLD_LIGHT;
+      x.fillRect(0, h - 15, w, 1);
+      const edge = side === 'left' ? w - 1 : 0;
+      x.fillRect(edge, 0, 1, h);
+    });
+  }
+
+  // The pelmet across the top: a band of gold with a scalloped edge.
+  function pelmet(W) {
+    const sc = 16, band = 20, h = band + sc / 2 + 2;
+    return offscreen(W, h, (x) => {
+      x.fillStyle = GOLD;
+      x.beginPath();
+      x.moveTo(0, 0);
+      x.lineTo(W, 0);
+      x.lineTo(W, band);
+      for (let cx = W; cx > 0; cx -= sc) x.arc(cx - sc / 2, band, sc / 2, 0, Math.PI);
+      x.closePath();
+      x.fill();
+      x.fillStyle = '#000';
+      x.fillRect(0, 3, W, 1);
+      x.fillRect(0, band - 5, W, 1);
+      x.fillStyle = 'rgba(0,0,0,0.35)';
+      x.fillRect(0, 4, W, band - 9);
+    });
+  }
+
+  // The film: black, and the wall's edge as a faint gold line.
+  function darkCard(W, H) {
+    const s = Math.min(W, H);
+    return offscreen(W, H, (x) => {
+      x.fillStyle = '#000';
+      x.fillRect(0, 0, W, H);
+      const inset = Math.max(2, Math.round(s * 0.025));
+      x.fillStyle = rgba(GOLD, NS_DARK);
+      x.fillRect(inset, inset, W - inset * 2, 1); x.fillRect(inset, H - inset - 1, W - inset * 2, 1);
+      x.fillRect(inset, inset + 1, 1, H - inset * 2 - 2); x.fillRect(W - inset - 1, inset + 1, 1, H - inset * 2 - 2);
+    });
+  }
+
+  // The intermission's card at full strength, without the ring's gold or the time; it goes on
+  // the wall at about 40%.
+  function breakCard(W, H, film, ring) {
+    const s = Math.min(W, H);
+    return offscreen(W, H, (x) => {
+      x.fillStyle = '#000';
+      x.fillRect(0, 0, W, H);
+      frame(x, W, H);
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      tracking(x, s * 0.012);
+      x.font = font('Poiret One', fitSize(x, 'INTERMISSION', 'Poiret One', W * 0.84, s * 0.14));
+      x.fillStyle = IVORY;
+      x.fillText('INTERMISSION', W / 2 + s * 0.006, Math.round(H * 0.12));
+      tracking(x, 0);
+      decoRule(x, W / 2 - W * 0.16, Math.round(H * 0.18), W * 0.32, s);
+      x.strokeStyle = rgba(GOLD, 0.25);
+      x.lineWidth = ring.lw;
+      x.beginPath();
+      x.arc(ring.cx, ring.cy, ring.r, 0, Math.PI * 2);
+      x.stroke();
+      nsLabel(x, 'WE RESUME IN', ring.cx, ring.cy - ring.r * 0.46, small(s) + 1, GOLD, ring.r * 1.4);
+      nsTitle(x, film.title, W / 2, H * 0.86, W * 0.84, H * 0.1, 2, GOLD_LIGHT);
+    });
+  }
+
+  // THE END, as a classic title card in a double gold frame.
+  function endCard(W, H, film, barName) {
+    const s = Math.min(W, H);
+    return offscreen(W, H, (x) => {
+      x.fillStyle = '#000';
+      x.fillRect(0, 0, W, H);
+      frame(x, W, H);
+      const i2 = Math.round(s * 0.05);
+      x.strokeStyle = rgba(GOLD, 0.35);
+      x.lineWidth = 1;
+      x.strokeRect(i2 + 0.5, i2 + 0.5, W - i2 * 2 - 1, H - i2 * 2 - 1);
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      tracking(x, s * 0.02);
+      x.font = font('Cormorant', fitSize(x, 'THE', 'Cormorant', W * 0.5, s * 0.17));
+      x.fillStyle = IVORY;
+      x.fillText('THE', W / 2 + s * 0.01, Math.round(H * 0.36));
+      x.font = font('Cormorant', fitSize(x, 'END', 'Cormorant', W * 0.66, s * 0.34));
+      x.fillText('END', W / 2 + s * 0.01, Math.round(H * 0.5));
+      tracking(x, 0);
+      decoRule(x, W / 2 - W * 0.18, Math.round(H * 0.62), W * 0.36, s);
+      if (film) nsLabel(x, film.title.toUpperCase(), W / 2, H * 0.69, Math.round(s * 0.04), MUTED, W * 0.76);
+      nsLabel(x, (barName || 'THE BASEMENT').toUpperCase(), W / 2, H * 0.86, small(s), GOLD, W * 0.7);
+    });
+  }
+
+  function nowshowing(canvas, W, H, opts) {
+    const ctx = canvas.getContext('2d');
+    const s = Math.min(W, H);
+    const read = opts.cinema || (() => null);
+    const ring = { cx: W / 2, cy: Math.round(H * 0.5), r: Math.round(W * 0.37), lw: Math.max(4, Math.round(s * 0.03)) };
+    const cards = new Map();
+    let filmKey = null, poster = null, posterOk = false;
+    let scene = null, stamp = '', fade = null, prevBuf = null, nextBuf = null, closedDark = false;
+    const card = (name, make) => cached(cards, name, make);
+
+    function setFilm(film) {
+      const key = film ? `${film.key}|${film.poster}|${film.title}` : '';
+      if (key === filmKey) return;
+      filmKey = key;
+      cards.clear();
+      poster = null;
+      posterOk = false;
+      if (film && film.poster) {
+        const img = new Image();
+        img.onload = () => { if (poster === img) { posterOk = true; stamp = ''; } };
+        img.src = film.poster;
+        poster = img;
+      }
+    }
+
+    function sceneOf(c) {
+      if (!c || !c.film) return 'idle';
+      return ['countdown', 'film', 'intermission', 'end'].includes(c.phase) ? c.phase : 'poster';
+    }
+
+    // Draws one scene into `x`; returns a key that changes whenever the picture would.
+    function render(x, name, c, T, dry) {
+      const f = c && c.film;
+      if (name === 'idle') {
+        if (!dry) x.drawImage(card('idle', () => presentsCard(W, H, null, opts.barName)), 0, 0);
+        return 'idle';
+      }
+      if (name === 'film') {
+        if (!dry) x.drawImage(card('dark', () => darkCard(W, H)), 0, 0);
+        return 'dark';
+      }
+      if (name === 'end') {
+        if (!dry) x.drawImage(card('end', () => endCard(W, H, f, opts.barName)), 0, 0);
+        return 'end';
+      }
+      if (name === 'poster') {
+        const type = card('presents', () => presentsCard(W, H, f, opts.barName));
+        if (!posterOk) { if (!dry) x.drawImage(type, 0, 0); return 'type'; }
+        const pic = card('poster', () => posterCard(W, H, f, poster));
+        const cycle = NS_POSTER + NS_CARD + NS_TURN * 2;
+        const u = (((T - c.at) % cycle) + cycle) % cycle;
+        let k = 0, key = 'p';
+        if (u >= NS_POSTER + NS_TURN && u < NS_POSTER + NS_TURN + NS_CARD) { k = 1; key = 't'; }
+        else if (u >= NS_POSTER && u < NS_POSTER + NS_TURN) { k = ease((u - NS_POSTER) / NS_TURN); key = `f${k}`; }
+        else if (u >= NS_POSTER + NS_TURN + NS_CARD) { k = 1 - ease((u - NS_POSTER - NS_TURN - NS_CARD) / NS_TURN); key = `f${k}`; }
+        if (dry) return key;
+        if (k < 1) x.drawImage(pic, 0, 0);
+        if (k > 0) { x.globalAlpha = k; x.drawImage(type, 0, 0); x.globalAlpha = 1; }
+        return key;
+      }
+      if (name === 'countdown') {
+        const rem = c.until - T;
+        const after = -rem;
+        const down = ease((after - NS_HOLD) / NS_DOWN);
+        const shut = rem > NS_CLOSE ? 0 : ease(1 - rem / NS_CLOSE);
+        const key = down >= 1 ? 'dark' : shut > 0 ? `c${shut}|${down}` : `d${Math.ceil(rem)}`;
+        if (dry) return key;
+        if (down >= 1) { x.drawImage(card('dark', () => darkCard(W, H)), 0, 0); return key; }
+        if (down > 0) { x.drawImage(card('dark', () => darkCard(W, H)), 0, 0); x.globalAlpha = 1 - down; }
+        if (shut < 1) { // (once they're shut, the curtains cover all of it)
+          x.drawImage(card('countdown', () => countdownCard(W, H, f)), 0, 0);
+          x.textAlign = 'center';
+          x.textBaseline = 'middle';
+          tracking(x, 2);
+          x.font = font('Poiret One', card('digits', () => fitSize(x, '0:00', 'Poiret One', W * 0.8, s * 0.42)));
+          x.fillStyle = IVORY;
+          x.fillText(clockStr(Math.max(0, rem)), W / 2 + 1, Math.round(H * 0.425));
+          tracking(x, 0);
+        }
+        if (shut > 0) {
+          const halves = card('curtains', () => [goldCurtain(Math.ceil(W / 2), H, 'left'), goldCurtain(Math.ceil(W / 2), H, 'right')]);
+          const hw = halves[0].width, off = Math.round(hw * shut);
+          x.drawImage(halves[0], off - hw, 0);
+          x.drawImage(halves[1], W - off, 0);
+          const p = card('pelmet', () => pelmet(W));
+          x.drawImage(p, 0, Math.round(-p.height * (1 - shut)));
+        }
+        x.globalAlpha = 1;
+        return key;
+      }
+      // the intermission
+      const total = Math.max(1, (c.mins || 1) * 60);
+      const rem = Math.max(0, c.until - T);
+      const key = `i${Math.ceil(rem)}`;
+      if (dry) return key;
+      x.drawImage(card('break', () => breakCard(W, H, f, ring)), 0, 0);
+      x.strokeStyle = GOLD;
+      x.lineWidth = ring.lw;
+      x.lineCap = 'butt';
+      x.beginPath();
+      x.arc(ring.cx, ring.cy, ring.r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, Math.ceil(rem) / total));
+      x.stroke();
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      tracking(x, 1);
+      x.font = font('Poiret One', card('bdigits', () => fitSize(x, '00:00', 'Poiret One', ring.r * 1.6, ring.r * 0.8)));
+      x.fillStyle = IVORY;
+      x.fillText(clockStr(rem), ring.cx + 0.5, Math.round(ring.cy + ring.r * 0.14));
+      tracking(x, 0);
+      x.fillStyle = rgba('#000000', 1 - NS_BREAK);
+      x.fillRect(0, 0, W, H);
+      return key;
+    }
+
+    const buf = () => offscreen(W, H, () => {});
+    const stop = animate((t) => {
+      const c = read();
+      const T = Date.now() / 1000 + ((c && c.clock) || 0);
+      setFilm(c && c.film);
+      const name = sceneOf(c);
+      if (name !== scene) {
+        // a straight cut when nothing would show (the countdown has already gone dark)
+        const len = scene === null || (scene === 'countdown' && name === 'film' && closedDark) ? 0 : NS_FADES[name] || 1;
+        if (len) {
+          if (!prevBuf) { prevBuf = buf(); nextBuf = buf(); }
+          const p = prevBuf.getContext('2d');
+          p.globalAlpha = 1;
+          p.drawImage(canvas, 0, 0);
+          fade = { at: t, len };
+        } else fade = null;
+        scene = name;
+        stamp = '';
+      }
+      if (fade) {
+        const u = ease((t - fade.at) / fade.len);
+        const n = nextBuf.getContext('2d');
+        render(n, name, c, T);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, W, H);
+        ctx.globalAlpha = 1 - u;
+        ctx.drawImage(prevBuf, 0, 0);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = u;
+        ctx.drawImage(nextBuf, 0, 0);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1;
+        if (u >= 1) { fade = null; stamp = ''; }
+        canvas.dataset.scene = `${name}+fade`;
+        return;
+      }
+      const key = render(ctx, name, c, T, true);
+      if (key === stamp) return;
+      stamp = key;
+      closedDark = name === 'countdown' && key === 'dark';
+      render(ctx, name, c, T);
+      canvas.dataset.scene = name; // for checking the channel
+    }, 30);
+    return { stop };
+  }
+
   // ------------------------------------------------------------ channel ident
 
   // Shown for a few seconds when the channel changes: a quiet black title slide.
@@ -1563,7 +1993,7 @@
     tracking(ctx, 0);
   }
 
-  const FACTORIES = { scores, news, weather, visuals, live };
+  const FACTORIES = { scores, news, weather, visuals, live, nowshowing };
 
   window.BarChannels = {
     THEMES,

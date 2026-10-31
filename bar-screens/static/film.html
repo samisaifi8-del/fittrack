@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0a08">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Now Showing</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poiret+One&family=Josefin+Sans:wght@300;600;700&family=Barlow+Condensed:wght@500;600&display=swap">
+<style>
+/* Layout: one phone column for guests on movie night. Tonight's film, where the night is, and
+   the intermission buttons. Nothing else: the host's remote stays on /control. */
+:root {
+  --bg: #0b0a08; --surface: #15130f; --raise: #1e1b15; --line: #332d22;
+  --fg: #efe6d2; --muted: #a59a84; --gold: #c5a467; --gold-ink: #15100a;
+  --f-display: "Poiret One", Georgia, serif;
+  --f-label: "Josefin Sans", system-ui, sans-serif;
+  --f-body: "Barlow Condensed", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0; min-height: 100vh; background: var(--bg); color: var(--fg); font: 500 18px/1.35 var(--f-body);
+  padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 24px) max(16px, env(safe-area-inset-left, 0px));
+}
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; }
+button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-block: 14px 10px; border-bottom: 3px double var(--gold); }
+.brand { font: 400 24px/1 var(--f-display); letter-spacing: 0.1em; }
+.sub { font: 700 11px/1 var(--f-label); letter-spacing: 0.3em; color: var(--gold); }
+main { display: grid; gap: 18px; padding-block: 20px; max-width: 480px; margin: 0 auto; }
+.film { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 16px; align-items: center; }
+.film img, .film .ph { width: 96px; aspect-ratio: 2 / 3; display: block; object-fit: cover; border: 1px solid var(--gold); padding: 3px; background: #000; }
+.film .ph { display: grid; place-items: center; font: 400 34px/1 var(--f-display); color: var(--gold); }
+.eyebrow { margin: 0; font: 700 12px/1.2 var(--f-label); letter-spacing: 0.24em; text-transform: uppercase; color: var(--gold); }
+h1 { margin: 4px 0; font: 400 30px/1.1 var(--f-display); letter-spacing: 0.06em; text-transform: uppercase; overflow-wrap: anywhere; }
+.note { margin: 0; color: var(--muted); font-size: 16px; }
+.state { margin: 0; padding: 14px; border: 1px solid var(--line); background: var(--surface); text-align: center; font: 700 14px/1.3 var(--f-label); letter-spacing: 0.2em; text-transform: uppercase; }
+.state b { display: block; margin-top: 6px; font: 400 44px/1 var(--f-display); letter-spacing: 0.04em; color: var(--fg); }
+.btns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.btn {
+  min-height: 64px; padding: 10px; border-radius: 4px; border: 1px solid var(--gold);
+  background: transparent; color: var(--fg); cursor: pointer; font: 700 15px/1.1 var(--f-label); letter-spacing: 0.16em; text-transform: uppercase;
+}
+.btn b { display: block; font: 400 28px/1 var(--f-display); letter-spacing: 0; margin-bottom: 4px; }
+.btn.primary { background: var(--gold); color: var(--gold-ink); }
+.btn.wide { grid-column: 1 / -1; }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 14px; border-radius: 4px; background: var(--fg); color: var(--bg); font: 600 16px var(--f-body); }
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="brand" id="bar">THE BASEMENT</span>
+  <span class="sub">NOW SHOWING</span>
+</header>
+<main>
+  <section class="film" id="film" hidden>
+    <span id="art"></span>
+    <div>
+      <p class="eyebrow">Tonight</p>
+      <h1 id="title"></h1>
+      <p class="note" id="meta"></p>
+    </div>
+  </section>
+  <p class="state" id="state">Connecting…</p>
+  <section id="controls" hidden style="display:grid;gap:10px">
+    <p class="eyebrow">Call an intermission</p>
+    <div class="btns" id="breaks">
+      <button type="button" class="btn" data-mins="5"><b>5</b>min</button>
+      <button type="button" class="btn" data-mins="10"><b>10</b>min</button>
+      <button type="button" class="btn" data-mins="15"><b>15</b>min</button>
+      <button type="button" class="btn primary wide" id="resume" hidden>Resume the film</button>
+    </div>
+    <p class="note">The wall comes up a little with a countdown, and the film carries on by itself when it runs out.</p>
+  </section>
+</main>
+<div class="toast" id="toast" role="status" hidden></div>
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let cinema = null, toastTimer = 0;
+
+  function toast(msg) {
+    $('toast').textContent = msg;
+    $('toast').hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { $('toast').hidden = true; }, 4000);
+  }
+
+  const mmss = (secs) => { const n = Math.max(0, Math.ceil(secs)); return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`; };
+  const now = () => Date.now() / 1000 + (cinema.clock || 0);
+
+  function render() {
+    const c = cinema, f = c.film;
+    $('film').hidden = !f;
+    if (f) {
+      const art = f.poster ? `<img src="${esc(f.poster)}" alt="">` : `<span class="ph">${esc(f.title.replace(/^the\s+/i, '')[0] || '?')}</span>`;
+      if ($('art').dataset.html !== art) { $('art').dataset.html = art; $('art').innerHTML = art; }
+      $('title').textContent = f.title;
+      $('meta').textContent = [f.year, f.director].filter(Boolean).join(' · ');
+    }
+    const T = now();
+    const label = {
+      countdown: c.until > T ? ['The feature begins in', mmss(c.until - T)] : ['The feature', 'Starting'],
+      film: ['Now playing', 'Enjoy the film'],
+      intermission: ['Intermission · we resume in', mmss(c.until - T)],
+      end: ['That’s all', 'The End'],
+    }[c.phase] || (f ? ['Tonight’s film', 'Soon'] : ['No film tonight yet', 'Stay tuned']);
+    $('state').innerHTML = `${esc(label[0])}<b>${esc(label[1])}</b>`;
+    const on = ['film', 'intermission'].includes(c.phase);
+    $('controls').hidden = !on;
+    $('breaks').querySelectorAll('[data-mins]').forEach((b) => { b.classList.toggle('primary', c.phase === 'intermission' && c.mins === Number(b.dataset.mins)); });
+    $('resume').hidden = c.phase !== 'intermission';
+  }
+
+  async function post(path, body) {
+    try {
+      const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) toast((data && data.error) || 'Something went wrong.');
+    } catch (e) { toast('Can’t reach the Pi. Are you on the Wi-Fi?'); }
+  }
+  $('breaks').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-mins]');
+    if (b) post('/api/cinema/intermission', { mins: Number(b.dataset.mins) });
+  });
+  $('resume').addEventListener('click', () => post('/api/cinema/resume'));
+
+  function connect() {
+    const es = new EventSource('/api/events');
+    es.onmessage = (e) => {
+      let st;
+      try { st = JSON.parse(e.data); } catch (err) { return; }
+      cinema = st.cinema || { phase: 'idle' };
+      cinema.clock = (cinema.now || Date.now() / 1000) - Date.now() / 1000;
+      $('bar').textContent = st.settings.barName || 'THE BASEMENT';
+      render();
+    };
+    es.onerror = () => { if (es.readyState === EventSource.CLOSED) setTimeout(connect, 3000); };
+  }
+  connect();
+  setInterval(() => { if (cinema && ['countdown', 'intermission'].includes(cinema.phase)) render(); }, 1000);
+})();
+</script>
+</body>
+</html>

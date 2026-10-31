@@ -406,20 +406,35 @@
 
   // Where everything sits on the number line, worked out once per reveal.
   function revealPlan(g, st) {
-    const { W, H, s } = g;
-    const axisX = Math.round(W * 0.2), top = Math.round(H * 0.16), bottom = Math.round(H * 0.95);
+    const { k, W, H, s } = g;
+    // the question, small, at the top; the line starts far enough below it for a sip drop
+    const m = offscreen(1, 1, () => {}).getContext('2d');
+    k.tracking(m, s * 0.004);
+    const qb = k.fitWrapped(m, st.by ? `${st.text} · ${st.by}` : st.text, 'Josefin Sans', W * 0.84, H * 0.095, 2, 1.15);
+    const qpx = Math.min(qb.size, Math.round(s * 0.05));
+    const r = Math.round(s * 0.042);
+    const qBottom = H * 0.035 + qb.lines.length * qpx * 1.15;
+    const axisX = Math.round(W * 0.2), top = Math.round(Math.max(H * 0.16, qBottom + r * 1.7 + 8)), bottom = Math.round(H * 0.95);
     const span = Math.max(1e-9, st.max - st.min);
     const yOf = (v) => Math.round(bottom - ((v - st.min) / span) * (bottom - top));
-    const r = Math.round(s * 0.042);
     const lane0 = axisX + r + 8, laneW = r * 2 + 5;
     const lanes = Math.max(1, Math.floor((W - 8 - lane0 + r) / laneW));
     const placed = [];
-    // close guesses are nudged sideways into the next free lane so dots never overlap
+    // close guesses are nudged sideways into the next free lane so dots never overlap; when
+    // every lane is taken the dot goes a row below (or above, at the foot of the line)
+    const free = (lane, y) => !placed.some((p) => p.lane === lane && Math.abs(p.y - y) < r * 2 + 1);
     const dots = (st.rows || []).map((row) => {
-      const y = yOf(row.value);
-      let lane = 0;
-      while (lane < lanes - 1 && placed.some((p) => p.lane === lane && Math.abs(p.y - y) < r * 2 + 1)) lane++;
-      const d = { row, y, lane, x: lane0 + lane * laneW };
+      const y0 = yOf(row.value);
+      let at = null;
+      for (let n = 0; !at && n < 8; n++) {
+        for (const y of [y0 + n * (r * 2 + 3), y0 - n * (r * 2 + 3)]) {
+          if (y + r > H - 2 || y - r < top - r) continue;
+          const lane = [...Array(lanes).keys()].find((l) => free(l, y));
+          if (lane != null) { at = { y, lane }; break; }
+        }
+      }
+      at = at || { y: y0, lane: lanes - 1 };
+      const d = { row, y: at.y, lane: at.lane, x: lane0 + at.lane * laneW };
       placed.push(d);
       return d;
     });
@@ -436,7 +451,7 @@
       }
       if (cost < best) { best = cost; plateY = y; }
     }
-    return { axisX, top, bottom, r, dots, ay, plateY, plateH, lineH, yOf };
+    return { axisX, top, bottom, r, dots, ay, plateY, plateH, lineH, yOf, qb, qpx };
   }
 
   function revealScreen(g, st, e) {
@@ -448,9 +463,7 @@
       k.backdrop(x, W, H);
       // the question, small, at the top
       k.tracking(x, s * 0.004);
-      const q = st.by ? `${st.text} · ${st.by}` : st.text;
-      const b = k.fitWrapped(x, q, 'Josefin Sans', W * 0.84, H * 0.095, 2, 1.15);
-      const px = Math.min(b.size, Math.round(s * 0.05));
+      const b = P.qb, px = P.qpx;
       x.font = k.font('Josefin Sans', px);
       x.fillStyle = k.MUTED;
       x.textAlign = 'center';

@@ -70,7 +70,7 @@ NEWS_FEEDS = {
 }
 VISUAL_STYLES = ["mix", "botanical", "deco", "lift", "clockface", "skyline", "bubbles", "fans"]
 GAMES = [["breaker", "Brick Breaker"], ["duel", "Deco Duel"], ["snake", "Serpentine"], ["quickdraw", "Quick Draw"],
-         ["closest", "Closest Wins"]]  # the last ones are party games the Pi referees (partygames.py)
+         ["closest", "Closest Wins"], ["fiveclues", "Five Clues"]]  # the last ones are party games the Pi referees (partygames.py)
 
 for ext, ctype in ((".webp", "image/webp"), (".avif", "image/avif"), (".mp4", "video/mp4"),
                    (".m4v", "video/mp4"), (".webm", "video/webm"), (".mkv", "video/x-matroska")):

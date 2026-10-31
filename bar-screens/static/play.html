@@ -128,7 +128,7 @@ input[type="text"] {
 .choices button { border: 1px solid var(--line); border-left: 6px solid var(--c, var(--gold)); border-radius: 6px; background: var(--surface); cursor: pointer; font: 600 22px/1.1 var(--f-body); letter-spacing: 0.03em; text-transform: uppercase; padding: 8px 10px; }
 .choices button[aria-pressed="true"] { background: var(--gold); color: var(--gold-ink); border-color: var(--gold); }
 .choices.locked button:not([aria-pressed="true"]) { opacity: 0.35; }
-.buzz { flex: 1; display: grid; place-items: center; }
+.buzz { flex: 1; display: grid; place-items: center; touch-action: none; cursor: pointer; }
 .buzz button {
   width: min(84vw, 52vh); aspect-ratio: 1; border-radius: 50%; border: 3px solid var(--gold); background: radial-gradient(circle, #3a2b12, #0b0a08 70%);
   font: 400 64px/1 var(--f-display); letter-spacing: 0.1em; color: var(--fg); cursor: pointer; touch-action: none;
@@ -494,7 +494,8 @@ input[type="text"] {
         btn.disabled = !!nv.locked;
         btn.innerHTML = nv.locked ? esc(nv.text || 'Locked out') : `${esc(nv.label || 'BUZZ')}${nv.value != null ? `<small>${esc(nv.value)}</small>` : ''}`;
       };
-      tap(btn, () => { if (!btn.disabled) send({ kind: 'buzz' }); });
+      // the whole pad is the button, so a note appearing above it can't move it out from under a thumb
+      tap(el.firstElementChild, () => { if (!btn.disabled) send({ kind: 'buzz' }); });
       update(v);
       return update;
     },

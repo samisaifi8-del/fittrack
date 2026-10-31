@@ -115,6 +115,17 @@ phones (same Wi-Fi), type a name and join. No app needed.
   lose 2 if you don't). Every third round is **WHAT YEAR?**: release years of songs and films.
   Questions don't repeat until a category has been used up (remembered in `data/used.json`).
 
+- **Five Clues:** a hidden footballer, rapper, DJ, film, Dubai place or pop-culture name is
+  revealed one clue at a time, hardest first. The first clue is worth 5, then 4, 3, 2 and 1 as
+  an easier clue stacks under it every 6 seconds. Anyone can buzz: the first buzz to reach the
+  Pi wins (buzzes in the 300 ms after a new clue are ignored, so nobody wins on a stale screen),
+  the wall fills with that player's name and only their phone gets four options, with 8 seconds
+  to pick. Right banks the points; wrong (or too slow) crosses their pick out, locks them out of
+  that card and the clues carry on for everyone else. If nobody has it after clue 5, the answer
+  shows and nobody scores. A round is six cards, one of each type. The cards are in
+  `static/content/clues.json` (add your own in the same format) and don't repeat until a type
+  has been used up.
+
 **Your own WHAT YEAR? questions.** Under **Channel settings** on the control page, add one song or
 film per line as `artist - title - year` (for example `Daft Punk - One More Time - 2000`). Each
 line becomes a question, and yours go into WHAT YEAR? rounds first. They're saved in
@@ -125,11 +136,12 @@ line becomes a question, and yours go into WHAT YEAR? rounds first. They're save
 time). Only people who said yes are ever given a sip, it's always one sip of anything (water
 counts), and nothing escalates. The wall never shows who is or isn't drinking: a sip shows there
 only as a small gold drop by a name, and on that person's phone. In Closest Wins the furthest
-guess is a sip, and a spot-on guess lets you hand one to another drinker from your phone.
+guess is a sip, and a spot-on guess lets you hand one to another drinker from your phone. In
+Five Clues a wrong buzz is a sip, and getting it on the first clue lets you hand one out.
 
 ### Building another party game
 
-Quiz and vote games (Closest Wins, and the ones to come) are refereed by the Pi rather than the
+Quiz and vote games (Closest Wins, Five Clues and the ones to come) are refereed by the Pi rather than the
 wall, so answers stay secret, scores are fair and every preview shows the same thing. The kit:
 
 | Piece | Where | What it gives you |
@@ -141,7 +153,8 @@ wall, so answers stay secret, scores are fair and every preview shows the same t
 | Wall screens | `static/party.js` | Lobby, between-rounds card, podium, lock dots, countdown bar, sip drop, cached layers |
 
 The top of `partygames.py` and `static/party.js` walks through adding a game step by step;
-`ClosestWins` is the worked example, and `test_party.py` shows how to test one without a wall.
+`ClosestWins` is the worked example (`FiveClues` a second one, with buzzing), and `test_party.py`
+shows how to test one without a wall.
 
 ## Basement Live
 

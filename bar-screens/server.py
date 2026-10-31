@@ -46,7 +46,10 @@ TUNNEL_METRICS = "127.0.0.1:3998"
 TUNNEL_UNIT = "bar-screens-tunnel"
 
 # Channel 1 is your own rotation; the rest are live channels drawn on the Pi from free data feeds.
-CHANNELS = ["rotation", "scores", "news", "weather", "visuals", "games", "live", "nowshowing", "pour"]
+CHANNELS = ["rotation", "scores", "news", "weather", "visuals", "games", "live", "nowshowing", "colours", "pour", "verdict"]
+# Colours (9) and The Verdict (11) are party games with a channel of their own: tuning a wall to
+# one picks that game, and picking it from a phone or the control page moves a game wall there.
+GAME_CHANNELS = ("colours", "verdict")
 LEAGUES = {  # ESPN's public scoreboard feed: no key needed, but it's unofficial and could change
     "eng.1": ("soccer/eng.1", "Premier League"),
     "eng.2": ("soccer/eng.2", "Championship"),
@@ -83,7 +86,7 @@ DIM_DOWN = 6        # then the curtains close and the wall goes dark (the wall t
 END_HOLD = 15       # THE END stays up this long, then the walls go back to The Bar
 INTERMISSIONS = (5, 10, 15)
 FILM_KEY = re.compile(r"[0-9]{1,12}")  # a Wikipedia page id
-# The House Pour (channel 9): the seeded drinks, and what's on the menu until the host changes it.
+# The House Pour (channel 10): the seeded drinks, and what's on the menu until the host changes it.
 DRINKS_FILE = os.path.join(STATIC, "content", "drinks.json")
 GLASSES = ["coupe", "rocks", "highball", "flute", "martini", "mug", "wine"]
 GARNISHES = ["orange", "lime", "lemon", "mint", "cherry", "olive", "none"]
@@ -192,10 +195,12 @@ def default_channels():
         "weather": {"place": "", "label": "", "lat": None, "lon": None},
         "visuals": {"style": "mix"},
         # sips are on for the night until sipsUntil; tier: Five Lights' prompts (partygames.TIERS);
-        # The Verdict's deck and pace (auto: every 2 min)
-        "games": {"game": "breaker", "sipsUntil": 0, "tier": "mild", "verdictDeck": "preparty", "verdictPace": "auto"},
+        # The Verdict's deck and pace (auto: every 2 min); back: the game Games (6) goes back to
+        # after Colours or The Verdict had the wall
+        "games": {"game": "breaker", "sipsUntil": 0, "tier": "mild", "verdictDeck": "preparty", "verdictPace": "auto",
+                  "back": "breaker"},
         "pour": {"tonight": list(TONIGHT), "custom": [], "guestOrders": False},
-        # Colours (a party game on channel 6): the match the host pinned (ESPN's teams and colours,
+        # Colours (channel 9, a party game): the match the host pinned (ESPN's teams and colours,
         # kept so a restart doesn't need the internet), the forfeit line and the tap war after a goal
         "colours": {"pin": None, "forfeit": "LOSER POURS", "push": True},
     }
@@ -473,8 +478,30 @@ class Store:
                 screen["playlist"] = seen
             if "pinned" in patch:
                 screen["pinned"] = patch["pinned"] if patch["pinned"] in ids else None
+            if "channel" in patch:
+                games = self.state["channels"]["games"]
+                if screen["channel"] in GAME_CHANNELS:
+                    self._pick_game(screen["channel"])
+                elif screen["channel"] == "games" and games["game"] in GAME_CHANNELS:
+                    games["game"] = games["back"] if games["back"] not in GAME_CHANNELS else "breaker"
+                self._follow_game()
             self._changed()
             return screen
+
+    def _pick_game(self, game):
+        games = self.state["channels"]["games"]
+        if game in GAME_CHANNELS and games["game"] not in GAME_CHANNELS:
+            games["back"] = games["game"]
+        games["game"] = game
+
+    def _follow_game(self):
+        """Every wall on a game channel goes to the one for the game that's picked: Colours and The
+        Verdict have their own (9 and 11), every other game is on Games (6)."""
+        game = self.state["channels"]["games"]["game"]
+        want = game if game in GAME_CHANNELS else "games"
+        for screen in self.state["screens"]:
+            if screen.get("channel") in ("games",) + GAME_CHANNELS:
+                screen["channel"] = want
 
     def next_slide(self, screen_id):
         with self.lock:
@@ -537,7 +564,7 @@ class Store:
                 conf["visuals"]["style"] = visuals["style"]
             games = patch.get("games")
             if isinstance(games, dict) and games.get("game") in [g[0] for g in GAMES]:
-                conf["games"]["game"] = games["game"]
+                self._pick_game(games["game"])
             if isinstance(games, dict) and isinstance(games.get("sips"), bool):
                 conf["games"]["sipsUntil"] = partygames.sips_until(time.time()) if games["sips"] else 0
             if isinstance(games, dict) and games.get("tier") in partygames.TIERS:
@@ -555,9 +582,10 @@ class Store:
                 if pinned is not None:
                     conf["colours"]["pin"] = pinned or None
                     if pinned:
-                        conf["games"]["game"] = "colours"  # pinning a match is asking for Colours
+                        self._pick_game("colours")  # pinning a match is asking for Colours
             if found is not None:
                 conf["weather"] = found
+            self._follow_game()
             self._changed()
             return conf
 
@@ -955,7 +983,7 @@ class GameHub:
     def _roster(self):
         game = self.store.state["channels"]["games"]["game"]
         players = sorted(self.players.values(), key=lambda p: p["slot"])
-        on_wall = any(s["enabled"] and s.get("channel") == "games" for s in self.store.state["screens"])
+        on_wall = any(s["enabled"] and s.get("channel") in ("games",) + GAME_CHANNELS for s in self.store.state["screens"])
         return {"type": "roster", "game": game, "joinUrl": self.join_url, "onWall": on_wall,
                 "party": self.party is not None, "sips": self.sips_on(),
                 "players": [{"slot": p["slot"], "name": p["name"], "color": p["color"]} for p in players]}
@@ -1804,7 +1832,7 @@ def load_drinks(path):
 
 
 class HousePour:
-    """The House Pour (channel 8): tonight's drinks as a hotel-bar card, and one order at a time on
+    """The House Pour (channel 10): tonight's drinks as a hotel-bar card, and one order at a time on
     the wall, its glass filling for the guest it's for. The host runs it from the control page.
     Guests can ask for a drink from /play only while he has that switched on, and he says yes to
     each one. The menu is saved; orders and requests are only kept in memory, and nothing is

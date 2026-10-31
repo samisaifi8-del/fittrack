@@ -250,6 +250,23 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     <p class="note" id="vdNote"></p>
     <ul class="lib" id="vdWaiting"></ul>
   </section>
+
+  <section class="card" aria-labelledby="hGoLive">
+    <h2 id="hGoLive">Go live: Basement Live</h2>
+    <p class="eyebrow" id="goLiveNow" hidden></p>
+    <div class="golive" id="goLiveLink" hidden>
+      <img id="goLiveQr" alt="QR code for the Basement Live link">
+      <div style="display:grid;gap:8px;min-width:0">
+        <span class="link" id="goLiveUrl"></span>
+        <div class="row">
+          <button type="button" class="btn small primary" id="goLiveShare">Share link</button>
+          <button type="button" class="btn small" id="goLiveCopy">Copy</button>
+        </div>
+      </div>
+    </div>
+    <p class="note" id="goLiveNote"></p>
+  </section>
+
   <section class="card" aria-labelledby="hFilm">
     <h2 id="hFilm">Now Showing: movie night</h2>
     <div class="film" id="filmNow" hidden>
@@ -331,22 +348,6 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     </div>
   </section>
 
-  <section class="card" aria-labelledby="hGoLive">
-    <h2 id="hGoLive">Go live: Basement Live</h2>
-    <p class="eyebrow" id="goLiveNow" hidden></p>
-    <div class="golive" id="goLiveLink" hidden>
-      <img id="goLiveQr" alt="QR code for the Basement Live link">
-      <div style="display:grid;gap:8px;min-width:0">
-        <span class="link" id="goLiveUrl"></span>
-        <div class="row">
-          <button type="button" class="btn small primary" id="goLiveShare">Share link</button>
-          <button type="button" class="btn small" id="goLiveCopy">Copy</button>
-        </div>
-      </div>
-    </div>
-    <p class="note" id="goLiveNote"></p>
-  </section>
-
   <section class="card" aria-label="Brightness">
     <div class="row">
       <label class="slider grow"><span class="lab">Brightness</span><input type="range" id="brightness" min="5" max="100" step="1"><output id="brightnessOut"></output></label>
@@ -407,16 +408,9 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     <div class="set-group">
       <label class="field"><span class="lab">6 · Games: which game</span><select id="gamePick"></select></label>
       <p class="note" id="playUrl">Guests join from their phones at /play.</p>
+      <p class="note">Colours and The Verdict have channels of their own, 9 and 11; picking either here moves a game wall there.</p>
       <label class="switch"><input type="checkbox" id="sipsOn"><span></span>Sips tonight</label>
       <p class="note" id="sipsNote"></p>
-    </div>
-    <div class="set-group">
-      <label class="field"><span class="lab">Colours: tonight's match</span><select id="coloursMatch"><option value="">No match pinned</option></select></label>
-      <p class="note" id="coloursNote">The wall splits into the two clubs' colours and guests pick a side on their phones. Pinning a match puts Colours on channel 6.</p>
-      <label class="field"><span class="lab">Forfeit for the worst call</span><input type="text" id="coloursForfeit" maxlength="32" placeholder="LOSER POURS"></label>
-      <label class="switch"><input type="checkbox" id="coloursPush"><span></span>Tap war after a goal</label>
-      <p class="note">Off: a goal just floods the wall with the scorers' colour.</p>
-      <div class="row"><button type="button" class="btn small" id="coloursSeason">New season</button><span class="note grow">Clears the season table (3 points for an exact call, 1 for the right result).</span></div>
     </div>
     <div class="set-group">
       <label class="field"><span class="lab">Closest Wins: your own WHAT YEAR? songs and films</span>
@@ -430,6 +424,14 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
       <label class="field"><span class="lab">Five Lights: house prompts</span>
         <textarea id="houseText" rows="4" placeholder="Lost Omar's car keys" aria-describedby="houseNote" spellcheck="false"></textarea></label>
       <div class="row"><button type="button" class="btn small" id="houseSave">Save</button><span class="note grow" id="houseNote">One per line, the part after "Never have I ever". Your in-jokes, mixed in about one prompt in four.</span></div>
+    </div>
+    <div class="set-group">
+      <label class="field"><span class="lab">9 · Colours: tonight's match</span><select id="coloursMatch"><option value="">No match pinned</option></select></label>
+      <p class="note" id="coloursNote">The wall splits into the two clubs' colours and guests pick a side on their phones. Pinning a match puts the wall on channel 9.</p>
+      <label class="field"><span class="lab">Forfeit for the worst call</span><input type="text" id="coloursForfeit" maxlength="32" placeholder="LOSER POURS"></label>
+      <label class="switch"><input type="checkbox" id="coloursPush"><span></span>Tap war after a goal</label>
+      <p class="note">Off: a goal just floods the wall with the scorers' colour.</p>
+      <div class="row"><button type="button" class="btn small" id="coloursSeason">New season</button><span class="note grow">Clears the season table (3 points for an exact call, 1 for the right result).</span></div>
     </div>
   </details>
 
@@ -484,7 +486,9 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     ['games', 6, 'Games', 'Party games on the wall. Guests use their phones as controllers.', '#b89a63'],
     ['live', 7, 'Live', 'Guests\' phone cameras on the wall, up to four, cut together automatically.', '#b89a63'],
     ['nowshowing', 8, 'Cinema', 'Movie night: tonight\'s poster, a two-minute countdown, then the wall goes dark for the film.', '#b89a63'],
-    ['pour', 9, 'Pour', 'Tonight\'s drinks as a hotel-bar card, and each drink you make, filling in its glass.', '#b89a63'],
+    ['colours', 9, 'Colours', 'Match night: the wall takes sides in the two clubs\' colours, and the room taps the goals in.', '#b89a63'],
+    ['pour', 10, 'Pour', 'Tonight\'s drinks as a hotel-bar card, and each drink you make, filling in its glass.', '#b89a63'],
+    ['verdict', 11, 'Verdict', 'Who\'s most likely to: everyone votes in secret on their phone, and the wall reads the verdict.', '#b89a63'],
   ];
   const STYLE_NAMES = { mix: 'Mix (changes every 45 seconds)', botanical: 'Banana leaves in gold', skyline: 'Dark deco city', deco: 'The Basement sign', lift: 'Lift floor indicator', clockface: 'Deco wall clock', fans: 'Art deco fans', bubbles: 'Champagne bubbles' };
 
@@ -916,7 +920,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     b.textContent = 'The End';
     run(api('POST', '/api/cinema/end'));
   });
-  // The House Pour (channel 9): put a drink on the wall for a guest, and choose tonight's menu.
+  // The House Pour (channel 10): put a drink on the wall for a guest, and choose tonight's menu.
   const GLASS_NAMES = { coupe: 'Coupe', rocks: 'Rocks', highball: 'Highball', flute: 'Flute', martini: 'Martini', mug: 'Mug', wine: 'Wine glass' };
   const title = (n) => String(n || '').replace(/\b(\w)(\w*)/g, (m, a, b) => a + b.toLowerCase());
   let pourPick = { guest: '', drink: '' }, pourReqCount = 0;
@@ -1071,7 +1075,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     if (sel !== document.activeElement) sel.value = pin ? 'pinned' : '';
     $('coloursNote').textContent = pin
       ? `Pinned: ${pin.home.name} v ${pin.away.name}, ${when(pin.date)}. Guests pick a side at /play${new Date(pin.date) > new Date() ? ' and can call the score until kickoff' : ''}.`
-      : coloursList && !coloursList.length ? 'ESPN has no football on tonight or tomorrow.' : 'The wall splits into the two clubs\' colours and guests pick a side on their phones. Pinning a match puts Colours on channel 6.';
+      : coloursList && !coloursList.length ? 'ESPN has no football on tonight or tomorrow.' : 'The wall splits into the two clubs\' colours and guests pick a side on their phones. Pinning a match puts the wall on channel 9.';
   }
   async function loadColoursMatches() {
     try { coloursList = (await api('GET', '/api/colours/matches')).matches; } catch (e) { coloursList = []; toast(e.message); }
@@ -1083,7 +1087,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     const [league, id, date] = v.split('|');
     try {
       await api('PATCH', '/api/channels', { colours: { pin: v ? { league, id, date } : null } });
-      if (v && screenById(cur).channel !== 'games') patchScreen(cur, { channel: 'games', pinned: null });
+      if (v && screenById(cur).channel !== 'colours') patchScreen(cur, { channel: 'colours', pinned: null });
       toast(v ? 'Pinned. Colours is on the wall.' : 'Unpinned.');
     } catch (err) { toast(err.message); renderColoursMatches(); }
   });

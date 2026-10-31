@@ -82,7 +82,9 @@ The control page works like a TV remote. Pick a channel for each wall:
 | 6 · Games | Party games on the wall, with phones as the controllers. |
 | 7 · Basement Live | Guests' phone cameras on the wall, up to four, cut together automatically. |
 | 8 · Now Showing | Movie night: tonight's poster, a two-minute countdown, then the wall goes dark for the film. |
-| 9 · The House Pour | Tonight's drinks as a 1930s hotel-bar card, and each drink you make, filling in its glass. |
+| 9 · Colours | Match night: the wall takes sides in the two clubs' colours, and the room taps the goals in. |
+| 10 · The House Pour | Tonight's drinks as a 1930s hotel-bar card, and each drink you make, filling in its glass. |
+| 11 · The Verdict | Who's most likely to: everyone votes in secret on their phone, and the wall reads the verdict. |
 
 Set leagues, news section, your town, the visual style, the game and the bar's name under
 **Channel settings**. Scores, news and weather need the Pi to be online.
@@ -102,7 +104,9 @@ Your own content (channel 1):
 ## Games
 
 Put a wall on channel 6 and pick a game. Guests open **http://<pi-name>.local/play** on their
-phones (same Wi-Fi), type a name and join. No app needed.
+phones (same Wi-Fi), type a name and join. No app needed. Colours and The Verdict are party games
+too, with channels of their own: tune a wall to 9 or 11 and that game starts, and picking either
+from a phone or **Channel settings** moves a games wall there (6 goes back to the last game).
 
 - **Brick Breaker:** slide on the phone to move the paddle. Gold bricks take two hits; catch the
   W, M and S capsules for a wide paddle, extra balls or a slower ball.
@@ -136,14 +140,14 @@ phones (same Wi-Fi), type a name and join. No app needed.
   **Dubai life** or **Cheeky** (the ceiling: nothing about bodies, money or exes). Players who are
   out keep answering for fun, and someone arriving mid-game comes in level with whoever has the
   fewest bulbs.
-- **The Verdict:** a prompt about the room goes up ("WHO'S MOST LIKELY TO LOSE THEIR PHONE
-  TONIGHT") and everyone votes in secret on their phone for someone who's there (never
-  themselves). The wall reads the verdict like a jury: a gold bar per name rises a vote at a
+- **The Verdict (channel 11):** a prompt about the room goes up ("WHO'S MOST LIKELY TO LOSE
+  THEIR PHONE TONIGHT") and everyone votes in secret on their phone for someone who's there
+  (never themselves). The wall reads the verdict like a jury: a gold bar per name rises a vote at a
   time, the light ones stop first, and the top name comes up in a deco frame, **GUILTY** with
   its votes, or **HUNG JURY** on a tie. Between prompts a quiet card shows the night's most
   convicted. Needs three players. Voting closes after 30 seconds, or as soon as everyone's in.
-- **Colours:** for match nights. Under **Channel settings**, pick tonight's match from the list
-  (football from ESPN, tonight and tomorrow); that pins it and puts Colours on the wall. The wall
+- **Colours (channel 9):** for match nights. Under **Channel settings**, pick tonight's match from
+  the list (football from ESPN, tonight and tomorrow); that pins it and puts the wall on 9. The wall
   splits into the two clubs' colours, home on top and away below (darkened for a dim room; a
   near-black or clashing colour falls back to the club's second colour, then to gold against
   ivory), with a gold band between them. Guests pick **home**, **away** or **neutral** on their
@@ -260,7 +264,7 @@ Wikipedia only has a still, or nothing; the wall then shows the type-only card, 
 look that way.
 ## The House Pour
 
-Channel 8 is the bar's card: **THE HOUSE POUR**, then three of tonight's drinks at a time in big
+Channel 10 is the bar's card: **THE HOUSE POUR**, then three of tonight's drinks at a time in big
 type, each beside a small gold glass, turning the page every few seconds. Ask what there is, point
 at the wall.
 

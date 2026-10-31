@@ -45,6 +45,7 @@
   const soloSlide = params.get('slide');
   const kiosk = !previewId;
   const framed = window.parent !== window;
+  const GAME_CHANNELS = ['games', 'colours', 'verdict']; // the channels that play the picked game (6, 9 and 11)
   document.body.classList.toggle('kiosk', kiosk);
 
   const FONTS = {
@@ -228,7 +229,7 @@
       const canvas = document.createElement('canvas');
       layer.appendChild(canvas);
       let channel = null, bus = null;
-      if (slide.channel === 'games' && window.BarGames) {
+      if (GAME_CHANNELS.includes(slide.channel) && window.BarGames) {
         bus = gameBus();
         channel = window.BarGames.create(slide.conf && slide.conf.game, canvas, W, H, { bus, barName: slide.barName });
       } else if (slide.channel === 'live' && window.BarChannels) {
@@ -571,7 +572,9 @@
         // With two walls in use, the first is the left of the pair and the second the right.
         const inUse = state.screens.filter((s) => s.enabled).map((s) => s.id);
         const side = inUse.length > 1 ? (screen.id === inUse[0] ? 'left' : 'right') : '';
-        slide = { type: 'channel', channel: live.channel, conf: (state.channels || {})[live.channel], barName: state.settings.barName, side };
+        // (Colours and The Verdict are party games with channels of their own, so they play the game picked)
+        const confKey = GAME_CHANNELS.includes(live.channel) ? 'games' : live.channel;
+        slide = { type: 'channel', channel: live.channel, conf: (state.channels || {})[confKey], barName: state.settings.barName, side };
         if (live.channel === 'live') {
           // The link for the QR code. Who's live comes from the cameras themselves on the Pi, so
           // people joining don't rebuild the channel; previews just list their names.

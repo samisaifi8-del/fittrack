@@ -21,7 +21,9 @@
     games: { n: 6, name: 'GAMES', accent: GOLD },
     live: { n: 7, name: 'BASEMENT LIVE', accent: GOLD },
     nowshowing: { n: 8, name: 'NOW SHOWING', accent: GOLD },
-    pour: { n: 9, name: 'THE HOUSE POUR', accent: GOLD },
+    colours: { n: 9, name: 'COLOURS', accent: GOLD },
+    pour: { n: 10, name: 'THE HOUSE POUR', accent: GOLD },
+    verdict: { n: 11, name: 'THE VERDICT', accent: GOLD },
   };
 
   let fontStr = (name, px) => `600 ${px}px sans-serif`;

@@ -792,7 +792,7 @@ input[type="text"] {
   });
   $('toWall').addEventListener('click', async () => {
     try {
-      await fetch('/api/screens/s1', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: 'games', pinned: null }) });
+      await fetch('/api/screens/s1', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: ['colours', 'verdict'].includes(roster.game) ? roster.game : 'games', pinned: null }) });
     } catch (err) { toast("Can't reach the bar's Pi."); }
   });
 

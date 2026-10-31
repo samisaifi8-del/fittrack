@@ -70,7 +70,7 @@ NEWS_FEEDS = {
 }
 VISUAL_STYLES = ["mix", "botanical", "deco", "lift", "clockface", "skyline", "bubbles", "fans"]
 GAMES = [["breaker", "Brick Breaker"], ["duel", "Deco Duel"], ["snake", "Serpentine"], ["quickdraw", "Quick Draw"],
-         ["closest", "Closest Wins"]]  # the last ones are party games the Pi referees (partygames.py)
+         ["closest", "Closest Wins"], ["verdict", "The Verdict"]]  # the last ones are party games the Pi referees (partygames.py)
 
 for ext, ctype in ((".webp", "image/webp"), (".avif", "image/avif"), (".mp4", "video/mp4"),
                    (".m4v", "video/mp4"), (".webm", "video/webm"), (".mkv", "video/x-matroska")):
@@ -174,7 +174,8 @@ def default_channels():
         "news": {"feed": "top"},
         "weather": {"place": "", "label": "", "lat": None, "lon": None},
         "visuals": {"style": "mix"},
-        "games": {"game": "breaker", "sipsUntil": 0},  # sips are on for the night until sipsUntil
+        # sips are on for the night until sipsUntil; The Verdict's deck and pace (auto: every 2 min)
+        "games": {"game": "breaker", "sipsUntil": 0, "verdictDeck": "preparty", "verdictPace": "auto"},
     }
 
 
@@ -212,6 +213,7 @@ class Store:
         self.display = None  # HDMI picture size reported by the display page
         self.mirroring = False  # a phone is mirroring to the wall over AirPlay
         self.live_info = dict   # Basement Live's link and cameras (set up in main)
+        self.party_info = lambda: None  # the party game's host view, e.g. guests' prompts to approve
         self.state = self._load()
         for slide in self.state["slides"]:
             if slide.get("processing"):
@@ -256,6 +258,7 @@ class Store:
                 "displayOn": not os.path.exists(self.off_flag),
                 "mirror": {"available": bool(UXPLAY), "live": self.mirroring},
                 "golive": self.live_info(),
+                "party": self.party_info(),
                 "ffmpeg": bool(FFMPEG),
                 "catalog": {
                     "leagues": [[k, v[1]] for k, v in LEAGUES.items()],
@@ -477,6 +480,10 @@ class Store:
                 conf["games"]["game"] = games["game"]
             if isinstance(games, dict) and isinstance(games.get("sips"), bool):
                 conf["games"]["sipsUntil"] = partygames.sips_until(time.time()) if games["sips"] else 0
+            if isinstance(games, dict) and games.get("verdictDeck") in partygames.Verdict.DECKS:
+                conf["games"]["verdictDeck"] = games["verdictDeck"]
+            if isinstance(games, dict) and games.get("verdictPace") in ("auto", "hand"):
+                conf["games"]["verdictPace"] = games["verdictPace"]
             if found is not None:
                 conf["weather"] = found
             self._changed()
@@ -920,6 +927,8 @@ class GameHub:
             msg["on"] = _bool(body.get("on"))
         elif kind == "pour":
             msg["to"] = _num(0, 7, True)(body.get("to"))
+        elif kind == "suggest":
+            msg["text"] = _str(80)(body.get("text"))
         elif kind not in partygames.INPUTS:
             raise ValueError
         return msg
@@ -940,6 +949,27 @@ class GameHub:
                     self._send_party()
                 return
             self._send({"type": "input", "slot": player["slot"], **msg}, role="display")
+
+    def host_info(self):
+        """The party game's view for the control page (guests' prompts to approve...). Called from
+        Store.snapshot under the store's lock, so it takes no lock of its own: a game only ever
+        hands out copies here."""
+        party = self.party
+        return party.host() if party else None
+
+    def host(self, body):
+        """The host's controls for the party game, from the control page."""
+        with self.lock:
+            if not self.party:
+                raise ApiError(409, "No party game is running.")
+            try:
+                refused = self.party.host_action(body if isinstance(body, dict) else {})
+            except ValueError:
+                raise ApiError(400, "Unknown action.")
+            if refused:
+                raise ApiError(409, refused)
+            if self.party.version != self.party_sent:
+                self._send_party()
 
     def report(self, body):
         # The wall on the Pi is the referee; previews on phones only count when it isn't running.
@@ -1529,8 +1559,9 @@ class Handler(BaseHTTPRequestHandler):
         if method == "PATCH" and path == "/api/channels":
             conf = store.update_channels(self._read_json())
             self.hub.roster_changed()
+            store.refresh()  # the control page's view of the party game that's now picked
             return self._json(200, conf)
-        m = re.fullmatch(r"/api/game/(join|leave|input|report)", path)
+        m = re.fullmatch(r"/api/game/(join|leave|input|report|host)", path)
         if m and method == "POST":
             result = getattr(self.hub, m.group(1))(self._read_json())
             return self._json(200, result or {"ok": True})
@@ -1593,6 +1624,7 @@ def main():
     tunnel = Handler.tunnel = Tunnel(store, args.tunnel_metrics)
     host = f"{socket.gethostname().removesuffix('.local')}.local" + ("" if args.port == 80 else f":{args.port}")
     hub.join_url = f"{host}/play"
+    store.party_info = hub.host_info
     store.live_info = lambda: {"url": tunnel.url, "lan": f"http://{host}/live", "qr": bool(QRENCODE), "cams": live.names()}
 
     def ticker():

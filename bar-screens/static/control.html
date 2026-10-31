@@ -209,6 +209,18 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     <p class="note" id="chDesc"></p>
   </section>
 
+  <section class="card" aria-labelledby="hVerdict" id="verdictCard" hidden>
+    <div class="section-head">
+      <h2 id="hVerdict">The Verdict</h2>
+      <button type="button" class="btn small primary" id="vdNext">Next prompt</button>
+    </div>
+    <div class="pair">
+      <div class="field"><span class="lab">Deck</span><div class="seg" id="vdDeck"><button type="button" data-v="preparty">Pre-party</button><button type="button" data-v="gamenight">Game night</button></div></div>
+      <div class="field"><span class="lab">Pace</span><div class="seg" id="vdPace"><button type="button" data-v="auto">Every 2 min</button><button type="button" data-v="hand">By hand</button></div></div>
+    </div>
+    <p class="note" id="vdNote"></p>
+    <ul class="lib" id="vdWaiting"></ul>
+  </section>
   <section class="card" aria-labelledby="hLive">
     <h2 id="hLive">Live from your phone</h2>
     <p class="eyebrow" id="mirrorLive" hidden>Live on the wall now</p>
@@ -471,6 +483,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
       `<button type="button" class="ch" data-ch="${key}" style="--c:${color}" aria-pressed="${key === channel[0]}" aria-label="Channel ${n}, ${name}"><span class="ch-n">${n}</span><span class="ch-name">${name}</span></button>`).join('');
     $('chDesc').textContent = `CH ${channel[1]} · ${channel[2]}: ${channel[3]}`;
     renderChannelSettings();
+    renderVerdict();
     renderMirror();
     renderGoLive();
 
@@ -593,6 +606,31 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     const wx = conf.weather;
     $('wxNote').textContent = wx.lat != null ? `Showing weather for ${wx.label}${wx.region ? ', ' + wx.region : ''}.` : 'Not set yet. Type your town and press Set.';
   }
+
+  // The Verdict: deck, pace, and guests' own prompts, which only go up once approved here.
+  function renderVerdict() {
+    const conf = state.channels.games;
+    const party = state.party && state.party.game === 'verdict' ? state.party : null;
+    $('verdictCard').hidden = conf.game !== 'verdict';
+    if (conf.game !== 'verdict') return;
+    $('vdDeck').querySelectorAll('[data-v]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === (conf.verdictDeck || 'preparty'))));
+    $('vdPace').querySelectorAll('[data-v]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === (conf.verdictPace || 'auto'))));
+    const waiting = party ? party.waiting : [];
+    const approved = party ? party.approved : [];
+    $('vdNote').textContent = (waiting.length ? `Guests wrote ${waiting.length === 1 ? 'one' : waiting.length}. Nothing of theirs goes up until you approve it.`
+      : 'Guests can write their own prompts on their phones; they show here for you to approve first.')
+      + (approved.length ? ` Up next: ${approved.join(' · ')}.` : '') + ' Next prompt skips the one on the wall.';
+    const html = waiting.map((w) => `<li class="item" style="grid-template-columns:minmax(0,1fr)" data-vd="${esc(w.id)}"><div class="info"><b>${esc(w.text)}</b>
+      <div class="row"><span class="note grow">from ${esc(w.by)}</span><button type="button" class="btn small primary" data-act="approve">Approve</button><button type="button" class="btn small danger" data-act="bin">Bin</button></div></div></li>`).join('');
+    if ($('vdWaiting').dataset.html !== html) { $('vdWaiting').dataset.html = html; $('vdWaiting').innerHTML = html; }
+  }
+  $('vdDeck').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (b) patchChannels({ games: { verdictDeck: b.dataset.v } }); });
+  $('vdPace').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (b) patchChannels({ games: { verdictPace: b.dataset.v } }); });
+  $('vdNext').addEventListener('click', () => run(api('POST', '/api/game/host', { action: 'next' })));
+  $('vdWaiting').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]');
+    if (b) run(api('POST', '/api/game/host', { action: b.dataset.act, id: b.closest('[data-vd]').dataset.vd }));
+  });
 
   function renderMirror() {
     const m = state.mirror || {};

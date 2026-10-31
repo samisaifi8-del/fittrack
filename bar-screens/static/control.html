@@ -145,6 +145,7 @@ input[type="color"] { width: 44px; height: 36px; padding: 2px; border: 1px solid
 .chip { min-height: 34px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--raise); cursor: pointer; font: 600 15px var(--f-label); }
 .chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 .set-group { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+#coloursCard .set-group { padding-top: 0; border-top: 0; }
 details.card > summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font: 600 17px var(--f-label); }
 details.card > summary::-webkit-details-marker { display: none; }
 details.card > summary::after { content: "Show"; font: 600 14px var(--f-label); color: var(--muted); }
@@ -249,6 +250,11 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     </div>
     <p class="note" id="vdNote"></p>
     <ul class="lib" id="vdWaiting"></ul>
+  </section>
+
+  <section class="card" aria-labelledby="hColours" id="coloursCard" hidden>
+    <h2 id="hColours">Colours</h2>
+    <div id="coloursSlot"></div>
   </section>
 
   <section class="card" aria-labelledby="hGoLive">
@@ -425,7 +431,8 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
         <textarea id="houseText" rows="4" placeholder="Lost Omar's car keys" aria-describedby="houseNote" spellcheck="false"></textarea></label>
       <div class="row"><button type="button" class="btn small" id="houseSave">Save</button><span class="note grow" id="houseNote">One per line, the part after "Never have I ever". Your in-jokes, mixed in about one prompt in four.</span></div>
     </div>
-    <div class="set-group">
+    <div id="coloursHome"></div>
+    <div class="set-group" id="coloursGroup">
       <label class="field"><span class="lab">9 · Colours: tonight's match</span><select id="coloursMatch"><option value="">No match pinned</option></select></label>
       <p class="note" id="coloursNote">The wall splits into the two clubs' colours and guests pick a side on their phones. Pinning a match puts the wall on channel 9.</p>
       <label class="field"><span class="lab">Forfeit for the worst call</span><input type="text" id="coloursForfeit" maxlength="32" placeholder="LOSER POURS"></label>
@@ -606,6 +613,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     $('chDesc').textContent = `CH ${channel[1]} · ${channel[2]}: ${channel[3]}`;
     renderChannelSettings();
     renderVerdict();
+    renderColoursCard();
     renderMirror();
     renderGoLive();
     renderCinema();
@@ -752,6 +760,16 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
     const html = waiting.map((w) => `<li class="item" style="grid-template-columns:minmax(0,1fr)" data-vd="${esc(w.id)}"><div class="info"><b>${esc(w.text)}</b>
       <div class="row"><span class="note grow">from ${esc(w.by)}</span><button type="button" class="btn small primary" data-act="approve">Approve</button><button type="button" class="btn small danger" data-act="bin">Bin</button></div></div></li>`).join('');
     if ($('vdWaiting').dataset.html !== html) { $('vdWaiting').dataset.html = html; $('vdWaiting').innerHTML = html; }
+  }
+  // Colours: while it's the game, its settings (tonight's match, pin, tap war, season) come up
+  // to a card under Channels, so match night needs no scrolling; otherwise they live in
+  // Channel settings. The same controls move, so nothing is wired twice.
+  function renderColoursCard() {
+    const on = state.channels.games.game === 'colours';
+    $('coloursCard').hidden = !on;
+    const group = $('coloursGroup'), home = on ? $('coloursSlot') : $('coloursHome');
+    if (group.parentNode !== home.parentNode || group.previousElementSibling !== home) home.after(group);
+    if (on && !coloursList) loadColoursMatches();
   }
   $('vdDeck').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (b) patchChannels({ games: { verdictDeck: b.dataset.v } }); });
   $('vdPace').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (b) patchChannels({ games: { verdictPace: b.dataset.v } }); });

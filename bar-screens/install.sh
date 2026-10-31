@@ -22,9 +22,9 @@ if [ -z "${PORT:-}" ]; then
   fi
 fi
 
-echo "==> Installing ffmpeg (converts phone videos into a format the Pi can play)"
+echo "==> Installing ffmpeg (converts phone videos into a format the Pi can play) and qrencode (QR codes)"
 sudo apt-get update -qq
-sudo apt-get install -y -qq ffmpeg curl
+sudo apt-get install -y -qq ffmpeg curl qrencode
 
 if ! command -v chromium >/dev/null && ! command -v chromium-browser >/dev/null; then
   echo "==> Installing Chromium"
@@ -80,6 +80,40 @@ UNIT
   sudo systemctl daemon-reload
 else
   echo "    Couldn't install UxPlay, so phone mirroring is skipped. Everything else still works."
+fi
+
+echo "==> Setting up the secure link for phone cameras (Basement Live)"
+# Phones only allow the camera on https. A Cloudflare quick tunnel (free, no account) gives the Pi a
+# trusted https://<random words>.trycloudflare.com address, new each time it starts. The server
+# reads the current one from cloudflared's metrics port (127.0.0.1:3998) for the wall's QR code,
+# and only serves the camera page through it.
+if ! command -v cloudflared >/dev/null; then
+  # Cloudflare's official package, from its GitHub releases, for this Pi's architecture
+  CF_TMP="$(mktemp -d)"
+  if curl -fsSL -o "$CF_TMP/cloudflared.deb" "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$(dpkg --print-architecture).deb"; then
+    sudo dpkg -i "$CF_TMP/cloudflared.deb" >/dev/null || true
+  fi
+  rm -rf "$CF_TMP"
+fi
+if command -v cloudflared >/dev/null; then
+  sudo tee /etc/systemd/system/bar-screens-tunnel.service >/dev/null <<UNIT
+[Unit]
+Description=Bar Screens secure link for phone cameras (Cloudflare quick tunnel)
+After=network-online.target bar-screens.service
+Wants=network-online.target
+
+[Service]
+User=$USER_NAME
+ExecStart=$(command -v cloudflared) tunnel --no-autoupdate --metrics 127.0.0.1:3998 --url http://localhost:$PORT
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+  sudo systemctl daemon-reload
+else
+  echo "    Couldn't install cloudflared, so Basement Live has no secure link. Everything else still works."
 fi
 
 chmod +x "$APP_DIR/kiosk.sh" "$APP_DIR/bar-screens"

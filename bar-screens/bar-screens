@@ -16,6 +16,7 @@ case "${1:-status}" in
     rm -f "$OFF_FLAG"
     sudo systemctl enable --now bar-screens.service >/dev/null 2>&1
     sudo systemctl enable --now bar-screens-airplay.service >/dev/null 2>&1 || true
+    sudo systemctl enable --now bar-screens-tunnel.service >/dev/null 2>&1 || true
     sudo systemctl enable --now bar-screens-kiosk.service >/dev/null 2>&1 || true
     echo "Bar Screens is on. The display appears in a few seconds."
     echo "Control it from $URL"
@@ -24,6 +25,7 @@ case "${1:-status}" in
     touch "$OFF_FLAG"
     sudo systemctl disable --now bar-screens.service >/dev/null 2>&1
     sudo systemctl disable --now bar-screens-airplay.service >/dev/null 2>&1 || true
+    sudo systemctl disable --now bar-screens-tunnel.service >/dev/null 2>&1 || true
     sudo systemctl disable --now bar-screens-kiosk.service >/dev/null 2>&1 || true
     echo "Bar Screens is off and the screen is free. It stays off after restarts until you run: bar-screens on"
     ;;

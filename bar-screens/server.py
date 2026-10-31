@@ -34,10 +34,16 @@ MAX_JSON = 1024 ** 2
 FONTS = ["Anton", "Poiret One", "Josefin Sans", "Bebas Neue", "Barlow Condensed", "Silkscreen", "VT323"]
 FFMPEG = shutil.which("ffmpeg")
 UXPLAY = shutil.which("uxplay")
+QRENCODE = shutil.which("qrencode")
 MIRROR_PORT = 7100  # where the AirPlay receiver sends its frames (see install.sh)
+# The bar-screens-tunnel service (install.sh) runs a Cloudflare quick tunnel, which gives phones a
+# trusted https link (they only allow the camera on https). Its address changes every time it
+# starts; cloudflared reports the current one on its local metrics port.
+TUNNEL_METRICS = "127.0.0.1:3998"
+TUNNEL_UNIT = "bar-screens-tunnel"
 
 # Channel 1 is your own rotation; the rest are live channels drawn on the Pi from free data feeds.
-CHANNELS = ["rotation", "scores", "news", "weather", "visuals", "games"]
+CHANNELS = ["rotation", "scores", "news", "weather", "visuals", "games", "live"]
 LEAGUES = {  # ESPN's public scoreboard feed: no key needed, but it's unofficial and could change
     "eng.1": ("soccer/eng.1", "Premier League"),
     "eng.2": ("soccer/eng.2", "Championship"),
@@ -202,6 +208,7 @@ class Store:
         self.live = {}       # screen id -> {"slide", "index", "until"}; not saved
         self.display = None  # HDMI picture size reported by the display page
         self.mirroring = False  # a phone is mirroring to the wall over AirPlay
+        self.live_info = dict   # Basement Live's link and cameras (set up in main)
         self.state = self._load()
         for slide in self.state["slides"]:
             if slide.get("processing"):
@@ -245,6 +252,7 @@ class Store:
                 "display": self.display,
                 "displayOn": not os.path.exists(self.off_flag),
                 "mirror": {"available": bool(UXPLAY), "live": self.mirroring},
+                "golive": self.live_info(),
                 "ffmpeg": bool(FFMPEG),
                 "catalog": {
                     "leagues": [[k, v[1]] for k, v in LEAGUES.items()],
@@ -271,6 +279,10 @@ class Store:
                 q.put_nowait(msg)
             except queue.Full:
                 pass
+
+    def refresh(self):
+        with self.lock:
+            self._broadcast()
 
     def _changed(self, save=True):
         if save:
@@ -850,7 +862,304 @@ class GameHub:
             self._send(status, role="pad")
 
 
+# ---------------------------------------------------------------- basement live
+
+class LiveHub:
+    """Guests broadcast their phone cameras to the wall (static/live.html). The Pi only passes the
+    WebRTC handshake along; the video then goes straight from each phone to the display. Each side
+    sends one complete description (no trickled ICE), so the handshake is a phone's offer, pushed
+    to the display over its event stream, and the display's answer, which the phone collects by
+    long-polling (that also works through the tunnel, where streams can be held back). A phone that
+    stops polling (closed, asleep, out of range) is dropped after GONE_AFTER seconds. Nothing is
+    saved to disk."""
+    MAX = 4
+    GONE_AFTER = 30
+    POLL_WAIT = 20
+
+    def __init__(self, store):
+        self.store = store
+        self.cond = threading.Condition()
+        self.cams = {}      # cid -> {"name", "slot", "gen", "offer", "answered", "msgs", "seen", "polling"}
+        self.seq = 0        # numbers every message to a phone, so a poll can ask for "anything after N"
+        self.displays = []  # display event queues, newest last; only the newest one receives cameras
+
+    # -- the wall's side
+
+    def _to_display(self, msg):
+        if self.displays:
+            try:
+                self.displays[-1].put_nowait(json.dumps(msg))
+            except queue.Full:
+                pass
+
+    def _to_phone(self, cam, msg):
+        self.seq += 1
+        cam["msgs"] = [m for m in cam["msgs"] if m[0] > self.seq - 20] + [(self.seq, msg)]
+
+    def _greet(self, q):
+        """Brings a newly connected display up to date: offers still waiting for an answer go to it
+        directly, and phones already streaming to an earlier display are asked for a fresh offer."""
+        q.put_nowait(json.dumps({"type": "hello", "cams": [
+            {"cid": cid, "name": c["name"], "slot": c["slot"]} for cid, c in self.cams.items()]}))
+        for cid, c in self.cams.items():
+            if c["offer"] and not c["answered"]:
+                q.put_nowait(json.dumps({"type": "offer", "cid": cid, "name": c["name"], "slot": c["slot"],
+                                         "gen": c["gen"], "sdp": c["offer"]}))
+            else:
+                self._to_phone(c, {"type": "reoffer"})
+
+    def subscribe(self):
+        q = queue.Queue(maxsize=100)
+        with self.cond:
+            if self.displays:  # an older display stays connected but hands the cameras over
+                try:
+                    self.displays[-1].put_nowait(json.dumps({"type": "standby"}))
+                except queue.Full:
+                    pass
+            self.displays.append(q)
+            self._greet(q)
+            self.cond.notify_all()
+        return q
+
+    def unsubscribe(self, q):
+        with self.cond:
+            was_newest = bool(self.displays) and self.displays[-1] is q
+            if q in self.displays:
+                self.displays.remove(q)
+            if was_newest and self.displays:
+                self._greet(self.displays[-1])
+            self.cond.notify_all()
+
+    def answer(self, body):
+        with self.cond:
+            cam = self.cams.get(body.get("cid"))
+            sdp = body.get("sdp")
+            if not cam or body.get("gen") != cam["gen"] or cam["answered"]:
+                raise ApiError(409, "That offer is out of date.")
+            if not isinstance(sdp, str) or len(sdp) > 20000:
+                raise ApiError(400, "Bad answer.")
+            cam["answered"] = True
+            self._to_phone(cam, {"type": "answer", "gen": cam["gen"], "sdp": sdp})
+            self.cond.notify_all()
+
+    def reoffer(self, body):
+        """The display lost a camera's connection and asks that phone to start over."""
+        with self.cond:
+            cam = self.cams.get(body.get("cid"))
+            if cam:
+                self._to_phone(cam, {"type": "reoffer"})
+                self.cond.notify_all()
+
+    # -- the phone's side
+
+    def _status(self):
+        """What a phone shows besides its own connection. "key" lets a poll say which one it saw."""
+        screens = self.store.state["screens"]
+        on_wall = any(s["enabled"] and s.get("channel") == "live" and not s.get("pinned") for s in screens)
+        status = {"display": bool(self.displays), "onWall": on_wall, "count": len(self.cams),
+                  "bar": self.store.state["settings"].get("barName") or "THE BASEMENT"}
+        status["key"] = json.dumps(status, sort_keys=True)
+        return status
+
+    @staticmethod
+    def _cid(body):
+        cid = body.get("cid")
+        if not isinstance(cid, str) or not re.fullmatch(r"[A-Za-z0-9_-]{8,40}", cid):
+            raise ApiError(400, "Bad camera id.")
+        return cid
+
+    def offer(self, body):
+        cid = self._cid(body)
+        sdp = body.get("sdp")
+        if not isinstance(sdp, str) or not sdp.startswith("v=") or len(sdp) > 20000:
+            raise ApiError(400, "Bad offer.")
+        name = " ".join(_str(16)(body.get("name") or "").split()).upper() or "GUEST"
+        with self.cond:
+            cam = self.cams.get(cid)
+            joined = cam is None
+            if joined:
+                if len(self.cams) >= self.MAX:
+                    raise ApiError(409, "The wall is full: four phones are live already. Try again when someone ends.")
+                used = {c["slot"] for c in self.cams.values()}
+                cam = {"slot": next(i for i in range(self.MAX) if i not in used), "gen": 0, "msgs": [], "polling": 0}
+                self.cams[cid] = cam
+            cam.update(name=name, gen=cam["gen"] + 1, offer=sdp, answered=False, seen=time.time())
+            cam["msgs"] = [m for m in cam["msgs"] if m[1].get("type") != "answer"]
+            self._to_display({"type": "offer", "cid": cid, "name": name, "slot": cam["slot"], "gen": cam["gen"], "sdp": sdp})
+            gen = cam["gen"]
+            self.cond.notify_all()
+        if joined:
+            self.store.refresh()
+        return {"gen": gen, "seq": self.seq, "status": self._status()}
+
+    def poll(self, cid, since, seen_status):
+        """Waits up to POLL_WAIT seconds for messages after `since`, or a change of status."""
+        with self.cond:
+            cam = self.cams.get(cid)
+            if not cam:
+                return {"gone": True, "status": self._status()}
+            cam["polling"] += 1
+            cam["seen"] = time.time()
+            try:
+                self.cond.wait_for(lambda: cid not in self.cams or any(m[0] > since for m in cam["msgs"])
+                                   or self._status()["key"] != seen_status, timeout=self.POLL_WAIT)
+            finally:
+                cam["polling"] -= 1
+                cam["seen"] = time.time()
+            if cid not in self.cams:
+                return {"gone": True, "status": self._status()}
+            return {"msgs": [m[1] for m in cam["msgs"] if m[0] > since], "seq": self.seq, "status": self._status()}
+
+    def leave(self, body):
+        with self.cond:
+            gone = self.cams.pop(body.get("cid"), None)
+            if gone:
+                self._to_display({"type": "leave", "cid": body.get("cid")})
+                self.cond.notify_all()
+        if gone:
+            self.store.refresh()
+
+    def prune(self):
+        with self.cond:
+            now = time.time()
+            stale = [cid for cid, c in self.cams.items() if not c["polling"] and now - c["seen"] > self.GONE_AFTER]
+            for cid in stale:
+                del self.cams[cid]
+                self._to_display({"type": "leave", "cid": cid})
+            if stale:
+                self.cond.notify_all()
+        if stale:
+            self.store.refresh()
+
+    def wake(self):
+        """Something phones show may have changed (the wall's channel): answer their polls now."""
+        with self.cond:
+            self.cond.notify_all()
+
+    def names(self):
+        with self.cond:
+            return [c["name"] for c in sorted(self.cams.values(), key=lambda c: c["slot"])]
+
+
+def parse_tunnel_host(text):
+    """The last quick-tunnel address in some cloudflared output, or "". cloudflared prints it in a
+    box when the tunnel is up ("|  https://some-random-words.trycloudflare.com  |"); its own API
+    host (api.trycloudflare.com) shows up in error messages and isn't one."""
+    found = ""
+    for m in re.finditer(r"https://([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)\.trycloudflare\.com(?![a-z0-9-]|\.[a-z0-9])", text or "", re.I):
+        if m.group(1).lower() != "api":
+            found = m.group(1).lower() + ".trycloudflare.com"
+    return found
+
+
+def parse_quicktunnel(body):
+    """The address from cloudflared's metrics endpoint: GET /quicktunnel -> {"hostname": "..."}."""
+    try:
+        host = json.loads(body).get("hostname") or ""
+    except (ValueError, AttributeError):
+        return ""
+    if not isinstance(host, str) or not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.trycloudflare\.com", host, re.I):
+        return ""
+    return parse_tunnel_host("https://" + host)
+
+
+class Tunnel:
+    """Keeps track of the quick tunnel's current address. First choice is cloudflared's metrics
+    endpoint (the unit runs it with --metrics TUNNEL_METRICS), which answers with the address the
+    running tunnel actually has. If that can't be reached (an older cloudflared, a port clash), the
+    address is read from the service's log, from the current run only (its systemd invocation id),
+    so an address from before a restart is never shown."""
+
+    def __init__(self, store, metrics=TUNNEL_METRICS):
+        self.store = store
+        self.metrics = metrics
+        self.host = ""
+
+    def _from_metrics(self):
+        if not self.metrics:
+            return ""
+        try:
+            with urllib.request.urlopen(f"http://{self.metrics}/quicktunnel", timeout=2) as res:
+                return parse_quicktunnel(res.read(4096))
+        except Exception:
+            return ""
+
+    def _from_journal(self):
+        if not (shutil.which("systemctl") and shutil.which("journalctl")):
+            return ""
+        try:
+            run = subprocess.run(["systemctl", "show", "-p", "InvocationID", "--value", TUNNEL_UNIT],
+                                 capture_output=True, text=True, timeout=5)
+            invocation = run.stdout.strip()
+            if not re.fullmatch(r"[0-9a-f]{32}", invocation):
+                return ""  # not running
+            log = subprocess.run(["journalctl", "--no-pager", "-o", "cat", f"_SYSTEMD_INVOCATION_ID={invocation}"],
+                                 capture_output=True, text=True, timeout=10)
+            return parse_tunnel_host(log.stdout)
+        except (OSError, subprocess.SubprocessError):
+            return ""
+
+    def check(self):
+        host = self._from_metrics() or self._from_journal()
+        if host != self.host:
+            self.host = host
+            self.store.refresh()
+        return host
+
+    def run(self):
+        while True:
+            self.check()
+            time.sleep(60 if self.host else 10)
+
+    @property
+    def url(self):
+        return f"https://{self.host}/live" if self.host else ""
+
+
+_qr_cache = {}
+
+
+def qr_matrix(text):
+    """The QR code for `text` as rows of "1" (dark) and "0", made by the qrencode tool, or None.
+    qrencode's ASCII output draws each dark module as "##", one line per row."""
+    if not QRENCODE or not text:
+        return None
+    if text in _qr_cache:
+        return _qr_cache[text]
+    try:
+        run = subprocess.run([QRENCODE, "-t", "ASCII", "-m", "0", "-l", "M", "-o", "-", text],
+                             capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    rows = ["".join("1" if line[i] == "#" else "0" for i in range(0, len(line), 2))
+            for line in run.stdout.split("\n") if line]
+    if run.returncode != 0 or len(rows) < 21 or any(len(r) != len(rows) for r in rows):
+        return None
+    if len(_qr_cache) > 20:
+        _qr_cache.clear()
+    _qr_cache[text] = rows
+    return rows
+
+
+def qr_svg(rows, margin=4):
+    n = len(rows) + margin * 2
+    path = "".join(f"M{x + margin} {y + margin}h1v1h-1z" for y, row in enumerate(rows) for x, v in enumerate(row) if v == "1")
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {n} {n}" shape-rendering="crispEdges">'
+            f'<rect width="{n}" height="{n}" fill="#fff"/><path d="{path}" fill="#000"/></svg>')
+
+
 # ---------------------------------------------------------------- HTTP
+
+# Requests that come in through the tunnel carry Cloudflare's headers. From the internet, only the
+# camera page and the calls it makes are served; the control page, uploads and settings stay on
+# the home Wi-Fi.
+TUNNEL_ALLOWED = {("GET", "/live"), ("HEAD", "/live"), ("GET", "/api/live/poll"),
+                  ("POST", "/api/live/offer"), ("POST", "/api/live/leave")}
+
+
+def via_tunnel(headers):
+    return bool(headers.get("Cf-Connecting-IP") or headers.get("Cf-Ray"))
+
 
 def safe_join(base, rel):
     full = os.path.realpath(os.path.join(base, unquote(rel)))
@@ -867,6 +1176,8 @@ class Handler(BaseHTTPRequestHandler):
     feeds = None
     hub = None
     mirror = None
+    live = None
+    tunnel = None
 
     def log_message(self, fmt, *args):
         pass
@@ -1030,7 +1341,7 @@ class Handler(BaseHTTPRequestHandler):
         if method in ("GET", "HEAD"):
             if path == "/":
                 return self._redirect("/control")
-            if path in ("/control", "/display", "/play"):
+            if path in ("/control", "/display", "/play", "/live"):
                 return self._file(os.path.join(STATIC, path[1:] + ".html"), cache=False)
             if path.startswith("/static/"):
                 full = safe_join(STATIC, path[len("/static/"):])
@@ -1056,6 +1367,28 @@ class Handler(BaseHTTPRequestHandler):
             m = re.fullmatch(r"/api/feed/(scores|news|weather)", path)
             if m:
                 return self._json(200, self.feeds.get(m.group(1)))
+            if path == "/api/live/stream":
+                return self._stream(self.live.subscribe(), self.live.unsubscribe)
+            if path == "/api/live/poll":
+                try:
+                    since = int(qs.get("since", ["0"])[0])
+                except ValueError:
+                    since = 0
+                return self._json(200, self.live.poll(qs.get("cid", [""])[0], since, qs.get("st", [""])[0]))
+            if path in ("/api/live/qr", "/api/live/qr.svg"):
+                url = self.tunnel.url
+                rows = qr_matrix(url)
+                if path == "/api/live/qr":
+                    return self._json(200, {"url": url, "rows": rows})
+                if not rows:
+                    return self._json(404, {"error": "No QR code: the secure link isn't ready, or qrencode isn't installed."})
+                body = qr_svg(rows).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "image/svg+xml")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                return self.wfile.write(body)
 
         m = re.fullmatch(r"/api/slides/([0-9a-f]+)", path)
         if m and method == "PATCH":
@@ -1067,6 +1400,7 @@ class Handler(BaseHTTPRequestHandler):
         if m and method == "PATCH" and not m.group(2):
             screen = store.update_screen(m.group(1), self._read_json())
             self.hub.roster_changed()
+            self.live.wake()
             return self._json(200, screen)
         if m and method == "POST" and m.group(2):
             store.next_slide(m.group(1))
@@ -1086,15 +1420,36 @@ class Handler(BaseHTTPRequestHandler):
         if m and method == "POST":
             result = getattr(self.hub, m.group(1))(self._read_json())
             return self._json(200, result or {"ok": True})
+        m = re.fullmatch(r"/api/live/(offer|answer|reoffer|leave)", path)
+        if m and method == "POST":
+            result = getattr(self.live, m.group(1))(self._read_json())
+            return self._json(200, result or {"ok": True})
         if method == "PATCH" and path == "/api/settings":
             store.update_settings(self._read_json())
             return self._json(200, {"ok": True})
         return self._json(404, {"error": "Not found."})
 
+    def _refuse(self):
+        """403 for anything but the camera page, when the request came in through the tunnel."""
+        self.close_connection = True
+        if self.path.startswith("/api/"):
+            return self._json(403, {"error": "Only the camera page is open through the secure link."})
+        body = ('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">'
+                '<body style="margin:0;padding:40px 24px;background:#0b0a08;color:#efe6d2;font:20px/1.4 Georgia,serif;text-align:center">'
+                'This link only opens <b>Basement Live</b>.<br><br>Scan the code on the wall to go live.</body>').encode()
+        self.send_response(403)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
     def _handle(self):
         if self.command == "HEAD":
             self.close_connection = True
         try:
+            if via_tunnel(self.headers) and (self.command, urlparse(self.path).path) not in TUNNEL_ALLOWED:
+                return self._refuse()
             self._route()
         except ApiError as e:
             self.close_connection = True  # the request body may not have been read
@@ -1110,6 +1465,7 @@ def main():
     parser.add_argument("--port", type=int, default=8080)
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--data", default=os.path.join(ROOT, "data"), help="where uploads and settings are kept")
+    parser.add_argument("--tunnel-metrics", default=TUNNEL_METRICS, help="cloudflared's metrics address (host:port)")
     args = parser.parse_args()
 
     store = Store(args.data)
@@ -1117,8 +1473,11 @@ def main():
     Handler.feeds = Feeds(store)
     hub = Handler.hub = GameHub(store)
     mirror = Handler.mirror = Mirror(MIRROR_PORT)
-    host = f"{socket.gethostname()}.local" + ("" if args.port == 80 else f":{args.port}")
+    live = Handler.live = LiveHub(store)
+    tunnel = Handler.tunnel = Tunnel(store, args.tunnel_metrics)
+    host = f"{socket.gethostname().removesuffix('.local')}.local" + ("" if args.port == 80 else f":{args.port}")
     hub.join_url = f"{host}/play"
+    store.live_info = lambda: {"url": tunnel.url, "lan": f"http://{host}/live", "qr": bool(QRENCODE), "cams": live.names()}
 
     def ticker():
         beats = 0
@@ -1129,8 +1488,10 @@ def main():
             store.set_mirroring(mirror.live)
             if beats % 4 == 0:
                 hub.prune()
+                live.prune()
 
     threading.Thread(target=ticker, daemon=True).start()
+    threading.Thread(target=tunnel.run, daemon=True).start()
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     server.daemon_threads = True
     print(f"Bar Screens is running. Control it from http://{host}/control (games: http://{host}/play)", flush=True)

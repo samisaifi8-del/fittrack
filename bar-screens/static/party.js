@@ -940,21 +940,28 @@
     const colW = Math.floor(Math.min(s * 0.24, (W - s * 0.12 - gap * (n - 1)) / n));
     const x0 = Math.round(W / 2 - (colW * n + gap * (n - 1)) / 2);
     const floor = Math.round(H - s * 0.17), top = Math.round(H * 0.33);
-    return { colW, gap, x0, floor, top, numH: Math.round(Math.min(colW * 0.8, s * 0.095)) };
+    // one size for every name, small enough to ride on a bar up to its own length and stay
+    // below the prompt
+    const m = offscreen(1, 1, () => {}).getContext('2d');
+    g.k.tracking(m, colW * 0.04);
+    const nameSize = Math.min(Math.round(colW * 0.62), ...bars.map((b) => g.k.fitSize(m, b.name, 'Josefin Sans', (floor - top) * 0.5 - colW * 0.3, colW * 0.62)));
+    return { colW, gap, x0, floor, top, nameSize, numH: Math.round(Math.min(colW * 0.8, s * 0.095)) };
   }
 
-  // A name standing up the bar, reading upwards, in the given colour.
-  function upName(g, name, colW, len, color) {
+  // A name standing up its column, reading upwards from the foot of the sprite, in the given
+  // colour. The sprite knows how far up the name reaches (textLen).
+  function upName(g, name, colW, len, size, color) {
     const { k } = g;
-    return g.sprite(`up|${name}|${colW}|${len}|${color}`, colW, len, (x) => {
+    return g.sprite(`up|${name}|${colW}|${len}|${size}|${color}`, colW, len, (x) => {
       x.translate(colW / 2, len);
       x.rotate(-Math.PI / 2);
       k.tracking(x, colW * 0.04);
-      x.font = k.font('Josefin Sans', Math.min(Math.round(colW * 0.62), k.fitSize(x, name, 'Josefin Sans', len - colW * 0.3, colW * 0.62)));
+      x.font = k.font('Josefin Sans', size);
       x.fillStyle = color;
       x.textAlign = 'left';
       x.textBaseline = 'middle';
       x.fillText(name, colW * 0.18, colW * 0.04);
+      x.canvas.textLen = Math.ceil(colW * 0.3 + x.measureText(name).width);
       k.tracking(x, 0);
     });
   }
@@ -982,13 +989,19 @@
       const v = Math.min(bar.votes, level);
       const h = Math.round((v / st.top) * len);
       const lead = done && bar.votes === st.top;
-      // the name stands in its column; inside the bar it's black on gold
-      ctx.drawImage(upName(g, bar.name, P.colW, len, k.rgba(k.IVORY, 0.3)), bx, P.top);
+      // the name rides on top of its bar in ivory, and goes inside it, black on gold, once the
+      // bar is tall enough to hold all of it
+      const ivory = upName(g, bar.name, P.colW, len, P.nameSize, k.IVORY);
+      const inside = h > 0 && h >= ivory.textLen;
+      if (!inside) {
+        const at = P.floor - h - len - (h > 0 ? 3 : 0), cut = Math.max(0, P.top - at);
+        if (cut < len) ctx.drawImage(ivory, 0, cut, P.colW, len - cut, bx, at + cut, P.colW, len - cut);
+      }
       if (h > 0) {
         ctx.fillStyle = lead ? k.GOLD_LIGHT : k.GOLD;
         ctx.fillRect(bx, P.floor - h, P.colW, h);
-        const black = upName(g, bar.name, P.colW, len, '#000');
-        ctx.drawImage(black, 0, len - h, P.colW, h, bx, P.floor - h, P.colW, h);
+        const black = upName(g, bar.name, P.colW, len, P.nameSize, '#000');
+        if (inside) ctx.drawImage(black, 0, len - h, P.colW, h, bx, P.floor - h, P.colW, h);
         ctx.fillStyle = bar.color;
         ctx.fillRect(bx, P.floor - 4, P.colW, 4); // the player's colour at its foot
       }
@@ -1104,8 +1117,9 @@
       y = Math.max(y + s * 0.08, H * 0.74);
       k.decoRule(x, W * 0.3, y, W * 0.4, s);
       stack(g, x, y + s * 0.07, [
-        [st.hand ? 'NEXT ONE ON YOUR PHONE' : 'NEXT ONE SOON', 'Josefin Sans', Math.round(s * 0.042), k.MUTED, s * 0.012],
-        ['WRITE YOUR OWN THERE TOO', 'Josefin Sans', Math.round(s * 0.042), k.MUTED, s * 0.012],
+        [st.hand ? 'NEXT ONE ON YOUR PHONE' : 'NEXT ONE SOON', 'Josefin Sans', Math.round(s * 0.05), k.MUTED, s * 0.008],
+        ['WRITE YOUR OWN', 'Josefin Sans', Math.round(s * 0.05), k.MUTED, s * 0.008],
+        [st.hand ? 'THERE TOO' : 'ON YOUR PHONE', 'Josefin Sans', Math.round(s * 0.05), k.MUTED, s * 0.008],
       ]);
     }), 0, 0);
     if (!st.hand) countdown(g, st, H - Math.round(s * 0.05));

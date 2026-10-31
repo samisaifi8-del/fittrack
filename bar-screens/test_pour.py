@@ -145,6 +145,18 @@ class Order(unittest.TestCase):
         self.assertIsNone(self.pour.order)
         self.assertEqual(self.channels(), ["scores", "games"])
 
+    def test_a_restart_mid_order_puts_the_walls_back(self):
+        self.pour.put_up({"guest": "Sara", "drink": "d001"})
+        self.assertEqual(self.channels(), ["pour", "games"])
+        store = server.Store(self.tmp.name)  # the Pi restarts: the order was only in memory
+        server.HousePour(store)
+        self.assertEqual([s["channel"] for s in store.state["screens"]], ["scores", "games"])
+        self.assertEqual(store.state["channels"]["pour"]["returns"], {})
+        # a wall tuned to 10 by hand stays on it
+        store.update_screen("s1", {"channel": "pour"})
+        server.HousePour(server.Store(self.tmp.name))
+        self.assertEqual(server.Store(self.tmp.name).state["screens"][0]["channel"], "pour")
+
     def test_forgotten_order_comes_down(self):
         self.pour.put_up({"drink": "d001"})
         self.pour.order["at"] -= server.HousePour.MAKING_MAX + 1

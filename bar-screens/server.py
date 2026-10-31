@@ -199,7 +199,8 @@ def default_channels():
         # after Colours or The Verdict had the wall
         "games": {"game": "breaker", "sipsUntil": 0, "tier": "mild", "verdictDeck": "preparty", "verdictPace": "auto",
                   "back": "breaker"},
-        "pour": {"tonight": list(TONIGHT), "custom": [], "guestOrders": False},
+        # returns: screen id -> the channel it was on before the order on the wall took it over
+        "pour": {"tonight": list(TONIGHT), "custom": [], "guestOrders": False, "returns": {}},
         # Colours (channel 9, a party game): the match the host pinned (ESPN's teams and colours,
         # kept so a restart doesn't need the internet), the forfeit line and the tap war after a goal
         "colours": {"pin": None, "forfeit": "LOSER POURS", "push": True},
@@ -1889,12 +1890,20 @@ class HousePour:
         self.requests = []     # [{"rid", "pid", "name", "drink", "at"}], oldest first
         self.answers = {}      # pid -> {"rid", "drink", "state"}: what that phone last asked for
         self.names = []        # names drinks were made for tonight, newest first
-        self.returns = {}      # screen id -> the channel it was on before an order took over
         self.guest_names = list  # people on /play and Basement Live (set up in main)
+        if not isinstance(self.conf.get("returns"), dict):
+            self.conf["returns"] = {}
+        if self.returns:  # restarted while a drink was up: the order is gone, so the walls go back
+            self.clear()
 
     @property
     def conf(self):
         return self.store.state["channels"]["pour"]
+
+    @property
+    def returns(self):
+        """Screen id -> the channel it was on before an order took over (saved, for a restart)."""
+        return self.conf["returns"]
 
     def _drinks(self):
         return self.store.drinks + [d for d in self.conf["custom"] if isinstance(d, dict)]
@@ -2008,9 +2017,9 @@ class HousePour:
             self.order = None
             for screen in self.store.state["screens"]:
                 prev = self.returns.pop(screen["id"], None)
-                if prev and screen.get("channel") == "pour":
+                if prev in self.TAKE_OVER and screen.get("channel") == "pour":
                     screen["channel"] = prev
-            self.returns = {}
+            self.returns.clear()
             self.store._changed()
 
     def tick(self):

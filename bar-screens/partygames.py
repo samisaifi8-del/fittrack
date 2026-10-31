@@ -1,4 +1,4 @@
-"""Party games the Pi referees: the shared game kit, and Closest Wins.
+"""Party games the Pi referees: the shared game kit, Closest Wins and Five Clues.
 
 The arcade games (static/games.js) run on the wall and only use the Pi to pass controller input
 along. Quiz and vote games are different: everyone answers at once, nobody should see anyone
@@ -8,7 +8,7 @@ goes out over the game stream as two views: one for the wall (what everyone in t
 and one per phone (only that player's own controls and result). The wall draws its view with
 static/party.js and the phones build their pads from theirs in static/play.html.
 
-Writing a new party game (Five Clues, Five Lights, The Verdict, Colours):
+Writing a new party game (Five Lights, The Verdict, Colours; Five Clues is a second example):
 
   1. Subclass PartyGame, set `key` and `title`, and add it to PARTY_GAMES (and to GAMES in
      server.py, so it shows in the game pickers).
@@ -690,4 +690,243 @@ class ClosestWins(PartyGame):
         return super().pad(pid)
 
 
-PARTY_GAMES = {"closest": ClosestWins}
+# ---------------------------------------------------------------- five clues
+
+# The deck's card types, grouped so a round of six has one of each kind of fan's card.
+CLUE_GROUPS = {"A FOOTBALLER": "football", "A RAPPER": "hiphop", "A PRODUCER": "hiphop", "A DJ": "dance",
+               "A FILM": "film", "A DUBAI PLACE": "dubai", "POP CULTURE": "pop"}
+
+
+def leaders_line(rows):
+    """Between cards, the one line the wall shows: SAMI LEADS, SAMI & LAYLA LEAD, 3-WAY TIE."""
+    top = [r["name"] for r in rows if r["place"] == 1 and r["points"] > 0]
+    if not top:
+        return "NO SCORES YET"
+    if len(top) == 1:
+        return f"{top[0]} LEADS"
+    return f"{top[0]} & {top[1]} LEAD" if len(top) == 2 else f"{len(top)}-WAY TIE"
+
+
+class FiveClues(PartyGame):
+    """A hidden footballer, rapper, film or Dubai place, revealed one clue at a time, hardest
+    first, and worth 5 points on the first clue down to 1 on the last. Anyone can buzz; the first
+    buzz to reach the Pi wins, and that phone alone gets four options. Right banks the points;
+    wrong (or too slow) locks that player out of the card and the clues carry on for everyone
+    else. Six cards a round, one of each type. A wrong buzz is a sip for a drinker; getting it on
+    the first clue lets you pour one out."""
+    key = "fiveclues"
+    title = "Five Clues"
+    DECK = "clues"
+    CARDS = 6
+    CARD = 6      # the between-rounds card
+    CLUE = 6      # seconds per clue before the next, easier one (and the value drops)
+    LAST = 8      # the fifth clue stays up a little longer
+    PICK = 8      # seconds the buzzer has to pick
+    MISS = 2.5    # a wrong pick, crossed out, before the clues carry on
+    RESUME = 3    # after a miss the clue gets at least this long again
+    GUARD = 0.3   # buzzes this soon after a clue appears are ignored: nobody wins on a stale screen
+    REVEAL = 5
+    LEADS = 3
+
+    def __init__(self, hub, rand=None):
+        super().__init__(hub, rand)
+        self.cards, self.c, self.k = [], -1, 0
+        self.out, self.buzzer, self.options, self.left, self.got = set(), None, [], 0, None
+        self.go("lobby")
+
+    # -- picking cards
+
+    def pick_cards(self):
+        """One card of each group, in a shuffled order, from the cards not played yet."""
+        deck = [i for i in load_deck(self.DECK) if len(i.get("clues") or []) == 5 and len(i.get("decoys") or []) >= 3]
+        groups = {}
+        for i in deck:
+            groups.setdefault(CLUE_GROUPS.get(i.get("type"), i.get("type")), []).append(i)
+        names = sorted(groups)
+        self.rand.shuffle(names)
+        picked = []
+        for n in range(self.CARDS):
+            if not names:
+                break
+            group = names[n % len(names)]
+            options = [i for i in groups[group] if i not in picked]
+            picked += self.hub.used.draw(f"{self.DECK}:{group}", options, 1, self.rand) if options else []
+        return picked
+
+    # -- the flow
+
+    def next_round(self):
+        if not self.players():
+            return self.go("lobby")
+        self.round += 1
+        self.points = {}
+        self.cards, self.c = self.pick_cards(), -1
+        if not self.cards:
+            return self.go("lobby", note="The clue deck is missing.")
+        self.go("card", self.CARD, heading="FIVE CLUES", lines=["SIX CARDS", "BUZZ WHEN YOU KNOW"],
+                night=self.podium(self.night) if self.round > 1 else [])
+
+    def item(self):
+        return self.cards[self.c]
+
+    def value(self):
+        return 6 - self.k
+
+    def next_card(self):
+        self.c += 1
+        if self.c >= len(self.cards):
+            return self.end_round()
+        if not self.players():
+            return self.go("lobby")
+        self.out, self.buzzer, self.got = set(), None, None
+        self.show_clue(1)
+
+    def show_clue(self, k, secs=None):
+        self.k = k
+        self.go("clue", secs if secs is not None else self.LAST if k == 5 else self.CLUE, **self.card_view())
+
+    def card_view(self):
+        """What the wall may know mid-card: the clues so far, never the answer or the options.
+        (The card's type goes out as "category": "type" is the message's own.)"""
+        it = self.item()
+        return {"n": self.c + 1, "of": len(self.cards), "category": it["type"], "clues": it["clues"][:self.k],
+                "k": self.k, "value": self.value(), "card": it["id"]}
+
+    def buzz(self, pid):
+        if self.phase != "clue" or pid in self.out or self.now() - self.at < self.GUARD:
+            return
+        it = self.item()
+        self.buzzer = pid
+        self.left = max(self.RESUME, (self.until or self.now()) - self.now())
+        self.options = [it["answer"]] + list(it["decoys"][:3])
+        self.rand.shuffle(self.options)
+        p = self.who(pid)
+        self.go("buzz", self.PICK, buzzer={"slot": p["slot"], "name": p["name"], "color": p["color"]}, **self.card_view())
+
+    def pick(self, pid, msg):
+        if self.phase != "buzz" or pid != self.buzzer:
+            return
+        label = msg.get("id")
+        if label not in self.options:
+            n = msg.get("choice")
+            label = self.options[n] if isinstance(n, int) and 0 <= n < len(self.options) else None
+        if label is None:
+            return
+        if label == self.item()["answer"]:
+            self.add_points(pid, self.value())
+            self.reveal(pid)
+        else:
+            self.miss(pid, label)
+
+    def miss(self, pid, label):
+        """A wrong pick (label None: time ran out): out of this card, and a sip for a drinker."""
+        self.out.add(pid)
+        self.award_sip(pid, "Wrong buzz. Any drink or water counts.")
+        self.go("miss", self.MISS, buzzer=self.data.get("buzzer"), wrong=label, **self.card_view())
+
+    def reveal(self, pid=None):
+        it = self.item()
+        self.got, self.buzzer = pid, None
+        winner = None
+        if pid:
+            p = self.who(pid)
+            winner = {"slot": p["slot"], "name": p["name"], "color": p["color"], "points": self.value()}
+            if self.k == 1:
+                self.offer_pour(pid, at=self.now() + 1.5)
+        self.go("reveal", self.REVEAL, n=self.c + 1, of=len(self.cards), category=it["type"], answer=it["answer"],
+                k=self.k, winner=winner, spot=bool(pid) and self.k == 1)
+
+    def after_reveal(self):
+        if self.c + 1 >= len(self.cards):
+            return self.end_round()
+        self.go("leads", self.LEADS, n=self.c + 1, of=len(self.cards), line=leaders_line(self.standings()),
+                next=self.cards[self.c + 1]["type"])
+
+    def end_round(self):
+        self.go("podium", None, places=self.podium(), label="ROUND " + str(self.round))
+
+    def on_timeout(self):
+        ph = self.phase
+        if ph == "card" or ph == "leads":
+            self.next_card()
+        elif ph == "clue":
+            self.show_clue(self.k + 1) if self.k < 5 else self.reveal()
+        elif ph == "buzz":
+            self.miss(self.buzzer, None)
+        elif ph == "miss":
+            here = [q for q, _ in self.players()]
+            if not here or all(q in self.out for q in here):
+                self.reveal()
+            else:
+                self.show_clue(self.k, self.left)
+        elif ph == "reveal":
+            self.after_reveal()
+
+    def on_input(self, pid, msg):
+        if msg["kind"] in ("buzz", "tap"):
+            self.buzz(pid)
+        elif msg["kind"] == "pick":
+            self.pick(pid, msg)
+
+    # -- views
+
+    def wall(self):
+        view = super().wall()
+        if self.phase in ("clue", "buzz", "miss"):
+            # every player's dot, hollow once they're locked out of this card
+            view["locks"] = [{"slot": p["slot"], "locked": pid not in self.out} for pid, p in self.players()]
+        if self.phase == "lobby":
+            view["lines"] = ["FIVE CLUES, ONE ANSWER", "BUZZ WHEN YOU KNOW", "WRONG BUZZ, YOU'RE OUT"]
+        return view
+
+    def pad(self, pid):
+        ph = self.phase
+        if ph == "lobby":
+            return self.base_pad(pid, {"ui": "start", "big": "Five Clues", "label": "Start",
+                                       "text": "Five clues, hardest first, and the points drop with each one. Buzz when you know it; a wrong buzz locks you out of that card."})
+        if ph == "card":
+            return self.base_pad(pid, {"ui": "wait", "title": f"Round {self.round}", "big": "Five Clues", "text": "Eyes on the wall."})
+        if ph in ("clue", "buzz", "miss"):
+            title = f"Card {self.c + 1} of {len(self.cards)}"
+            if ph == "buzz" and pid == self.buzzer:
+                return self.base_pad(pid, {"ui": "pick", "key": f"pick:{self.at}", "title": f"{title} · for {self.value()}",
+                                           "options": [{"id": o, "label": o} for o in self.options], "cols": 2,
+                                           "lockOnPick": True, "deadline": self.until})
+            if ph == "miss" and pid == self.buzzer:
+                wrong = self.data.get("wrong")
+                return self.base_pad(pid, {"ui": "result", "key": f"miss:{self.at}", "title": title,
+                                           "big": "Not it" if wrong else "Too slow", "tone": "plain",
+                                           "text": f"It wasn't {wrong}. You're out of this card." if wrong else "Time ran out. You're out of this card."})
+            pts = f"{self.value()} point{'s' if self.value() != 1 else ''}"
+            if pid in self.out:
+                view = {"locked": True, "text": "Locked out"}
+            elif ph != "clue":
+                view = {"locked": True, "text": f"{self.data['buzzer']['name']} buzzed"}
+            else:
+                view = {"locked": False}
+            # one pad per card: the value and the lock change in place, so a press is never lost to a rebuild
+            return self.base_pad(pid, {"ui": "buzz", "key": f"card:{self.round}:{self.c}",
+                                       "title": title, "label": "BUZZ", "value": pts,
+                                       "deadline": self.until if ph == "clue" else None, **view})
+        if ph == "reveal":
+            it = self.item()
+            w = self.data.get("winner")
+            if self.got == pid:
+                return self.base_pad(pid, {"ui": "result", "big": f"+{w['points']}", "tone": "win",
+                                           "text": f"{it['answer']}, on clue {self.k}."})
+            return self.base_pad(pid, {"ui": "result", "big": it["answer"], "tone": "plain",
+                                       "text": f"{w['name']} got it on clue {self.k}." if w else "Nobody got it."})
+        if ph == "leads" or ph == "podium":
+            mine = next((s for s in self.standings() if s["pid"] == pid), None)
+            pts = mine["points"] if mine else 0
+            big = ordinal(mine["place"]) if pts > 0 else ("Round over" if ph == "podium" else "No points yet")
+            text = f"{pts} point{'s' if pts != 1 else ''} this round." if pts else "Buzz in on the next one."
+            if ph == "leads":
+                return self.base_pad(pid, {"ui": "result", "title": f"Card {self.c + 1} of {len(self.cards)} done",
+                                           "big": big, "text": text, "tone": "good" if pts else "plain"})
+            return self.base_pad(pid, {"ui": "next", "big": big, "text": text if mine else "Join in next round.",
+                                       "buttons": [{"kind": "next", "label": "Next round"}, {"kind": "end", "label": "Finish"}]})
+        return super().pad(pid)
+
+
+PARTY_GAMES = {"closest": ClosestWins, "fiveclues": FiveClues}

@@ -70,7 +70,7 @@ NEWS_FEEDS = {
 }
 VISUAL_STYLES = ["mix", "botanical", "deco", "lift", "clockface", "skyline", "bubbles", "fans"]
 GAMES = [["breaker", "Brick Breaker"], ["duel", "Deco Duel"], ["snake", "Serpentine"], ["quickdraw", "Quick Draw"],
-         ["closest", "Closest Wins"]]  # the last ones are party games the Pi referees (partygames.py)
+         ["closest", "Closest Wins"], ["fiveclues", "Five Clues"]]  # the last ones are party games the Pi referees (partygames.py)
 # Now Showing (channel 8): film posters and details come from Wikipedia and Wikidata (free, no key).
 # Wikimedia asks every client for a User-Agent that says what it is (one naming a bare HTTP library
 # is throttled hard), and answers 429 to quick bursts, so searches are cached.

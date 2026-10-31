@@ -539,6 +539,244 @@
 
   RENDERERS.closest = closest;
 
+  // ------------------------------------------------------------ five clues
+
+  // A card: its type and the points it's worth now in a gold plate, then the clues stacking down
+  // the wall, the newest in gold and the older ones dimmed. A buzz dims it all under the buzzer's
+  // name, huge in their colour, with a ring running down while they pick. A miss crosses their
+  // pick out; the reveal is the answer in big type. Between cards, one line: SAMI LEADS.
+  const RED = '#e0564f';
+  const fiveclues = {
+    draw(g, st, e) {
+      if (st.phase === 'clue') return clueScreen(g, st, e);
+      if (st.phase === 'buzz') return buzzScreen(g, st, e);
+      if (st.phase === 'miss') return missScreen(g, st, e);
+      if (st.phase === 'reveal') return answerScreen(g, st, e);
+      if (st.phase === 'leads') return leadsScreen(g, st);
+      return false;
+    },
+  };
+
+  // Where the clues sit: five fixed rows, so a new clue never moves the old ones.
+  function clueRows(g) {
+    const { H, s } = g;
+    const top = Math.round(H * 0.29), bottom = Math.round(H * 0.84);
+    const rowH = (bottom - top) / 5;
+    return { top, rowH, size: Math.round(Math.min(rowH * 0.62, s * 0.088)) };
+  }
+
+  function clueText(g, x, text, y, size, color) {
+    const { k, W, s } = g;
+    k.tracking(x, s * 0.006);
+    x.font = k.font('Josefin Sans', Math.min(size, k.fitSize(x, text, 'Josefin Sans', W * 0.88, size)));
+    x.fillStyle = color;
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    x.fillText(text, g.W / 2, y);
+    k.tracking(x, 0);
+  }
+
+  // The card without its newest clue: header, type, value plate and the older clues.
+  function cardLayer(g, st) {
+    const { k, W, H, s } = g;
+    return g.layer(`clues|${st.card}|${st.k}`, (x) => {
+      const hh = base(g, x, `${st.n} / ${st.of}`);
+      const P = Math.round(s * 0.2), px = W - Math.round(s * 0.06) - P, py = hh + 2;
+      // the value: a black numeral on a solid gold plate, with a stepped deco top
+      x.fillStyle = k.GOLD;
+      x.fillRect(px, py, P, P);
+      x.fillRect(px + Math.round(P * 0.2), py - 4, Math.round(P * 0.6), 2);
+      x.fillStyle = '#000';
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      x.font = k.font('Josefin Sans', Math.round(P * 0.78));
+      x.fillText(String(st.value), px + P / 2, py + P * 0.56);
+      // the type, and which clue this is
+      const left = Math.round(s * 0.06), tw = px - left - Math.round(s * 0.04);
+      k.tracking(x, s * 0.008);
+      x.textAlign = 'left';
+      x.textBaseline = 'alphabetic';
+      x.font = k.font('Josefin Sans', Math.min(Math.round(s * 0.085), k.fitSize(x, st.category, 'Josefin Sans', tw, s * 0.085)));
+      x.fillStyle = k.IVORY;
+      x.fillText(st.category, left, py + P * 0.52);
+      k.tracking(x, s * 0.02);
+      x.font = k.font('Josefin Sans', Math.round(s * 0.04));
+      x.fillStyle = k.GOLD;
+      x.fillText(`CLUE ${st.k} OF 5`, left, py + P * 0.95);
+      k.tracking(x, 0);
+      k.decoRule(x, W * 0.1, Math.round(H * 0.255), W * 0.8, s);
+      const R = clueRows(g);
+      (st.clues || []).slice(0, -1).forEach((c, i) => clueText(g, x, c, R.top + R.rowH * (i + 0.5), R.size, k.rgba(k.IVORY, 0.5)));
+    });
+  }
+
+  function newestClue(g, st) {
+    const { k, W } = g;
+    const R = clueRows(g);
+    const text = (st.clues || [])[st.k - 1] || '';
+    return g.sprite(`clue|${st.card}|${st.k}`, W, Math.ceil(R.rowH), (x) => clueText(g, x, text, R.rowH / 2, R.size, k.GOLD_LIGHT));
+  }
+
+  function clueScreen(g, st, e) {
+    const { ctx, H, s } = g;
+    const R = clueRows(g);
+    ctx.drawImage(cardLayer(g, st), 0, 0);
+    // the newest clue slides up into its row as it fades in
+    const u = easeOut(e / 0.35);
+    ctx.globalAlpha = u;
+    ctx.drawImage(newestClue(g, st), 0, Math.round(R.top + R.rowH * (st.k - 1) + (1 - u) * s * 0.04));
+    ctx.globalAlpha = 1;
+    countdown(g, st, Math.round(H * 0.87));
+    lockDots(g, st.locks, Math.round(H * 0.935));
+  }
+
+  // The card as it stood, dimming to black in a quarter of a second under whatever comes next.
+  function dimmedCard(g, st, e) {
+    const { ctx, W, H } = g;
+    const a = Math.min(1, 0.55 + e / 0.25 * 0.45);
+    if (a < 1) {
+      const R = clueRows(g);
+      ctx.drawImage(cardLayer(g, st), 0, 0);
+      ctx.drawImage(newestClue(g, st), 0, Math.round(R.top + R.rowH * (st.k - 1)));
+    }
+    ctx.fillStyle = `rgba(0,0,0,${a})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function buzzScreen(g, st, e) {
+    const { ctx, k, W, H, s } = g;
+    const b = st.buzzer || {};
+    const cx = W / 2, cy = Math.round(H * 0.62), r = Math.round(s * 0.24);
+    dimmedCard(g, st, e);
+    ctx.drawImage(g.layer(`buzz|${st.at}`, (x) => {
+      stack(g, x, H * 0.13, [['BUZZED', 'Josefin Sans', Math.round(s * 0.055), k.GOLD, s * 0.03]]);
+      k.tracking(x, s * 0.01);
+      const f = k.fitWrapped(x, b.name || '', 'Josefin Sans', W * 0.88, H * 0.2, 2, 1.05);
+      const px = Math.min(f.size, Math.round(s * 0.24));
+      x.font = k.font('Josefin Sans', px);
+      x.fillStyle = b.color || k.IVORY;
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      const y0 = H * 0.32 - ((f.lines.length - 1) * px * 1.05) / 2;
+      f.lines.forEach((l, i) => x.fillText(l, W / 2, y0 + i * px * 1.05));
+      k.tracking(x, 0);
+      // the ring's track, and the points at stake inside it
+      x.strokeStyle = k.rgba(b.color || k.GOLD, 0.22);
+      x.lineWidth = 6;
+      x.beginPath();
+      x.arc(cx, cy, r, 0, Math.PI * 2);
+      x.stroke();
+      x.font = k.font('Josefin Sans', Math.round(r * 0.95));
+      x.fillStyle = k.IVORY;
+      x.fillText(String(st.value), cx, cy + r * 0.04);
+      stack(g, x, H * 0.84, [['PICKING ON THEIR PHONE', 'Josefin Sans', Math.round(s * 0.042), k.MUTED, s * 0.012]]);
+    }), 0, 0);
+    // the ring runs down while they pick
+    const left = st.until == null ? 0 : Math.max(0, Math.min(1, (st.until - g.now()) / Math.max(0.1, st.until - st.at)));
+    if (left > 0) {
+      ctx.strokeStyle = b.color || k.GOLD;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left);
+      ctx.stroke();
+    }
+  }
+
+  function missScreen(g, st, e) {
+    const { ctx, k, W, H, s } = g;
+    const b = st.buzzer || {};
+    const wrong = st.wrong || "TIME'S UP";
+    let box = null;
+    dimmedCard(g, st, e);
+    ctx.drawImage(g.layer(`miss|${st.at}`, (x) => {
+      k.tracking(x, s * 0.01);
+      x.font = k.font('Josefin Sans', Math.min(Math.round(s * 0.13), k.fitSize(x, b.name || '', 'Josefin Sans', W * 0.8, s * 0.13)));
+      x.fillStyle = b.color || k.IVORY;
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      x.fillText(b.name || '', W / 2, H * 0.27);
+      k.tracking(x, s * 0.006);
+      const f = k.fitWrapped(x, wrong, 'Josefin Sans', W * 0.84, H * 0.2, 2, 1.1);
+      const px = Math.min(f.size, Math.round(s * 0.15));
+      x.font = k.font('Josefin Sans', px);
+      x.fillStyle = k.MUTED;
+      const y0 = H * 0.5 - ((f.lines.length - 1) * px * 1.1) / 2;
+      f.lines.forEach((l, i) => x.fillText(l, W / 2, y0 + i * px * 1.1));
+      k.tracking(x, 0);
+      stack(g, x, H * 0.7, [['LOCKED OUT', 'Josefin Sans', Math.round(s * 0.06), k.GOLD, s * 0.03]]);
+      // remembered for the strike line below
+      const widest = Math.max(...f.lines.map((l) => x.measureText(l).width));
+      g.missBox = { at: st.at, y0, px, lines: f.lines.length, w: widest };
+    }), 0, 0);
+    box = g.missBox && g.missBox.at === st.at ? g.missBox : null;
+    // the pick is struck through, left to right
+    if (box && st.wrong) {
+      const u = ease((e - 0.15) / 0.3);
+      ctx.fillStyle = RED;
+      for (let i = 0; i < box.lines; i++) {
+        const w = Math.round((box.w + s * 0.06) * u);
+        ctx.fillRect(Math.round(W / 2 - (box.w + s * 0.06) / 2), Math.round(box.y0 + i * box.px * 1.1 - 2), w, 4);
+      }
+    }
+    if (g.dropOn(b.slot)) drop(g, ctx, W / 2, H * 0.17, Math.max(4, Math.round(s * 0.022)));
+  }
+
+  function answerScreen(g, st, e) {
+    const { ctx, k, W, H, s } = g;
+    const w = st.winner;
+    const key = `answer|${st.at}`;
+    // the answer first, then who got it
+    ctx.drawImage(g.layer(key, (x) => {
+      const hh = base(g, x, `${st.n} / ${st.of}`);
+      stack(g, x, hh + H * 0.02, [[st.category, 'Josefin Sans', Math.round(s * 0.055), k.GOLD, s * 0.02]]);
+    }), 0, 0);
+    ctx.globalAlpha = ease(e / 0.45);
+    ctx.drawImage(g.layer(`${key}|name`, (x) => {
+      // the answer centred on the wall; got on the first clue, a deco sun rises behind it
+      k.tracking(x, s * 0.01);
+      const f = k.fitWrapped(x, st.answer, 'Josefin Sans', W * 0.84, H * 0.22, 2, 1.08);
+      k.tracking(x, 0);
+      const top = Math.round(H * 0.47 - (f.lines.length * f.size * 1.08) / 2);
+      if (st.spot) {
+        k.sunburst(x, W / 2, top - 2, top - H * 0.18, 24, k.GOLD, 0.24, 0); // clear of the type above
+        x.fillStyle = k.GOLD;
+        x.fillRect(Math.round(W * 0.08), top - 3, Math.round(W * 0.84), 2);
+      }
+      title(g, x, st.answer, top, H * 0.22, 'Josefin Sans', k.GOLD_LIGHT);
+    }), 0, Math.round((1 - ease(e / 0.45)) * s * 0.03));
+    ctx.globalAlpha = ease((e - 0.9) / 0.4);
+    ctx.drawImage(g.layer(`${key}|who`, (x) => {
+      const y = H * 0.66;
+      k.decoRule(x, W * 0.22, y, W * 0.56, s);
+      if (!w) {
+        stack(g, x, y + s * 0.07, [['NOBODY GOT IT', 'Josefin Sans', Math.round(s * 0.065), k.MUTED, s * 0.02]]);
+        return;
+      }
+      const after = stack(g, x, y + s * 0.06, [[w.name, 'Josefin Sans', Math.round(s * 0.11), w.color || k.IVORY, s * 0.01]]);
+      stack(g, x, after + s * 0.01, [[`+${w.points} · CLUE ${st.k}`, 'Josefin Sans', Math.round(s * 0.06), k.GOLD, s * 0.02]]);
+    }), 0, 0);
+    ctx.globalAlpha = 1;
+    if (w && g.dropOn(w.slot)) drop(g, ctx, W * 0.9, H * 0.73, Math.max(4, Math.round(s * 0.022)));
+  }
+
+  function leadsScreen(g, st) {
+    const { ctx, k, W, H, s } = g;
+    ctx.drawImage(g.layer(`leads|${st.at}`, (x) => {
+      const hh = base(g, x, `${st.n} / ${st.of}`);
+      title(g, x, st.line, hh + H * 0.17, H * 0.24, 'Poiret One', k.IVORY);
+      k.decoRule(x, W * 0.22, H * 0.62, W * 0.56, s);
+      if (st.next) {
+        stack(g, x, H * 0.67, [
+          ['NEXT', 'Josefin Sans', Math.round(s * 0.045), k.MUTED, s * 0.03],
+          [st.next, 'Josefin Sans', Math.round(s * 0.07), k.GOLD, s * 0.012],
+        ]);
+      }
+    }), 0, 0);
+    countdown(g, st, H - Math.round(s * 0.05));
+  }
+
+  RENDERERS.fiveclues = fiveclues;
+
   window.BarParty = {
     register(name, renderer) { RENDERERS[name] = renderer; },
     has(name) { return name in RENDERERS; },

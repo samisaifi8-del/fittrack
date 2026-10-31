@@ -1104,18 +1104,27 @@
   const TALL = 'Bebas Neue';
   const joinNames = (list) => (list || []).join('  ·  ');
 
-  // One half's club and names, drawn once: the abbreviation in tall capitals, names under it.
+  // A club's name in tall capitals as big as it fits (C PALACE, LIVERPOOL), or its short label
+  // (NFO) when the whole name would come out small. Measured with the tracking already set.
+  function clubName(k, x, t, w, h) {
+    const max = Math.round(h);
+    const full = t.name ? Math.min(max, k.fitSize(x, t.name, TALL, w, h)) : 0;
+    if (full >= max * 0.45) return { text: t.name, size: full };
+    return { text: t.abbr, size: Math.min(max, k.fitSize(x, t.abbr, TALL, w, h)) };
+  }
+
+  // One half's club and names, drawn once: the club in tall capitals, names under it.
   function clubBlock(g, t, names, w, h) {
     const { k, s } = g;
-    const key = `club|${t.abbr}|${t.color}|${joinNames(names)}|${w}|${h}`;
+    const key = `club|${t.name}|${t.color}|${t.ink}|${joinNames(names)}|${w}|${h}`;
     return g.sprite(key, w, h, (x) => {
       x.textAlign = 'left';
       x.textBaseline = 'alphabetic';
-      const size = Math.min(Math.round(h * 0.62), k.fitSize(x, t.abbr, TALL, w, h * 0.62));
+      k.tracking(x, s * 0.01);
+      const { text, size } = clubName(k, x, t, w, h * 0.62);
       x.font = k.font(TALL, size);
       x.fillStyle = t.ink;
-      k.tracking(x, s * 0.01);
-      x.fillText(t.abbr, 0, Math.round(size * 0.8));
+      x.fillText(text, 0, Math.round(size * 0.8));
       k.tracking(x, 0);
       const y = Math.round(size * 0.8 + s * 0.035);
       k.tracking(x, s * 0.006);
@@ -1266,15 +1275,16 @@
     const layer = g.layer(key, (x) => {
       x.fillStyle = t.color;
       x.fillRect(0, 0, W, H);
-      // the fan opens from the foot of the wall
-      k.sunburst(x, W / 2, H, H * 1.05, 26, k.GOLD, 0.2, 0);
+      // the fan opens from the foot of the wall (gold, or the club's ink where gold won't show)
+      const accent = t.accent || k.GOLD_LIGHT;
+      k.sunburst(x, W / 2, H, H * 1.05, 26, accent === k.GOLD_LIGHT ? k.GOLD : accent, 0.2, 0);
       x.fillStyle = k.GOLD;
       x.fillRect(0, H - 4, W, 4);
       x.textAlign = 'center';
       x.textBaseline = 'alphabetic';
       const gs = k.fitSize(x, 'GOAL', TALL, W * 0.88, H * 0.3);
       x.font = k.font(TALL, gs);
-      x.fillStyle = k.GOLD_LIGHT;
+      x.fillStyle = accent;
       k.tracking(x, s * 0.02);
       x.fillText('GOAL', W / 2 + s * 0.01, Math.round(H * 0.06 + gs * 0.78));
       k.tracking(x, s * 0.03);
@@ -1287,7 +1297,7 @@
     ctx.drawImage(layer, 0, 0);
     // the names land one by one, as big as they'll go
     const top = Math.round(H * 0.47), room = H * 0.47;
-    const list = names.length ? names : [t.abbr];
+    const list = names.length ? names : [t.name || t.abbr];
     const lh = Math.min(Math.round(s * 0.2), Math.floor(room / list.length));
     list.forEach((n, i) => {
       const at = 0.5 + i * 0.35;
@@ -1315,7 +1325,8 @@
     const layer = g.layer(`ft|${st.at}`, (x) => {
       x.fillStyle = t.color;
       x.fillRect(0, 0, W, H);
-      k.sunburst(x, W / 2, H, H * 1.05, 26, k.GOLD, 0.13, 0);
+      const accent = t.accent || k.GOLD_LIGHT;
+      k.sunburst(x, W / 2, H, H * 1.05, 26, accent === k.GOLD_LIGHT ? k.GOLD : accent, 0.13, 0);
       x.fillStyle = k.GOLD;
       x.fillRect(0, H - 4, W, 4);
       let y = Math.round(H * 0.07);
@@ -1323,20 +1334,20 @@
       x.textBaseline = 'top';
       k.tracking(x, s * 0.03);
       x.font = k.font('Josefin Sans', Math.round(s * 0.055));
-      x.fillStyle = k.GOLD_LIGHT;
+      x.fillStyle = accent;
       x.fillText('FULL TIME', W / 2 + s * 0.015, y);
       y += Math.round(s * 0.1);
-      const as = Math.min(Math.round(H * 0.26), k.fitSize(x, t.abbr, TALL, W * 0.8, H * 0.26));
+      k.tracking(x, s * 0.01);
+      const { text: club, size: as } = clubName(k, x, t, W * 0.8, H * 0.26);
       x.font = k.font(TALL, as);
       x.fillStyle = t.ink;
-      k.tracking(x, s * 0.01);
-      x.fillText(t.abbr, W / 2, y);
+      x.fillText(club, W / 2, y);
       y += Math.round(as * 0.86);
       // the winner's score first: 2 – 1, then who they beat
       const won = r.winner === 'home' ? [r.home, r.away] : [r.away, r.home];
       const line = `${won[0]} – ${won[1]}`;
       x.font = k.font(TALL, Math.round(s * 0.24));
-      x.fillStyle = k.GOLD_LIGHT;
+      x.fillStyle = accent;
       x.fillText(line, W / 2, y);
       y += Math.round(s * 0.25);
       k.tracking(x, s * 0.02);
@@ -1403,7 +1414,8 @@
         x.textAlign = 'left';
         x.fillText(p, cx, y + fs * 0.8);
         if (i !== 1) {
-          x.fillStyle = (i === 0 ? m.home : m.away).color;
+          const club = i === 0 ? m.home : m.away;
+          x.fillStyle = club.color === '#000000' ? club.ink : club.color; // a white club's half is black
           x.fillRect(Math.round(cx), Math.round(y + fs * 0.88), Math.round(widths[i]), 4);
         }
         cx += widths[i] + gapW;

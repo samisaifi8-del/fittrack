@@ -1551,12 +1551,15 @@ class Verdict(PartyGame):
 # ---------------------------------------------------------------- colours
 
 GOLD = "#b89a63"
+GOLD_LIGHT = "#d9c49a"
 IVORY = "#ece4d4"
 HOUSE_IVORY = "#c4beb2"  # ivory for a whole field: a little lower, so it reads as ivory, not white
 DIM = 0.6          # a club's colour at 60%, so a big field of it doesn't glare in a dim room
 NEAR_BLACK = 0.008  # a dimmed colour darker than this (relative luminance) looks like the wall is off
 CLASH = 70         # two dimmed colours closer than this (RGB distance) look like the same colour
 INK_DARK = 0.2     # on a field brighter than this, type is black instead of ivory
+PALE = (0.7, 0.4)  # a club colour at least this bright and at most this saturated is white or a pale tint
+SHORT_MAX = 6      # ESPN's short name (SPURS, BAYERN) is the club's label on the wall up to this long
 
 
 def _rgb(c):
@@ -1575,6 +1578,25 @@ def luminance(c):
 def ink(c):
     """Type on a field of colour c: ivory, or black on a light one (a white club's grey)."""
     return "#000000" if luminance(c) > INK_DARK else IVORY
+
+
+def pale(c):
+    """White or a pale tint (Spurs, Fulham, Man City's sky blue): dimmed, it would be a big flat grey,
+    so on the wall that club's half is black, with its colour as the type."""
+    hi, lo = max(_rgb(c)), min(_rgb(c))
+    return c != HOUSE_IVORY and hi >= PALE[0] * 255 and (hi - lo) / hi <= PALE[1]
+
+
+def contrast(a, b):
+    la, lb = sorted((luminance(a), luminance(b)))
+    return (lb + 0.05) / (la + 0.05)
+
+
+def club_label(t):
+    """A club's name in tight spots on the wall: ESPN's short name when it's short (SPURS, BETIS,
+    MÁLAGA), else its abbreviation. ESPN's abbreviations can mislead (Bayern's is MUN)."""
+    name = (t.get("name") or "").upper()
+    return name if name and len(name) <= SHORT_MAX else (t.get("abbr") or name[:4] or "?")
 
 
 def club_colours(home, away):
@@ -1938,9 +1960,16 @@ class Colours(PartyGame):
 
     def team(self, side, wall=True):
         t = self.match[side]
-        c = self.fields[0 if side == "home" else 1]
-        c = dim(c) if wall else c
-        return {"abbr": t.get("abbr", "?"), "name": (t.get("name") or t.get("abbr") or "").upper(), "color": c, "ink": ink(c)}
+        c, other = self.fields[:2] if side == "home" else self.fields[1::-1]
+        view = {"abbr": club_label(t), "name": (t.get("name") or t.get("abbr") or "").upper()}
+        if not wall:
+            return {**view, "color": c, "ink": ink(c)}
+        if pale(c) and not (side == "away" and pale(other)):  # both pale: only the home half goes black
+            light = max(_rgb(c)) - min(_rgb(c)) < 30
+            return {**view, "color": "#000000", "ink": IVORY if light else dim(c, 0.9), "accent": GOLD_LIGHT}
+        c = dim(c)
+        # gold type (GOAL, FULL TIME) only where it stands out from the field; else the field's ink
+        return {**view, "color": c, "ink": ink(c), "accent": GOLD_LIGHT if contrast(GOLD_LIGHT, c) >= 2.6 else ink(c)}
 
     def rule(self):
         """Where the gold rule is, from the top (0) to the bottom (1) of the wall."""

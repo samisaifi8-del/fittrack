@@ -66,6 +66,27 @@ class ClubColours(unittest.TestCase):
         self.assertEqual((h, a, how), ("#144992", "#da020e", "espn"))
         self.assertEqual(partygames.dim("#da020e"), "#830108")  # 60% of each channel
 
+    def test_labels(self):
+        self.assertEqual(partygames.club_label(team("MUN", "Bayern", "#dc052d", None)), "BAYERN")
+        self.assertEqual(partygames.club_label(team("MCF", "Málaga", "#b9e6f2", None)), "MÁLAGA")
+        self.assertEqual(partygames.club_label(team("NFO", "Nottm Forest", "#c8102e", None)), "NFO")
+        self.assertEqual(partygames.club_label(team("?", "", None, None)), "?")
+
+    def test_a_white_club_is_black_on_the_wall(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        g = make_hub(tmp.name).party
+        g.fields = ("#ffffff", "#0202fb", "espn")  # Spurs v Palace
+        spurs, palace = g.team("home"), g.team("away")
+        self.assertEqual((spurs["color"], spurs["ink"], spurs["accent"]), ("#000000", partygames.IVORY, partygames.GOLD_LIGHT))
+        self.assertEqual((palace["color"], palace["accent"]), ("#010197", partygames.GOLD_LIGHT))
+        self.assertEqual(g.team("home", False)["color"], "#ffffff")  # phones keep the real colour
+        g.fields = ("#99c5ea", "#ffffff", "espn")  # both pale: only the home half goes black
+        self.assertEqual((g.team("home")["color"], g.team("home")["ink"]), ("#000000", partygames.dim("#99c5ea", 0.9)))
+        self.assertEqual(g.team("away")["color"], "#999999")
+        g.fields = ("#ffcd00", "#0202fb", "espn")  # gold type wouldn't show on Leeds' yellow
+        self.assertEqual(g.team("home")["accent"], "#000000")
+
     def test_near_black_gives_way_to_the_alternate(self):
         h, a, how = partygames.club_colours(team("AAA", "", "#000000", "#c8102e"), team("BBB", "", "#0606fa", "#005f60"))
         self.assertEqual((h, a, how), ("#c8102e", "#0606fa", "alternate"))

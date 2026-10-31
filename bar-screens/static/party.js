@@ -40,6 +40,7 @@
     const k = kit();
     const g = {
       k, W, H, s: Math.min(W, H), ctx: canvas.getContext('2d'), st: null, roster: { players: [], joinUrl: '' },
+      bar: (opts.barName || 'THE BASEMENT').toUpperCase(),
       offset: 0, layers: new Map(), sprites: new Map(),
     };
     g.off = opts.bus.on((m) => {
@@ -70,11 +71,12 @@
     return g;
   }
 
-  // The black wall with its gold hairline frame and the small header, e.g. CLOSEST WINS · 3 / 6.
-  function base(g, x, label) {
+  // The black wall with its gold hairline frame and the small header, e.g. CLOSEST WINS · 3 / 6
+  // (or another name, e.g. the bar's over a lobby whose title says the game already).
+  function base(g, x, label, name) {
     const { k, W, H } = g;
     k.backdrop(x, W, H);
-    const theme = { name: (g.st && g.st.title || 'GAMES').toUpperCase() };
+    const theme = { name: name || (g.st && g.st.title || 'GAMES').toUpperCase() };
     return k.header(x, W, H, theme, label);
   }
 
@@ -177,30 +179,44 @@
   // The lobby: the game's name, how it works, how to join and who's in.
   function lobby(g, st) {
     const { ctx, k, W, H, s } = g;
-    const names = (g.roster.players || []).map((p) => p.name).join('  ·  ');
-    const key = `lobby|${st.game}|${(st.lines || []).join('|')}|${g.roster.joinUrl}|${names}|${st.note || ''}`;
+    const list = (g.roster.players || []).map((p) => p.name);
+    const key = `lobby|${st.game}|${(st.lines || []).join('|')}|${g.roster.joinUrl}|${list.join(',')}|${st.note || ''}`;
     ctx.drawImage(g.layer(key, (x) => {
-      const hh = base(g, x);
+      const hh = base(g, x, null, g.bar);
       let y = title(g, x, st.title.toUpperCase(), hh + H * 0.05, H * 0.27, 'Poiret One');
       y += s * 0.04;
       k.decoRule(x, W * 0.22, y, W * 0.56, s);
-      y += s * 0.08;
+      const few = (st.lines || []).length < 3; // two lines (Colours): spread out, no empty band
+      y += s * (few ? 0.12 : 0.08);
       y = stack(g, x, y, (st.lines || []).map((l) => [l, 'Josefin Sans', Math.round(s * 0.058), k.IVORY, s * 0.008]));
-      y = Math.max(y + s * 0.05, H * 0.66);
-      y = stack(g, x, y, [
-        ['JOIN ON YOUR PHONE', 'Josefin Sans', Math.round(s * 0.047), k.MUTED, s * 0.01],
-        [(g.roster.joinUrl || 'THE BAR WI-FI, /PLAY').toUpperCase(), 'Josefin Sans', Math.round(s * 0.058), k.GOLD, s * 0.004],
-      ]);
+      y = Math.max(y + s * (few ? 0.12 : 0.05), H * (few ? 0.6 : 0.66));
+      y = stack(g, x, y, [['JOIN ON YOUR PHONE', 'Josefin Sans', Math.round(s * 0.047), k.MUTED, s * 0.01]]);
+      y = stack(g, x, y, joinLines(g, x, (g.roster.joinUrl || 'THE BAR WI-FI/PLAY').toUpperCase()));
       y += s * 0.03;
       if (st.note) stack(g, x, y, [[st.note.toUpperCase(), 'Josefin Sans', Math.round(s * 0.047), k.GOLD_LIGHT]]);
-      else if (names) {
-        const b = k.fitWrapped(x, names, 'Josefin Sans', W * 0.84, H - y - s * 0.07, 3, 1.25);
-        const px = Math.min(b.size, Math.round(s * 0.055));
-        x.font = k.font('Josefin Sans', px);
+      else if (list.length) {
+        // names only break between names, so a separator never hangs at the end of a line
+        x.textAlign = 'center';
+        x.textBaseline = 'top';
+        const b = nameLines(g, x, list, W * 0.84, H - y - s * 0.07, 3, Math.round(s * 0.055));
+        x.font = k.font('Josefin Sans', b.size);
         x.fillStyle = k.IVORY;
-        b.lines.forEach((l, i) => x.fillText(l, W / 2, y + i * px * 1.25));
+        b.lines.forEach((l, i) => x.fillText(l, W / 2, y + i * b.size * 1.2));
       } else stack(g, x, y, [['NOBODY HAS JOINED YET', 'Josefin Sans', Math.round(s * 0.047), k.MUTED]]);
     }), 0, 0);
+  }
+
+  // The join link, big enough to read across the room: one line, or the host over the path
+  // when one line would come out small (BASEMENT.LOCAL / /PLAY).
+  function joinLines(g, x, url) {
+    const { k, s } = g;
+    const big = Math.round(s * 0.075), track = s * 0.004;
+    k.tracking(x, track);
+    const one = k.fitSize(x, url, 'Josefin Sans', g.W * 0.86, big);
+    k.tracking(x, 0);
+    const cut = url.indexOf('/');
+    if (one >= s * 0.06 || cut < 1) return [[url, 'Josefin Sans', Math.max(one, Math.round(s * 0.058)), k.GOLD, track]];
+    return [[url.slice(0, cut), 'Josefin Sans', big, k.GOLD, track], [url.slice(cut), 'Josefin Sans', big, k.GOLD, track]];
   }
 
   // Between rounds: the round number, what kind of round it is, and who leads the night.
@@ -1427,7 +1443,7 @@
       const label = !calls.length ? 'NO CALLS TONIGHT' : !called.length ? 'NOBODY CALLED IT' : r.exact ? `CALLED IT  ${r.home}-${r.away}` : 'RIGHT RESULT';
       y = stack(g, x, y, [[label, 'Josefin Sans', Math.round(s * 0.042), k.MUTED, s * 0.02]]) - s * 0.01;
       if (called.length) {
-        const b = k.fitWrapped(x, joinNames(called), 'Josefin Sans', W * 0.84, s * 0.16, 2, 1.2);
+        const b = nameLines(g, x, called, W * 0.84, s * 0.16, 2, Math.round(s * 0.075));
         const px = Math.min(b.size, Math.round(s * 0.075));
         x.font = k.font('Josefin Sans', px);
         x.fillStyle = k.GOLD_LIGHT;

@@ -16,9 +16,9 @@
   'use strict';
 
   const kit = () => window.BarParty.kit;
-  const NAME_MAX = 8; // letters of a name the roster shows
 
-  // A bulb, lit (gold with a small ivory glint and a faint halo) or out (dark glass).
+  // A bulb, lit (gold with a small ivory glint and a faint halo) or out (a hollow gold ring, so
+  // it still reads on black from across the room).
   function bulb(g, r, state) {
     const { k } = g;
     return g.sprite(`fl-bulb|${r}|${state}`, r * 2 + 6, r * 2 + 6, (x) => {
@@ -27,7 +27,13 @@
         x.fillStyle = k.rgba(k.GOLD, 0.28);
         x.beginPath(); x.arc(m, m, r + 2, 0, Math.PI * 2); x.fill();
       }
-      x.fillStyle = state === 'on' ? k.GOLD_LIGHT : state === 'flash' ? k.IVORY : k.rgba(k.GOLD, 0.32);
+      if (state === 'off') {
+        x.strokeStyle = k.rgba(k.GOLD, 0.75);
+        x.lineWidth = 2;
+        x.beginPath(); x.arc(m, m, r - 1, 0, Math.PI * 2); x.stroke();
+        return;
+      }
+      x.fillStyle = state === 'on' ? k.GOLD_LIGHT : k.IVORY;
       x.beginPath(); x.arc(m, m, r, 0, Math.PI * 2); x.fill();
       if (state === 'on' && r >= 4) {
         x.fillStyle = k.IVORY;
@@ -72,8 +78,7 @@
       players.forEach((p, i) => {
         const cy = Math.round(L.top + L.rowH * i + L.rowH / 2);
         const dim = marked && !have.has(p.slot);
-        const name = p.name.slice(0, NAME_MAX);
-        x.globalAlpha = dim ? 0.3 : 1;
+        x.globalAlpha = dim ? 0.55 : 1;
         // the lock dot: an empty ring until they've answered (only while answering), a gold
         // bar by the names that have (in a reveal)
         const dr = Math.max(3, Math.round(L.rowH * 0.17));
@@ -86,7 +91,15 @@
           x.fillRect(L.dotX - 3, Math.round(cy - L.rowH * 0.32), 4, Math.round(L.rowH * 0.64));
         }
         k.tracking(x, s * 0.004);
-        x.font = k.font('Josefin Sans', Math.min(Math.round(L.rowH * 0.66), k.fitSize(x, name, 'Josefin Sans', L.nameW, L.rowH * 0.66)));
+        // the whole name as big as the row allows; a long two-word one that would come out
+        // small goes by its first word (MOHAMMED ALI -> MOHAMMED)
+        const full = Math.round(L.rowH * 0.66);
+        let name = p.name, size = Math.min(full, k.fitSize(x, name, 'Josefin Sans', L.nameW, full));
+        if (size < full * 0.8 && name.includes(' ')) {
+          name = name.split(' ')[0];
+          size = Math.min(full, k.fitSize(x, name, 'Josefin Sans', L.nameW, full));
+        }
+        x.font = k.font('Josefin Sans', size);
         x.textAlign = 'left';
         x.textBaseline = 'middle';
         x.fillStyle = lit[i] > 0 || (marked && have.has(p.slot)) ? p.color : k.MUTED;

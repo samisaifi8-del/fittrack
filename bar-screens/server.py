@@ -1529,6 +1529,13 @@ def qr_matrix(text):
     return rows
 
 
+def join_link(join_url):
+    """The games' join address as a phone camera opens it: the hub keeps it without a scheme."""
+    if not join_url:
+        return ""
+    return join_url if re.match(r"https?://", join_url) else "http://" + join_url
+
+
 def qr_svg(rows, margin=4):
     n = len(rows) + margin * 2
     path = "".join(f"M{x + margin} {y + margin}h1v1h-1z" for y, row in enumerate(rows) for x, v in enumerate(row) if v == "1")
@@ -2365,13 +2372,13 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json(200, {"url": url, "rows": rows})
                 if not rows:
                     return self._json(404, {"error": "No QR code: the secure link isn't ready, or qrencode isn't installed."})
-                body = qr_svg(rows).encode()
-                self.send_response(200)
-                self.send_header("Content-Type", "image/svg+xml")
-                self.send_header("Content-Length", str(len(body)))
-                self.send_header("Cache-Control", "no-store")
-                self.end_headers()
-                return self.wfile.write(body)
+                return self._svg(qr_svg(rows))
+            if path == "/api/game/qr.svg":
+                # the games' join page (/play on the Wi-Fi), for the control page's Invite sheet
+                rows = qr_matrix(join_link(self.hub.join_url))
+                if not rows:
+                    return self._json(404, {"error": "No QR code: qrencode isn't installed."})
+                return self._svg(qr_svg(rows))
 
         m = re.fullmatch(r"/api/slides/([0-9a-f]+)", path)
         if m and method == "PATCH":
@@ -2440,6 +2447,15 @@ class Handler(BaseHTTPRequestHandler):
             store.update_settings(self._read_json())
             return self._json(200, {"ok": True})
         return self._json(404, {"error": "Not found."})
+
+    def _svg(self, text):
+        body = text.encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "image/svg+xml")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        return self.wfile.write(body)
 
     def _refuse(self):
         """403 for anything but the camera page, when the request came in through the tunnel."""

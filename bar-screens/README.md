@@ -55,7 +55,7 @@ The Basement's TB6 (Taurus T6) is set up as one **256 × 384** screen, so Bar Sc
 with exactly that: 256 × 384 LED pixels, taken 1:1 from the top-left corner of the HDMI picture.
 If the TB6 shows the HDMI picture pixel for pixel, that's already right.
 
-To check, open **Screen setup** at the bottom of the control page with the test pattern on:
+To check, open **Settings › Screens › Left wall** on the control page with the test pattern on:
 
 - **The green border sits on the wall's edges and the circle looks round?** You're done. Turn
   the test pattern off.
@@ -65,12 +65,20 @@ To check, open **Screen setup** at the bottom of the control page with the test 
   area the wall shows (x, y, width, height).
 
 Both walls almost certainly show the same picture (one TB6, one 256 × 384 screen). If they do,
-leave **Right screen** switched off. If the test pattern shows different parts on each wall,
-switch it on and give it its own area.
+leave **Right wall** switched off. If the test pattern shows different parts on each wall,
+switch it on and give it its own area (**Right wall area**).
 
 ## 4. Use it
 
-The control page works like a TV remote. Pick a channel for each wall:
+The control page works like a TV remote, with four tabs along the bottom: **Walls** (the
+channels), **Bar** (The House Pour), **Games** and **Settings**. **Message** and **Blackout** are
+one tap away on every tab, and guests' drink requests and Verdict prompts slide up above them
+(**Make it** / **Not now**, **Approve** / **Reject**; the tray at the top right lists them all).
+Opening a tab never changes the walls: only a channel, or a "Put … up" button, does.
+
+On **Walls**, the two small drawings show what each wall has on, and the row under them holds the
+on-air channel's own settings. The **Both walls** pill picks which walls a channel acts on (left,
+right or both). The nine channels:
 
 | Channel | What it shows |
 | --- | --- |
@@ -79,34 +87,38 @@ The control page works like a TV remote. Pick a channel for each wall:
 | 3 · News | BBC headlines, one at a time, with a slow ticker of the rest. |
 | 4 · Weather | Now, the next few hours and the next few days for your town. |
 | 5 · Visuals | The Basement sign, a 1930s lift dial that settles on B, a deco clock, the city at dusk, champagne bubbles and deco fans. |
-| 6 · Games | Party games on the wall, with phones as the controllers. |
+| 6 · Games | Party games on the wall, with phones as the controllers (Colours and The Verdict included: the Games tab picks which). |
 | 7 · Basement Live | Guests' phone cameras on the wall, up to four, cut together automatically. |
 | 8 · Now Showing | Movie night: tonight's poster, a two-minute countdown, then the wall goes dark for the film. |
-| 9 · Colours | Match night: the wall takes sides in the two clubs' colours, and the room taps the goals in. |
-| 10 · The House Pour | Tonight's drinks as a 1930s hotel-bar card, and each drink you make, filling in its glass. |
-| 11 · The Verdict | Who's most likely to: everyone votes in secret on their phone, and the wall reads the verdict. |
+| 9 · The House Pour | Tonight's drinks as a 1930s hotel-bar card, and each drink you make, filling in its glass. |
 
-Set leagues, news section, your town, the visual style, the game and the bar's name under
-**Channel settings**. Scores, news and weather need the Pi to be online.
+Set leagues, news section, your town, the visual style and the bar's name under **Settings**
+(or from the row under the walls while that channel is on). Scores, news and weather need the Pi
+to be online.
 
-Your own content (channel 1):
+(Internally the server has eleven channel ids: Colours and The Verdict have their own, `colours`
+and `verdict`, which the remote shows as channel 6.)
 
-- **+ Photo or video:** pick from your phone. Photos are resized to each wall's exact pixel size
+Your own content (channel 1, under **Rotation**):
+
+- **Photo/video:** pick from your phone. Photos are resized to each wall's exact pixel size
   on the Pi, with clean, sharp edges. Phone videos are converted on the Pi first, which can take a
   minute.
-- **+ Text / + Clock:** opens an editor with a live preview. Text sizes itself to fill the wall.
-- **In rotation:** items take turns on channel 1. Set each one's time in its editor.
+- **Text / Clock:** opens an editor with a live preview. Text sizes itself to fill the wall.
+- **The switch on each piece:** puts it in the rotation; pieces take turns on channel 1. Set each
+  one's time in its editor.
 - **Show now:** pins one item over any channel until you press **Back to rotation** or
   **Back to channel**.
-- **Quick message:** type it and it's on the wall straight away.
+- **Message:** type it and it's on the walls straight away, held until you take it down (it
+  isn't kept in the rotation).
 - **Brightness** and **Blackout** apply to everything.
 
 ## Games
 
-Put a wall on channel 6 and pick a game. Guests open **http://<pi-name>.local/play** on their
-phones (same Wi-Fi), type a name and join. No app needed. Colours and The Verdict are party games
-too, with channels of their own: tune a wall to 9 or 11 and that game starts, and picking either
-from a phone or **Channel settings** moves a games wall there (6 goes back to the last game).
+Pick a game on the **Games** tab (**Change game**) and press **Put … up**. Guests open **http://<pi-name>.local/play** on their
+phones (same Wi-Fi), type a name and join. No app needed. Each game's own settings sit
+on that tab, with who's in the room, **Invite** (a QR code for the join page) and **Sips**.
+**End game** (two taps) puts the walls back on The Bar.
 
 - **Brick Breaker:** slide on the phone to move the paddle. Gold bricks take two hits; catch the
   W, M and S capsules for a wide paddle, extra balls or a slower ball.
@@ -140,14 +152,15 @@ from a phone or **Channel settings** moves a games wall there (6 goes back to th
   **Dubai life** or **Cheeky** (the ceiling: nothing about bodies, money or exes). Players who are
   out keep answering for fun, and someone arriving mid-game comes in level with whoever has the
   fewest bulbs.
-- **The Verdict (channel 11):** a prompt about the room goes up ("WHO'S MOST LIKELY TO LOSE
+- **The Verdict:** a prompt about the room goes up ("WHO'S MOST LIKELY TO LOSE
   THEIR PHONE TONIGHT") and everyone votes in secret on their phone for someone who's there
   (never themselves). The wall reads the verdict like a jury: a gold bar per name rises a vote at a
   time, the light ones stop first, and the top name comes up in a deco frame, **GUILTY** with
   its votes, or **HUNG JURY** on a tie. Between prompts a quiet card shows the night's most
   convicted. Needs three players. Voting closes after 30 seconds, or as soon as everyone's in.
-- **Colours (channel 9):** for match nights. Under **Channel settings**, pick tonight's match from
-  the list (football from ESPN, tonight and tomorrow); that pins it and puts the wall on 9. The wall
+- **Colours:** for match nights. On the Games tab, open **Tonight's match** and pick it from
+  the list (football from ESPN, tonight and tomorrow); that pins it and picks Colours (a games
+  wall moves to it). The wall
   splits into the two clubs' colours, home on top and away below (darkened for a dim room; a
   near-black or clashing colour falls back to the club's second colour, then to gold against
   ivory), with a gold band between them. Guests pick **home**, **away** or **neutral** on their
@@ -164,24 +177,24 @@ from a phone or **Channel settings** moves a games wall there (6 goes back to th
   forfeit you set (default "LOSER POURS"). If ESPN can't be reached, the room's score stands 20
   minutes after Full time. The wall never shows ESPN's live score.
 
-**Your own WHAT YEAR? questions.** Under **Channel settings** on the control page, add one song or
+**Your own WHAT YEAR? questions.** With Closest Wins picked, open **What Year? questions** on the
+Games tab and add one song or
 film per line as `artist - title - year` (for example `Daft Punk - One More Time - 2000`). Each
 line becomes a question, and yours go into WHAT YEAR? rounds first. They're saved in
 `data/years.txt`, which you can also edit by hand.
 
-**House prompts for Five Lights.** Under **Channel settings**, add your group's own prompts, one
+**House prompts for Five Lights.** With Five Lights picked, open **House prompts** and add your group's own prompts, one
 per line, the part after "Never have I ever" (40 letters at most). About one prompt in four is
 one of yours. They're saved in `data/house.txt`.
 
-**The Verdict, for the host.** When The Verdict is the game, the control page shows a card for
-it: the deck (**Pre-party** or **Game night**, 80 prompts each, no repeats until a deck runs out),
-the pace (**Every 2 min**, a new prompt two minutes after the last went up, or **By hand**, when
-anyone taps **Next verdict** on their phone) and **Next prompt**, which also skips the one on the
-wall. Guests can **Write your own** on their phone between votes; it shows on the card with
-their name, and nothing of theirs reaches the wall until you **Approve** it (**Bin** drops it
+**The Verdict, for the host.** When The Verdict is the game, the Games tab shows the deck (**Pre-party** or **Game night**, 80 prompts each, no repeats until a deck runs out),
+the pace (**Auto**, a new prompt two minutes after the last went up, or **By hand**, when
+anyone taps **Next verdict** on their phone) and, while it plays, **Next prompt** (or **Skip**) in the dock, which also skips the one on
+the wall. Guests can **Write your own** on their phone between votes; it slides up on the remote with
+their name, and nothing of theirs reaches the wall until you **Approve** it (**Reject** drops it
 quietly). Approved ones go up next, marked FROM THE ROOM, without a name.
 
-**Sips.** Off unless you switch on **Sips tonight** (Channel settings); it switches itself off at
+**Sips.** Off unless you switch on **Sips** (Games tab or Settings); it switches itself off at
 6 am. While it's on, phones ask "Drinking tonight?" when they join (changeable on the phone any
 time). Only people who said yes are ever given a sip, it's always one sip of anything (water
 counts), and nothing escalates. The wall never shows who is or isn't drinking: a sip shows there
@@ -202,14 +215,14 @@ refereed by the Pi rather than the wall, so answers stay secret, scores are fair
 | `load_deck`, `UsedItems` | `partygames.py` | Decks from `static/content/<name>.json`; no repeats until a pool runs out, saved across restarts |
 | Phone input | `GameHub.input` | `pick`, `number`, `lock`, `buzz`, `yesno`, `toggle`, `next`, `end`, `pour`, `suggest`, `tap {n}`, `call`, `goal`, `undo`, `fulltime`, `resume` (plus the arcade ones), checked before a game sees them |
 | Phone pads | `static/play.html` | `wait`, `start` (with an optional row of settings), `number` (dial with hold-to-speed-up, drag strip, year mode), `pick` (2 x 2 or a list of names), `buzz`, `yesno`, `toggle`, `result`, `next`, `mash` (one huge button, taps batched), `call` and `goal` (Colours), plus a countdown bar, sip notes, the pour list and a box for writing your own prompt |
-| Host controls | `PartyGame.host()`, `host_action()` | A game's own card on the control page (`state.party`), and `POST /api/game/host` for its buttons (The Verdict's approvals) |
+| Host controls | `PartyGame.host()`, `host_action()` | A game's own block on the remote's Games tab (`state.party`), and `POST /api/game/host` for its buttons (The Verdict's approvals) |
 | Live data | `GameHub.poll` | A game with `wants(now)` / `fetched(ask, got)` gets internet data (Colours: ESPN) fetched off the game's lock every few seconds |
 | Wall screens | `static/party.js` | Lobby, between-rounds card, podium, lock dots, countdown bar, sip drop, cached layers |
 
 The top of `partygames.py` and `static/party.js` walks through adding a game step by step;
 `ClosestWins` is the worked example (`FiveClues` a second one, with buzzing), and `test_party.py`
 shows how to test one without a wall. `FiveLights` is a third; its wall lives in its own file
-(`static/fivelights.js`). `Verdict` is the one with a host card on the control page, and
+(`static/fivelights.js`). `Verdict` is the one with host controls on the remote, and
 `test_colours.py` tests Colours with a stand-in for ESPN.
 
 ## Basement Live
@@ -223,7 +236,8 @@ more, each takes a turn on the whole wall, with the occasional two stacked and, 
 everyone at once. Someone new gets a short curtain reveal with their name. Each picture has a gold
 frame and a small nameplate.
 
-The same link and QR code are on the control page under **Go live**, with Share and Copy buttons.
+The same QR code is on the control page (tap channel 7, or the row under the walls), with Share
+and Copy buttons.
 
 **The secure link.** Phones only allow the camera on a secure (https) link, so the installer adds
 a Cloudflare quick tunnel (free, no account): the `bar-screens-tunnel` service. It gives the Pi an
@@ -240,10 +254,10 @@ server to find the way); the server only passes the connection details along.
 
 ## Now Showing
 
-Movie night on the walls. Under **Now Showing** on the control page, type the film and pick it
+Movie night on the walls. Tap channel 8 (**Now Showing**) on the control page, type the film and pick it
 from the top five matches: its poster goes on the wall in a thin gold frame, with the title, year
-and running time, turning every 20 seconds to a type-only card ("The Basement presents"). Then
-four buttons run the night:
+and running time, turning every 20 seconds to a type-only card ("The Basement presents"). Then the
+same sheet runs the night:
 
 - **Start the feature:** a two-minute countdown, the gold curtains close, and the wall fades down
   to a faint gold line at about 4% for the whole film.
@@ -264,25 +278,25 @@ Wikipedia only has a still, or nothing; the wall then shows the type-only card, 
 look that way.
 ## The House Pour
 
-Channel 10 is the bar's card: **THE HOUSE POUR**, then three of tonight's drinks at a time in big
+Channel 9 is the bar's card: **THE HOUSE POUR**, then three of tonight's drinks at a time in big
 type, each beside a small gold glass, turning the page every few seconds. Ask what there is, point
 at the wall.
 
-When you make someone a drink, use **The House Pour** panel on the control page: tap their name (or
-type it), tap the drink and press **Making**. The wall draws the drink's glass in gold (coupe, rocks,
+When you make someone a drink, use the **Bar** tab on the control page: tap their name (or
+**Someone else**), tap the drink and press **Pour**. The wall draws the drink's glass in gold (coupe, rocks,
 highball, flute, martini, mug or wine glass) and fills it over about eight seconds in the drink's
 own colour, with its float or foam, bubbles, ice and garnish, under **FOR SARAH** and above
 **A NEGRONI**. Press **Served** for a short gold sunburst; a few seconds later the wall goes back to
 the menu. One drink at a time, and nothing is counted.
 
-If the wall is on channel 1 to 5 when you press Making, the drink takes it over and the wall goes
+If the wall is on channel 1 to 5 when you press Pour, the drink takes it over and the wall goes
 back to that channel afterwards. A game or Basement Live is never interrupted.
 
-**Tonight's menu** (in the same panel) starts with eight classics and mocktails ticked. Tick from
+**Tonight's menu** (**Change** on the Bar tab) starts with eight classics and mocktails ticked. Tick from
 26 seeded drinks (`static/content/drinks.json`) or add your own with a name, a glass and a colour.
 
 **Guests can ask from their phones** is off unless you switch it on. Then guests on
-**http://<pi-name>.local/play** see tonight's menu and can ask for a drink; it shows on your panel
+**http://<pi-name>.local/play** see tonight's menu and can ask for a drink; it slides up on the remote
 with **Make it** and **Not now**, and their phone tells them how it's going. Nothing goes on the
 wall without you.
 
@@ -290,7 +304,7 @@ wall without you.
 
 On an iPhone, open **Control Centre**, tap **Screen Mirroring** and choose **The Basement**. Your
 phone's screen shows on the wall (fitted inside it) until you stop mirroring, then the wall goes
-back to its channel. Choose which wall and how it fits under **Live from your phone** on the
+back to its channel. Choose which wall and how it fits under **Settings › AirPlay** on the
 control page. This uses UxPlay, an open-source AirPlay receiver that the installer adds.
 
 ## Sharing the Pi with another project

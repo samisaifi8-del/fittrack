@@ -586,12 +586,14 @@
     },
   };
 
-  // Where the clues sit: five fixed rows, so a new clue never moves the old ones.
-  function clueRows(g) {
+  // Where the clues sit: the older ones small, in fixed rows from the top (a new clue never
+  // moves them), and the newest as big as it fits, two lines at most, in the room under them.
+  function clueRows(g, k) {
     const { H, s } = g;
     const top = Math.round(H * 0.29), bottom = Math.round(H * 0.84);
-    const rowH = (bottom - top) / 5;
-    return { top, rowH, size: Math.round(Math.min(rowH * 0.62, s * 0.088)) };
+    const size = Math.round(s * 0.05), rowH = Math.round(size * 1.45);
+    const newTop = top + rowH * (k - 1) + (k > 1 ? Math.round(s * 0.03) : 0);
+    return { top, rowH, size, newTop, newH: bottom - newTop };
   }
 
   function clueText(g, x, text, y, size, color) {
@@ -611,10 +613,9 @@
     return g.layer(`clues|${st.card}|${st.k}`, (x) => {
       const hh = base(g, x, `${st.n} / ${st.of}`);
       const P = Math.round(s * 0.2), px = W - Math.round(s * 0.06) - P, py = hh + 2;
-      // the value: a black numeral on a solid gold plate, with a stepped deco top
+      // the value: a black numeral on a solid gold plate
       x.fillStyle = k.GOLD;
       x.fillRect(px, py, P, P);
-      x.fillRect(px + Math.round(P * 0.2), py - 4, Math.round(P * 0.6), 2);
       x.fillStyle = '#000';
       x.textAlign = 'center';
       x.textBaseline = 'middle';
@@ -634,26 +635,37 @@
       x.fillText(`CLUE ${st.k} OF 5`, left, py + P * 0.95);
       k.tracking(x, 0);
       k.decoRule(x, W * 0.1, Math.round(H * 0.255), W * 0.8, s);
-      const R = clueRows(g);
-      (st.clues || []).slice(0, -1).forEach((c, i) => clueText(g, x, c, R.top + R.rowH * (i + 0.5), R.size, k.rgba(k.IVORY, 0.5)));
+      const R = clueRows(g, st.k);
+      (st.clues || []).slice(0, -1).forEach((c, i) => clueText(g, x, c, R.top + R.rowH * (i + 0.5), R.size, k.rgba(k.IVORY, 0.6)));
     });
   }
 
   function newestClue(g, st) {
     const { k, W } = g;
-    const R = clueRows(g);
+    const R = clueRows(g, st.k);
     const text = (st.clues || [])[st.k - 1] || '';
-    return g.sprite(`clue|${st.card}|${st.k}`, W, Math.ceil(R.rowH), (x) => clueText(g, x, text, R.rowH / 2, R.size, k.GOLD_LIGHT));
+    return g.sprite(`clue|${st.card}|${st.k}`, W, Math.ceil(R.newH), (x) => {
+      k.tracking(x, g.s * 0.006);
+      const b = k.fitWrapped(x, text, 'Josefin Sans', W * 0.88, Math.min(R.newH, g.s * 0.3), 2, 1.12);
+      const px = Math.min(b.size, Math.round(g.s * 0.13));
+      x.font = k.font('Josefin Sans', px);
+      x.fillStyle = k.GOLD_LIGHT;
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      const y0 = R.newH / 2 - ((b.lines.length - 1) * px * 1.12) / 2;
+      b.lines.forEach((l, i) => x.fillText(l, W / 2, y0 + i * px * 1.12));
+      k.tracking(x, 0);
+    });
   }
 
   function clueScreen(g, st, e) {
     const { ctx, H, s } = g;
-    const R = clueRows(g);
+    const R = clueRows(g, st.k);
     ctx.drawImage(cardLayer(g, st), 0, 0);
-    // the newest clue slides up into its row as it fades in
+    // the newest clue slides up into its place as it fades in
     const u = easeOut(e / 0.35);
     ctx.globalAlpha = u;
-    ctx.drawImage(newestClue(g, st), 0, Math.round(R.top + R.rowH * (st.k - 1) + (1 - u) * s * 0.04));
+    ctx.drawImage(newestClue(g, st), 0, Math.round(R.newTop + (1 - u) * s * 0.04));
     ctx.globalAlpha = 1;
     countdown(g, st, Math.round(H * 0.87));
     lockDots(g, st.locks, Math.round(H * 0.935));
@@ -664,9 +676,9 @@
     const { ctx, W, H } = g;
     const a = Math.min(1, 0.55 + e / 0.25 * 0.45);
     if (a < 1) {
-      const R = clueRows(g);
+      const R = clueRows(g, st.k);
       ctx.drawImage(cardLayer(g, st), 0, 0);
-      ctx.drawImage(newestClue(g, st), 0, Math.round(R.top + R.rowH * (st.k - 1)));
+      ctx.drawImage(newestClue(g, st), 0, R.newTop);
     }
     ctx.fillStyle = `rgba(0,0,0,${a})`;
     ctx.fillRect(0, 0, W, H);

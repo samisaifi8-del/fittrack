@@ -140,6 +140,19 @@ input[type="text"] {
 .yesno button { border: 1px solid var(--gold); border-radius: 6px; background: var(--surface); font: 400 40px/1 var(--f-display); letter-spacing: 0.08em; cursor: pointer; }
 .yesno button[aria-pressed="true"] { background: var(--gold); color: var(--gold-ink); }
 .yesno.locked button:not([aria-pressed="true"]) { opacity: 0.35; }
+/* pair: I HAVE in gold, NEVER as an ivory outline; once one is chosen the other dims */
+.yesno.pair button[data-yes="1"] { color: var(--gold); }
+.yesno.pair button[data-yes="0"] { border-color: var(--fg); }
+.yesno.pair button[data-yes="0"][aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.yesno.pair button[data-yes="1"][aria-pressed="true"] { color: var(--gold-ink); }
+.yesno.pair.chosen button[aria-pressed="false"] { opacity: 0.45; }
+.ask-lead { margin: 0; text-align: center; font: 700 13px/1.2 var(--f-label); letter-spacing: 0.26em; text-transform: uppercase; color: var(--gold); }
+.ask-prompt { margin: 0; text-align: center; font: 600 clamp(28px, 9vw, 40px)/1.1 var(--f-body); letter-spacing: 0.02em; text-transform: uppercase; }
+.choice-row { display: grid; gap: 8px; }
+.choice-row .seg { grid-template-columns: repeat(3, 1fr); }
+.lights { display: flex; justify-content: center; gap: 10px; }
+.lights i { width: 18px; height: 18px; border-radius: 50%; background: #3a3020; }
+.lights i.on { background: var(--gold); box-shadow: 0 0 10px rgba(197,164,103,0.6); }
 .toggle { width: min(70vw, 300px); aspect-ratio: 1; margin: 0 auto; border-radius: 8px; border: 2px solid var(--gold); background: var(--surface); color: var(--gold); font: 400 46px/1 var(--f-display); letter-spacing: 0.08em; cursor: pointer; }
 .toggle small { display: block; margin-top: 12px; font: 700 13px/1 var(--f-label); letter-spacing: 0.24em; }
 .toggle[aria-pressed="true"] { background: var(--gold); color: var(--gold-ink); }
@@ -365,7 +378,8 @@ input[type="text"] {
 
   // Party games are refereed by the Pi, which tells each phone which pad to show (partygames.py,
   // PADS). Each builder fills the pad and returns an update function for changes that don't need
-  // a rebuild (a lock confirmed, a choice made). Phones never show the question: eyes on the wall.
+  // a rebuild (a lock confirmed, a choice made). Phones rarely show the question: eyes on the
+  // wall. Five Lights is the exception: its yes/no is about you, so the prompt sits above it.
   const tap = (el, fn) => el.addEventListener('pointerdown', (e) => { e.preventDefault(); fn(e); if (navigator.vibrate) navigator.vibrate(12); });
   const serverNow = () => Date.now() / 1000 + clockOffset;
   const fmtNum = (v, year) => (year ? String(Math.round(v)) : Math.round(v).toLocaleString('en-GB'));
@@ -376,16 +390,24 @@ input[type="text"] {
     wait(el, v) {
       el.innerHTML = `<div class="pp-center"><p class="pp-big">${esc(v.big || '')}</p><p class="pp-text">${esc(v.text || '')}</p></div>`;
     },
+    // A lobby. choices: a row of settings above Start (Five Lights' tiers); a tap sends pick {id}.
     start(el, v) {
-      el.innerHTML = `<div class="pp-center"><p class="pp-big">${esc(v.big || '')}</p><p class="pp-text">${esc(v.text || '')}</p></div><button type="button" class="btn primary pp-go">${esc(v.label || 'Start')}</button>`;
+      const choices = v.choices || [];
+      el.innerHTML = `<div class="pp-center"><p class="pp-big">${esc(v.big || '')}</p><p class="pp-text">${esc(v.text || '')}</p></div>${choices.length
+        ? `<div class="choice-row"><p class="pp-title">${esc(v.choicesTitle || '')}</p><div class="seg" role="group">${choices.map((c) =>
+          `<button type="button" data-id="${esc(c.id)}" aria-pressed="false">${esc(c.label)}</button>`).join('')}</div></div>` : ''}<button type="button" class="btn primary pp-go">${esc(v.label || 'Start')}</button>`;
       el.querySelector('.pp-go').addEventListener('click', () => send({ kind: 'start' }));
+      const update = (nv) => el.querySelectorAll('[data-id]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === nv.chosen)));
+      el.querySelectorAll('[data-id]').forEach((b) => b.addEventListener('click', () => { send({ kind: 'pick', id: b.dataset.id }); update({ chosen: b.dataset.id }); }));
+      update(v);
+      return update;
     },
     result(el, v) {
       el.innerHTML = `<div class="pp-center pp-result ${esc(v.tone || '')}"><p class="pp-big">${esc(v.big || '')}</p><p class="pp-text">${esc(v.text || '')}</p></div>`;
     },
     next(el, v) {
       el.innerHTML = `<div class="pp-center"><p class="pp-big">${esc(v.big || '')}</p><p class="pp-text">${esc(v.text || '')}</p></div>
-        <div class="pp-buttons">${(v.buttons || []).map((b, i) => `<button type="button" class="btn${i ? '' : ' primary pp-go'}" data-kind="${esc(b.kind)}">${esc(b.label)}</button>`).join('')}</div>`;
+        <div class="pp-buttons">${(v.buttons || []).map((b, i) => `<button type="button" class="btn${i || b.quiet ? '' : ' primary pp-go'}" data-kind="${esc(b.kind)}">${esc(b.label)}</button>`).join('')}</div>`;
       el.querySelectorAll('[data-kind]').forEach((b) => b.addEventListener('click', () => send({ kind: b.dataset.kind })));
     },
     // The number dial: giant digits, +/- (hold to speed up), a drag strip for big jumps, LOCK.
@@ -498,11 +520,13 @@ input[type="text"] {
       update(v);
       return update;
     },
+    // Two buttons, optionally under a prompt (lead + prompt) with a note below (text).
     yesno(el, v) {
-      el.innerHTML = `<div class="yesno"><button type="button" data-yes="1" aria-pressed="false">${esc(v.yes || 'Yes')}</button><button type="button" data-yes="0" aria-pressed="false">${esc(v.no || 'No')}</button></div>`;
-      const box = el.firstElementChild;
+      el.innerHTML = `${v.prompt ? `<p class="ask-lead">${esc(v.lead || '')}</p><p class="ask-prompt">${esc(v.prompt)}</p>` : ''}<div class="yesno${v.pair ? ' pair' : ''}"><button type="button" data-yes="1" aria-pressed="false">${esc(v.yes || 'Yes')}</button><button type="button" data-yes="0" aria-pressed="false">${esc(v.no || 'No')}</button></div>${v.text ? `<p class="pp-text">${esc(v.text)}</p>` : ''}`;
+      const box = el.querySelector('.yesno');
       const update = (nv) => {
         box.classList.toggle('locked', !!nv.locked);
+        box.classList.toggle('chosen', nv.chosen != null);
         box.querySelectorAll('[data-yes]').forEach((b) => { b.setAttribute('aria-pressed', String(nv.chosen != null && nv.chosen === (b.dataset.yes === '1'))); b.disabled = !!nv.locked; });
       };
       box.querySelectorAll('[data-yes]').forEach((b) => tap(b, () => { const yes = b.dataset.yes === '1'; send({ kind: 'yesno', yes }); update({ ...v, chosen: yes }); }));
@@ -533,10 +557,18 @@ input[type="text"] {
     if (built !== 'party') {
       built = 'party';
       partyKey = '';
-      pad.innerHTML = '<div class="pp"><div id="ppNotice"></div><p class="pp-title" id="ppTitle"></p><div class="pp-timer" id="ppTimer" hidden><i></i></div><div class="pp" id="ppBody"></div></div>';
+      pad.innerHTML = '<div class="pp"><div id="ppNotice"></div><p class="pp-title" id="ppTitle"></p><div class="lights" id="ppLights" hidden></div><div class="pp-timer" id="ppTimer" hidden><i></i></div><div class="pp" id="ppBody"></div></div>';
     }
     $('ppTitle').textContent = v.title || '';
     $('ppTitle').hidden = !v.title;
+    // your bulbs (Five Lights)
+    const lights = v.lights ? Array.from({ length: v.lights.of }, (_, i) => `<i class="${i < v.lights.lit ? 'on' : ''}"></i>`).join('') : '';
+    if ($('ppLights').dataset.html !== lights) {
+      $('ppLights').dataset.html = lights;
+      $('ppLights').innerHTML = lights;
+      $('ppLights').hidden = !lights;
+      $('ppLights').setAttribute('aria-label', v.lights ? `${v.lights.lit} of ${v.lights.of} bulbs lit` : '');
+    }
     // a sip, or a sip to hand out, above whatever the pad is
     const pour = v.pour && v.pour.options.length ? v.pour : null;
     const note = pour ? { title: 'POUR ONE OUT', text: 'Spot on. Who gets a sip? Any drink or water counts.' } : v.notice;

@@ -70,7 +70,7 @@ NEWS_FEEDS = {
 }
 VISUAL_STYLES = ["mix", "botanical", "deco", "lift", "clockface", "skyline", "bubbles", "fans"]
 GAMES = [["breaker", "Brick Breaker"], ["duel", "Deco Duel"], ["snake", "Serpentine"], ["quickdraw", "Quick Draw"],
-         ["closest", "Closest Wins"]]  # the last ones are party games the Pi referees (partygames.py)
+         ["closest", "Closest Wins"], ["fivelights", "Five Lights"]]  # the last ones are party games the Pi referees (partygames.py)
 
 for ext, ctype in ((".webp", "image/webp"), (".avif", "image/avif"), (".mp4", "video/mp4"),
                    (".m4v", "video/mp4"), (".webm", "video/webm"), (".mkv", "video/x-matroska")):
@@ -174,7 +174,8 @@ def default_channels():
         "news": {"feed": "top"},
         "weather": {"place": "", "label": "", "lat": None, "lon": None},
         "visuals": {"style": "mix"},
-        "games": {"game": "breaker", "sipsUntil": 0},  # sips are on for the night until sipsUntil
+        # sips are on for the night until sipsUntil; tier: Five Lights' prompts (partygames.TIERS)
+        "games": {"game": "breaker", "sipsUntil": 0, "tier": "mild"},
     }
 
 
@@ -477,6 +478,8 @@ class Store:
                 conf["games"]["game"] = games["game"]
             if isinstance(games, dict) and isinstance(games.get("sips"), bool):
                 conf["games"]["sipsUntil"] = partygames.sips_until(time.time()) if games["sips"] else 0
+            if isinstance(games, dict) and games.get("tier") in partygames.TIERS:
+                conf["games"]["tier"] = games["tier"]
             if found is not None:
                 conf["weather"] = found
             self._changed()
@@ -1425,9 +1428,14 @@ class Handler(BaseHTTPRequestHandler):
         title = os.path.splitext(name)[0].replace("_", " ").strip() or kind.title()
         return self.store.add_media(kind, filename, title, qs.get("addTo", [None])[0])
 
-    def _years(self, text=None):
-        """The owner's own WHAT YEAR? lines for Closest Wins (data/years.txt), read or replaced."""
-        path = os.path.join(self.store.data_dir, "years.txt")
+    # The owner's own lines for the party games, kept as plain text in the data folder:
+    # years.txt (Closest Wins' WHAT YEAR? songs and films) and house.txt (Five Lights' prompts).
+    LISTS = {"years": ("years.txt", partygames.parse_years), "house": ("house.txt", partygames.parse_house)}
+
+    def _list(self, name, text=None):
+        """One of LISTS, read or replaced: {text, count, bad (line numbers)}."""
+        filename, parse = self.LISTS[name]
+        path = os.path.join(self.store.data_dir, filename)
         if text is not None:
             if not isinstance(text, str) or len(text) > 200_000:
                 raise ApiError(400, "Bad list.")
@@ -1440,7 +1448,7 @@ class Handler(BaseHTTPRequestHandler):
                 text = f.read()
         except OSError:
             text = ""
-        items, bad = partygames.parse_years(text)
+        items, bad = parse(text)
         return {"text": text, "count": len(items), "bad": bad}
 
     # -- routing
@@ -1479,8 +1487,9 @@ class Handler(BaseHTTPRequestHandler):
             m = re.fullmatch(r"/api/feed/(scores|news|weather)", path)
             if m:
                 return self._json(200, self.feeds.get(m.group(1)))
-            if path == "/api/game/years":
-                return self._json(200, self._years())
+            m = re.fullmatch(r"/api/game/(years|house)", path)
+            if m:
+                return self._json(200, self._list(m.group(1)))
             if path == "/api/live/stream":
                 return self._stream(self.live.subscribe(), self.live.unsubscribe)
             if path == "/api/live/poll":
@@ -1534,8 +1543,9 @@ class Handler(BaseHTTPRequestHandler):
         if m and method == "POST":
             result = getattr(self.hub, m.group(1))(self._read_json())
             return self._json(200, result or {"ok": True})
-        if method == "POST" and path == "/api/game/years":
-            return self._json(200, self._years(self._read_json().get("text")))
+        m = re.fullmatch(r"/api/game/(years|house)", path)
+        if m and method == "POST":
+            return self._json(200, self._list(m.group(1), self._read_json().get("text")))
         m = re.fullmatch(r"/api/live/(offer|answer|reoffer|leave)", path)
         if m and method == "POST":
             result = getattr(self.live, m.group(1))(self._read_json())

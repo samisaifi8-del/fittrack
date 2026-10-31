@@ -114,6 +114,20 @@ phones (same Wi-Fi), type a name and join. No app needed.
   six questions; before the sixth each phone can tap **DOUBLE** (twice the points if you place,
   lose 2 if you don't). Every third round is **WHAT YEAR?**: release years of songs and films.
   Questions don't repeat until a category has been used up (remembered in `data/used.json`).
+- **Five Lights:** Never Have I Ever. Everyone starts with five gold bulbs. A prompt goes up
+  ("NEVER HAVE I EVER / MISSED A FLIGHT") and every phone answers **I HAVE** or **NEVER** at once,
+  changeable for 10 seconds. Then the wall says how many have ("3 OF 7 HAVE"), lights up their
+  names and puts out one bulb each. Anyone who has can tap **Tell it** for 30 seconds of the wall.
+  Every fifth prompt is a **Room** prompt: only the percentage shows, no names, no bulbs lost.
+  Last one lit wins (if the last ones go out together they share it); **Relight** starts again.
+  Pick the prompts before starting, on the control page or any phone in the lobby: **Mild**,
+  **Dubai life** or **Cheeky** (the ceiling: nothing about bodies, money or exes). Players who are
+  out keep answering for fun, and someone arriving mid-game comes in level with whoever has the
+  fewest bulbs.
+
+**House prompts for Five Lights.** Under **Channel settings**, add your group's own prompts, one
+per line, the part after "Never have I ever" (40 letters at most). About one prompt in four is
+one of yours. They're saved in `data/house.txt`.
 
 **Your own WHAT YEAR? questions.** Under **Channel settings** on the control page, add one song or
 film per line as `artist - title - year` (for example `Daft Punk - One More Time - 2000`). Each
@@ -125,7 +139,9 @@ line becomes a question, and yours go into WHAT YEAR? rounds first. They're save
 time). Only people who said yes are ever given a sip, it's always one sip of anything (water
 counts), and nothing escalates. The wall never shows who is or isn't drinking: a sip shows there
 only as a small gold drop by a name, and on that person's phone. In Closest Wins the furthest
-guess is a sip, and a spot-on guess lets you hand one to another drinker from your phone.
+guess is a sip, and a spot-on guess lets you hand one to another drinker from your phone. In
+Five Lights a bulb going out is a sip for a drinker (and just the bulb for everyone else); Room
+prompts never cost anything.
 
 ### Building another party game
 
@@ -137,11 +153,12 @@ wall, so answers stay secret, scores are fair and every preview shows the same t
 | `PartyGame` | `partygames.py` | Phases with timers (`go`), players by phone, round and night points, `podium()`, `award_sip()`, `offer_pour()` |
 | `load_deck`, `UsedItems` | `partygames.py` | Decks from `static/content/<name>.json`; no repeats until a pool runs out, saved across restarts |
 | Phone input | `GameHub.input` | `pick`, `number`, `lock`, `buzz`, `yesno`, `toggle`, `next`, `end`, `pour` (plus the arcade ones), checked before a game sees them |
-| Phone pads | `static/play.html` | `wait`, `start`, `number` (dial with hold-to-speed-up, drag strip, year mode), `pick` (2 x 2 or a list of names), `buzz`, `yesno`, `toggle`, `result`, `next`, plus a countdown bar, sip notes and the pour list |
+| Phone pads | `static/play.html` | `wait`, `start` (with an optional row of settings), `number` (dial with hold-to-speed-up, drag strip, year mode), `pick` (2 x 2 or a list of names), `buzz`, `yesno`, `toggle`, `result`, `next`, plus a countdown bar, sip notes and the pour list |
 | Wall screens | `static/party.js` | Lobby, between-rounds card, podium, lock dots, countdown bar, sip drop, cached layers |
 
 The top of `partygames.py` and `static/party.js` walks through adding a game step by step;
 `ClosestWins` is the worked example, and `test_party.py` shows how to test one without a wall.
+`FiveLights` is a second, smaller one; its wall lives in its own file (`static/fivelights.js`).
 
 ## Basement Live
 

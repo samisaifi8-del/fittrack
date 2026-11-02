@@ -633,6 +633,10 @@ textarea.field { resize: none; line-height: 1.35; }
     if (cams.length && enabled().some((s) => s.channel === 'live')) c.push(`<button type="button" class="chip" data-act="sheet" data-v="live"><i></i>${cams.length} on camera</button>`);
     if (S.mirror && S.mirror.live) c.push('<button type="button" class="chip" data-act="sheet" data-v="airplay"><i></i>AirPlay on</button>');
     if (S.settings.testPattern) c.push('<button type="button" class="chip" data-act="testPattern"><i></i>Test pattern · turn off</button>');
+    // (the Pi's own warnings go first, so they're never scrolled out of sight)
+    const h = S.health;
+    if (h && h.power === 'low') c.unshift('<button type="button" class="chip hot" data-act="tab" data-v="settings"><i></i>Pi short of power</button>');
+    if (h && h.heat === 'hot') c.unshift(`<button type="button" class="chip hot" data-act="tab" data-v="settings"><i></i>Pi too hot · ${h.temp} °C</button>`);
     setHTML($('chips'), c.join(''));
     $('chips').hidden = !c.length;
     const n = queueAll().length;
@@ -798,6 +802,21 @@ textarea.field { resize: none; line-height: 1.35; }
 
   // ------------------------------------------------------------ Settings
 
+  // The Pi runs bare (no case or fan), so Settings shows how hot it is and whether its power holds up.
+  function piHealth() {
+    const h = S.health;
+    if (!h) return '';
+    const row = (b, s, v, cls) => `<div class="li ${cls}"><span class="t"><b>${b}</b><span>${s}</span></span><span class="v">${v}</span></div>`;
+    const heat = { ok: ['Temperature', 'Fine · it slows itself down at 80 °C', ''],
+      warm: ['Running warm', 'Give it some air, out of the sun and off the TB6', ''],
+      hot: ['Too hot', 'It\'s slowing itself down · give it air or a fan', 'danger'] }[h.heat];
+    const power = { ok: ['Power', 'Good', ''],
+      dipped: ['Power dipped', 'Short of power at some point since it started · check its supply', ''],
+      low: ['Short of power', 'It\'s slowing itself down · check its supply', 'danger'] }[h.power];
+    return `<div class="sect"><span class="cap">The Pi</span></div>
+      <div class="list">${heat ? row(heat[0], heat[1], `${h.temp} °C`, heat[2]) : ''}${power ? row(power[0], power[1], '', power[2]) : ''}</div>`;
+  }
+
   function renderSettings() {
     const sc = focusScreen(), s1 = screen('s1'), s2 = screen('s2'), m = S.mirror || {};
     const rotOn = sc.playlist.filter((id) => slideById(id)).length;
@@ -829,6 +848,7 @@ textarea.field { resize: none; line-height: 1.35; }
         ${s2.enabled ? li('Right wall area', `${s2.rw} × ${s2.rh}`, 'sheet', 'wall').replace('data-v="wall"', 'data-v="wall" data-arg="s2"') : ''}
         ${liSwitch('Test pattern', 'To line the walls up', S.settings.testPattern, 'testPattern')}
       </div>
+      ${piHealth()}
       <div class="list" style="margin-top:22px">${S.displayOn
         ? li('Hand the HDMI to another project', '', 'sheet', 'hdmi', 'Both walls go off', 'danger')
         : li('Walls are off', '', 'displayOn', '', 'Take the HDMI back', 'goldrow')}</div>

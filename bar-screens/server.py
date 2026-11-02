@@ -44,6 +44,10 @@ MIRROR_PORT = 7100  # where the AirPlay receiver sends its frames (see install.s
 # starts; cloudflared reports the current one on its local metrics port.
 TUNNEL_METRICS = "127.0.0.1:3998"
 TUNNEL_UNIT = "bar-screens-tunnel"
+# The Pi's own health, for the remote: its temperature from the kernel, its power from the firmware.
+THERMAL_ZONE = "/sys/class/thermal/thermal_zone0/temp"
+VCGENCMD = shutil.which("vcgencmd")
+WARM_C, HOT_C = 70, 80  # the Pi 4 slows itself down from 80 °C
 
 # Channel 1 is your own rotation; the rest are live channels drawn on the Pi from free data feeds.
 CHANNELS = ["rotation", "scores", "news", "weather", "visuals", "games", "live", "nowshowing", "colours", "pour", "verdict"]
@@ -251,6 +255,7 @@ class Store:
         self.pour_info = dict   # The House Pour's menu and the order on the wall (set up in main)
         self.drinks = load_drinks(DRINKS_FILE)
         self.party_info = lambda: None  # the party game's host view, e.g. guests' prompts to approve
+        self.health_info = lambda: None  # the Pi's temperature and power (set up in main)
         self.state = self._load()
         for slide in self.state["slides"]:
             if slide.get("processing"):
@@ -306,6 +311,7 @@ class Store:
                 "cinema": self.cinema_info(),
                 "bar": self.pour_info(),
                 "party": self.party_info(),
+                "health": self.health_info(),
                 "ffmpeg": bool(FFMPEG),
                 "catalog": {
                     "leagues": [[k, v[1]] for k, v in LEAGUES.items()],
@@ -1504,6 +1510,66 @@ class Tunnel:
         return f"https://{self.host}/live" if self.host else ""
 
 
+def parse_throttled(text):
+    """The firmware's power and heat flags from `vcgencmd get_throttled` ("throttled=0x50005"), or None."""
+    m = re.search(r"throttled=0x([0-9a-f]+)", text or "", re.I)
+    return int(m.group(1), 16) if m else None
+
+
+def health_report(temp, flags):
+    """What the remote says about the Pi. heat: ok, warm (from 70 °C) or hot (80 °C, where it slows itself
+    down). power: ok, dipped (short of power at some point since it started) or low (short of it now).
+    None when neither can be read (not a Pi)."""
+    if temp is None and flags is None:
+        return None
+    heat = None if temp is None else "hot" if temp >= HOT_C else "warm" if temp >= WARM_C else "ok"
+    power = None if flags is None else "low" if flags & 0x1 else "dipped" if flags & 0x10000 else "ok"
+    return {"temp": None if temp is None else round(temp), "heat": heat, "power": power}
+
+
+class Health:
+    """Keeps an eye on the Pi itself, which runs bare, with no case or fan: its temperature and its
+    power, read every 30 seconds. The remote shows both under Settings and warns on every tab when
+    the Pi is too hot or short of power."""
+
+    def __init__(self, store, thermal=THERMAL_ZONE, vcgencmd=VCGENCMD):
+        self.store = store
+        self.thermal = thermal
+        self.vcgencmd = vcgencmd
+        self.report = None
+
+    def _temp(self):
+        try:
+            with open(self.thermal, encoding="ascii") as f:
+                return int(f.read().strip()) / 1000
+        except (OSError, ValueError):
+            return None
+
+    def _flags(self):
+        if not self.vcgencmd:
+            return None
+        try:
+            run = subprocess.run([self.vcgencmd, "get_throttled"], capture_output=True, text=True, timeout=5)
+            return parse_throttled(run.stdout)
+        except (OSError, subprocess.SubprocessError):
+            return None
+
+    def check(self):
+        report = health_report(self._temp(), self._flags())
+        if report != self.report:
+            self.report = report
+            self.store.refresh()
+        return report
+
+    def run(self):
+        while True:
+            self.check()
+            time.sleep(30)
+
+    def info(self):
+        return self.report
+
+
 _qr_cache = {}
 
 
@@ -2505,7 +2571,9 @@ def main():
     tunnel = Handler.tunnel = Tunnel(store, args.tunnel_metrics)
     cinema = Handler.cinema = Cinema(store)
     pour = Handler.pour = HousePour(store)
-    host = f"{socket.gethostname().removesuffix('.local')}.local" + ("" if args.port == 80 else f":{args.port}")
+    health = Health(store)
+    store.health_info = health.info
+    host =f"{socket.gethostname().removesuffix('.local')}.local" + ("" if args.port == 80 else f":{args.port}")
     hub.join_url = f"{host}/play"
     store.party_info = hub.host_info
     store.live_info = lambda: {"url": tunnel.url, "lan": f"http://{host}/live", "qr": bool(QRENCODE), "cams": live.names()}
@@ -2534,7 +2602,8 @@ def main():
     threading.Thread(target=ticker, daemon=True).start()
     threading.Thread(target=poller, daemon=True).start()
     threading.Thread(target=tunnel.run, daemon=True).start()
-    server = ThreadingHTTPServer((args.host, args.port), Handler)
+    threading.Thread(target=health.run, daemon=True).start()
+    server =ThreadingHTTPServer((args.host, args.port), Handler)
     server.daemon_threads = True
     print(f"Bar Screens is running. Control it from http://{host}/control (games: http://{host}/play, "
           f"intermissions: http://{host}/film)", flush=True)

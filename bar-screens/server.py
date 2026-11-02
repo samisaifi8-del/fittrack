@@ -9,6 +9,7 @@ the walls. Standard library only, so it runs on a fresh Raspberry Pi OS.
 import argparse
 import concurrent.futures
 import datetime
+import email.utils
 import hashlib
 import json
 import mimetypes
@@ -684,27 +685,45 @@ def _hexcolor(v):
     return "#" + v.lower() if isinstance(v, str) and re.fullmatch(r"[0-9a-fA-F]{6}", v) else None
 
 
-# Club crests for Scores come from ESPN's image server through the Pi (/api/crest), which keeps a
-# copy, so the wall never waits on ESPN for a crest it has shown before.
+# Pictures on the walls (Scores' club crests from ESPN, News' story photos from the BBC) come
+# through the Pi (/api/image), which keeps a copy, so the wall never waits on a picture it has
+# shown before. Only these two image servers are fetched from; news photos older than a few days
+# are cleared out.
 CREST_URL = re.compile(r"https://a\.espncdn\.com/i/teamlogos/[a-z0-9/_-]+\.png", re.I)
+NEWS_IMAGE_URL = re.compile(r"https://ichef\.bbci\.co\.uk/[a-z0-9/_-]+\.(?:jpg|jpeg|png)", re.I)
+IMAGE_KEEP_DAYS = 3
 
 
-def crest_file(data_dir, url):
-    """The crest's file on the Pi, fetched once from ESPN. None for anything that isn't an ESPN crest."""
-    if not isinstance(url, str) or not CREST_URL.fullmatch(url):
+def image_file(data_dir, url):
+    """The picture's file on the Pi, fetched once. None for anything not from ESPN's crests or the BBC."""
+    if not isinstance(url, str) or not (CREST_URL.fullmatch(url) or NEWS_IMAGE_URL.fullmatch(url)):
         return None
-    folder = os.path.join(data_dir, "crests")
+    folder = os.path.join(data_dir, "images")
     os.makedirs(folder, exist_ok=True)
-    path = os.path.join(folder, hashlib.sha1(url.encode()).hexdigest()[:20] + ".png")
+    ext = os.path.splitext(url)[1].lower()
+    path = os.path.join(folder, hashlib.sha1(url.encode()).hexdigest()[:20] + ext)
     if not os.path.exists(path):
         data = fetch_url(url)
-        if not data.startswith(b"\x89PNG"):
-            raise IOError("not a PNG")
+        if not (data.startswith(b"\x89PNG") or data.startswith(b"\xff\xd8")):
+            raise IOError("not a picture")
         tmp = f"{path}.{threading.get_ident()}.part"
         with open(tmp, "wb") as f:
             f.write(data)
         os.replace(tmp, path)
+        _prune_images(folder)
     return path
+
+
+def _prune_images(folder):
+    """News photos go stale; crests are kept (there are only so many clubs)."""
+    cutoff = time.time() - IMAGE_KEEP_DAYS * 86400
+    for name in os.listdir(folder):
+        full = os.path.join(folder, name)
+        try:
+            if name.endswith((".jpg", ".jpeg")) and os.path.getmtime(full) < cutoff:
+                os.remove(full)
+        except OSError:
+            pass
 
 
 def _team(competitor):
@@ -869,6 +888,26 @@ def tonight_matches():
     return matches
 
 
+MEDIA_NS = "{http://search.yahoo.com/mrss/}"
+
+
+def _news_image(item):
+    """The story's photo at a size the walls can use: the BBC's 240 px thumbnail, asked for at 480."""
+    thumb = item.find(MEDIA_NS + "thumbnail")
+    url = thumb.get("url") if thumb is not None else None
+    if not url or not NEWS_IMAGE_URL.fullmatch(url):
+        return None
+    return re.sub(r"/standard/\d+/", "/standard/480/", url, count=1)
+
+
+def _rss_time(text):
+    """An RSS date ("Mon, 02 Nov 2026 14:11:13 GMT") as ISO 8601, or None."""
+    try:
+        return email.utils.parsedate_to_datetime(text).isoformat()
+    except (TypeError, ValueError, IndexError):
+        return None
+
+
 def fetch_news(conf):
     url, section = NEWS_FEEDS.get(conf.get("feed"), NEWS_FEEDS["top"])
     root = ET.fromstring(fetch_url(url))
@@ -876,7 +915,8 @@ def fetch_news(conf):
     for item in root.iter("item"):
         title = " ".join((item.findtext("title") or "").split())
         if title and title not in (i["title"] for i in items):
-            items.append({"title": title})
+            items.append({"title": title, "summary": " ".join((item.findtext("description") or "").split())[:240],
+                          "image": _news_image(item), "time": _rss_time(item.findtext("pubDate"))})
         if len(items) >= 20:
             break
     if not items:
@@ -2466,12 +2506,12 @@ class Handler(BaseHTTPRequestHandler):
             m = re.fullmatch(r"/api/feed/(scores|news|weather)", path)
             if m:
                 return self._json(200, self.feeds.get(m.group(1)))
-            if path == "/api/crest":
+            if path == "/api/image":
                 try:
-                    full = crest_file(store.data_dir, qs.get("u", [""])[0])
+                    full = image_file(store.data_dir, qs.get("u", [""])[0])
                 except Exception:
-                    return self._json(502, {"error": "Couldn't get that crest."})
-                return self._file(full, cache=True) if full else self._json(404, {"error": "Not a crest."})
+                    return self._json(502, {"error": "Couldn't get that picture."})
+                return self._file(full, cache=True) if full else self._json(404, {"error": "Not a picture the walls show."})
             m = re.fullmatch(r"/api/game/(years|house)", path)
             if m:
                 return self._json(200, self._list(m.group(1)))

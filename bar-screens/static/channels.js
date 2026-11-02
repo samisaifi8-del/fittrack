@@ -300,7 +300,7 @@
     return matches.slice().sort((a, b) => rank(a) - rank(b) || new Date(a.date) - new Date(b.date)).slice(0, 30);
   }
 
-  // Club crests come through the Pi (/api/crest) and are drawn down to each size once, in halving
+  // Club crests come through the Pi (/api/image) and are drawn down to each size once, in halving
   // steps so a 500 px PNG still looks crisp at 16 LEDs. Null until the image has loaded.
   const crests = new Map();
   function crest(url, size) {
@@ -309,7 +309,7 @@
     if (!c) {
       c = { img: new Image(), ok: false, sizes: new Map() };
       c.img.onload = () => { c.ok = true; };
-      c.img.src = '/api/crest?u=' + encodeURIComponent(url);
+      c.img.src = '/api/image?u=' + encodeURIComponent(url);
       crests.set(url, c);
     }
     if (!c.ok) return null;
@@ -763,11 +763,50 @@
 
   // ------------------------------------------------------------ news
 
+  // Story photos come through the Pi (/api/image). Null until loaded.
+  const photos = new Map();
+  function photo(url) {
+    if (!url) return null;
+    let p = photos.get(url);
+    if (!p) {
+      if (photos.size > 40) photos.clear();
+      p = { img: new Image(), ok: false };
+      p.img.onload = () => { p.ok = true; };
+      p.img.src = '/api/image?u=' + encodeURIComponent(url);
+      photos.set(url, p);
+    }
+    return p.ok ? p.img : null;
+  }
+
+  // The photo scaled once to cover the top of the wall, a little wider than it so it can pan.
+  function coverPhoto(img, W, h) {
+    const scale = Math.max((W * 1.25) / img.naturalWidth, h / img.naturalHeight);
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.naturalWidth * scale);
+    c.height = Math.round(img.naturalHeight * scale);
+    const x = c.getContext('2d');
+    x.imageSmoothingQuality = 'high';
+    x.drawImage(img, 0, 0, c.width, c.height);
+    return c;
+  }
+
+  function ago(iso) {
+    const mins = Math.round((Date.now() - new Date(iso)) / 60000);
+    if (!(mins >= 0)) return '';
+    if (mins < 5) return 'JUST NOW';
+    if (mins < 60) return `${mins}M AGO`;
+    if (mins < 24 * 60) return `${Math.round(mins / 60)}H AGO`;
+    return new Date(iso).toLocaleDateString([], { weekday: 'short' }).toUpperCase();
+  }
+
+  const STORY = 12;  // seconds per story
+
   function news(canvas, W, H) {
     const theme = THEMES.news;
     const ctx = canvas.getContext('2d');
     const s = Math.min(W, H);
     let payload = null, failed = false, items = [], index = 0, shownAt = 0, strip = null, stripKey = '';
+    let cover = null, coverKey = '';
     const stopFeed = feed('news', (j) => { if (j && j.data) payload = j.data; failed = !j || (!j.ok && !j.data); });
 
     function buildStrip(h) {
@@ -786,40 +825,95 @@
     }
 
     const stop = animate((t) => {
-      backdrop(ctx, W, H);
-      const hh = header(ctx, W, H, theme, payload ? payload.section.toUpperCase() : '');
-      if (!payload) { message(ctx, W, hh, H, failed ? 'The news is unavailable just now' : 'Fetching the headlines…'); return; }
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+      if (!payload) {
+        frame(ctx, W, H);
+        const hh = header(ctx, W, H, theme);
+        message(ctx, W, hh, H, failed ? 'The news is unavailable just now' : 'Fetching the headlines…');
+        return;
+      }
       if (items !== payload.items) { items = payload.items; index = 0; shownAt = t; }
-      if (t - shownAt > 12) { index = (index + 1) % items.length; shownAt = t; }
+      if (t - shownAt > STORY) { index = (index + 1) % items.length; shownAt = t; }
+      const story = items[index];
       const since = t - shownAt;
-      const pad = Math.round(s * 0.1);
+      const alpha = Math.max(0, Math.min(1, since / 1, (STORY - since) / 0.8));
+      const pad = Math.round(s * 0.08);
       const tickH = Math.max(12, Math.round(s * 0.1));
-      const bodyTop = hh + pad * 0.3;
-      const bodyH = H - hh - tickH - pad * 1.2;
+      const ty = H - tickH - Math.round(s * 0.035);
+      const img = photo(story.image);
+      photo((items[(index + 1) % items.length] || {}).image);  // have the next one ready
+      const photoH = img ? Math.round(H * 0.5) : 0;
 
-      // the headline, fading in and out
-      const alpha = Math.min(1, since / 1, (12 - since) / 0.8);
-      const box = fitWrapped(ctx, items[index].title, 'Cormorant', W - pad * 2, bodyH * 0.78, 5, 1.12);
       ctx.save();
-      ctx.globalAlpha = Math.max(0, alpha);
-      ctx.font = font('Cormorant', box.size);
-      ctx.fillStyle = IVORY;
+      ctx.globalAlpha = alpha;
+      if (img) {
+        // the photo, panning slowly one way then the other, fading into the black below
+        const ck = `${story.image}|${W}|${photoH}`;
+        if (ck !== coverKey) { coverKey = ck; cover = coverPhoto(img, W, photoH); }
+        const travel = cover.width - W, k = since / STORY;
+        const x = -(index % 2 ? 1 - k : k) * travel;
+        ctx.drawImage(cover, Math.round(x), Math.round((photoH - cover.height) / 2));
+        // dark at the top so the label reads over a bright photo
+        const fadeTop = ctx.createLinearGradient(0, 0, 0, s * 0.3);
+        fadeTop.addColorStop(0, 'rgba(0,0,0,0.92)');
+        fadeTop.addColorStop(0.45, 'rgba(0,0,0,0.6)');
+        fadeTop.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = fadeTop;
+        ctx.fillRect(0, 0, W, s * 0.3);
+        const fadeBottom = ctx.createLinearGradient(0, photoH * 0.55, 0, photoH);
+        fadeBottom.addColorStop(0, 'rgba(0,0,0,0)');
+        fadeBottom.addColorStop(1, 'rgba(0,0,0,1)');
+        ctx.fillStyle = fadeBottom;
+        ctx.fillRect(0, photoH * 0.55, W, photoH * 0.45 + 1);
+      }
+      ctx.restore();
+
+      frame(ctx, W, H);
+      const hh = header(ctx, W, H, theme, (payload.section || '').toUpperCase());
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      const blockH = box.lines.length * box.size * 1.12;
-      const y0 = bodyTop + (bodyH - blockH) / 2 + box.size * 0.56;
-      box.lines.forEach((l, i) => ctx.fillText(l, W / 2, y0 + i * box.size * 1.12));
-      const ry = y0 + (box.lines.length - 0.35) * box.size * 1.12;
-      decoRule(ctx, W / 2 - W * 0.12, ry, W * 0.24, s);
+      // how long this story has left: a gold line drawing across under the photo
+      const lineY = img ? photoH - s * 0.02 : hh + s * 0.02;
+      ctx.fillStyle = rgba(GOLD, 0.25);
+      ctx.fillRect(pad, Math.round(lineY), W - pad * 2, hair(s));
+      ctx.fillStyle = GOLD_LIGHT;
+      ctx.fillRect(pad, Math.round(lineY), Math.round((W - pad * 2) * Math.min(1, since / STORY)), hair(s) + 1);
+
+      // the headline, then when and who, then the summary if there's room for it
+      const textTop = lineY + s * 0.05;
+      const textBottom = ty - s * 0.03;
+      const box = fitWrapped(ctx, story.title, 'Cormorant', W - pad * 2, (textBottom - textTop) * (img ? 0.56 : 0.6), img ? 4 : 5, 1.1);
+      ctx.font = font('Cormorant', box.size);
+      ctx.fillStyle = IVORY;
+      const blockH = box.lines.length * box.size * 1.1;
+      const y0 = img ? textTop + box.size * 0.55 : textTop + (textBottom - textTop - blockH) / 2 - s * 0.04 + box.size * 0.55;
+      box.lines.forEach((l, i) => ctx.fillText(l, W / 2, y0 + i * box.size * 1.1));
+      let y = y0 + (box.lines.length - 0.5) * box.size * 1.1 + s * 0.045;
+      const meta = [ago(story.time), (payload.source || '').toUpperCase()].filter(Boolean).join('  ·  ');
       tracking(ctx, s * 0.012);
       ctx.font = font('Josefin Sans', small(s));
-      ctx.fillStyle = MUTED;
-      ctx.fillText((payload.source || '').toUpperCase(), W / 2, ry + s * 0.045);
+      ctx.fillStyle = GOLD;
+      ctx.fillText(meta, W / 2, y);
       tracking(ctx, 0);
+      y += s * 0.05;
+      if (story.summary) {
+        // as many lines of the summary as fit, a little smaller than the headline
+        const sz = Math.max(MIN_TEXT + 2, Math.round(Math.min(box.size * 0.62, s * 0.06)));
+        ctx.font = font('Cormorant Italic', sz);
+        ctx.fillStyle = MUTED;
+        const all = wrap(ctx, story.summary, W - pad * 2);
+        const fit = Math.min(3, Math.floor((textBottom - y) / (sz * 1.15)));
+        const lines = all.slice(0, fit);
+        if (lines.length && all.length > lines.length) lines[lines.length - 1] = lines[lines.length - 1].replace(/[\s,.;:]*\S*$/, '…');
+        lines.forEach((l, i) => ctx.fillText(l, W / 2, y + sz * 0.6 + i * sz * 1.15));
+      }
       ctx.restore();
 
       // a slow ticker of the other headlines, fading out at both edges
-      const ty = H - tickH - Math.round(s * 0.035);
       ctx.fillStyle = rgba(GOLD, 0.45);
       ctx.fillRect(pad, ty, W - pad * 2, hair(s));
       const fontsReady = !document.fonts || document.fonts.check(font('Cormorant', 20));

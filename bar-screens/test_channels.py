@@ -114,7 +114,30 @@ class ScoresDetail(unittest.TestCase):
         self.assertIsNone(away["logo"])
         with tempfile.TemporaryDirectory() as d:
             for bad in ("http://evil.example/x.png", "https://a.espncdn.com/../../etc/passwd", "file:///etc/passwd", None):
-                self.assertIsNone(server.crest_file(d, bad))
+                self.assertIsNone(server.image_file(d, bad))
+
+
+class NewsDetail(unittest.TestCase):
+    """News: each story's photo (BBC thumbnails, asked for at 480 px), summary and time."""
+
+    def item(self, xml):
+        return server.ET.fromstring(f'<item xmlns:media="http://search.yahoo.com/mrss/">{xml}</item>')
+
+    def test_photo(self):
+        it = self.item('<media:thumbnail width="240" height="135" url="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/31c7/live/152ec730.jpg"/>')
+        self.assertEqual(server._news_image(it), "https://ichef.bbci.co.uk/ace/standard/480/cpsprodpb/31c7/live/152ec730.jpg")
+        self.assertIsNone(server._news_image(self.item('<media:thumbnail url="https://evil.example/x.jpg"/>')))
+        self.assertIsNone(server._news_image(self.item('<title>no photo</title>')))
+
+    def test_time(self):
+        self.assertEqual(server._rss_time("Mon, 02 Nov 2026 14:11:13 GMT"), "2026-11-02T14:11:13+00:00")
+        self.assertIsNone(server._rss_time("yesterday"))
+        self.assertIsNone(server._rss_time(None))
+
+    def test_only_bbc_and_espn_pictures(self):
+        with tempfile.TemporaryDirectory() as d:
+            for bad in ("https://ichef.bbci.co.uk/../x.jpg", "https://ichef.bbci.co.uk.evil.example/a.jpg", "http://ichef.bbci.co.uk/a.jpg"):
+                self.assertIsNone(server.image_file(d, bad))
 
 
 if __name__ == "__main__":

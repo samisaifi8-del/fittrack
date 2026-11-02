@@ -36,6 +36,9 @@ Raspberry Pi 4. The walls have **no sound**. Guests use their phones (games, dri
   up again, check the supply first. Kept from then: Bluetooth off (`dtoverlay=disable-bt`; original in
   `/boot/firmware/config.txt.orig`) and HDMI at 640 × 480 via `~/.config/kanshi/config` (the TB6 maps it 1:1, the
   walls look the same, and the Pi draws far less of a picture than at 1920 × 1080).
+- It runs bare (no case, no fan). Safeguards: `Health` in server.py reads the temperature and `vcgencmd
+  get_throttled` every 30 s for the remote (Settings › The Pi; a chip on every tab when ≥ 80 °C or short of power),
+  and the hardware watchdog (`/etc/systemd/system.conf.d/bar-screens-watchdog.conf`, 15 s) reboots it if it freezes.
 - STV's Pi (`stv@stv.local`, key `~/.ssh/stv_pi`) is STV's again; don't deploy Bar Screens there.
 - Deploy = push the branch, then on the Pi:
   `cd ~/bar-screens-src && git pull && sudo systemctl restart bar-screens && pkill -f "[b]ar-screens-chromium"`

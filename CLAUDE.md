@@ -26,12 +26,16 @@ Raspberry Pi 4. The walls have **no sound**. Guests use their phones (games, dri
 
 ## Deploy (Pi)
 
-- Pi today: `stv@stv.local` (192.168.1.83 on Wi-Fi SAIFI), key `~/.ssh/stv_pi`, always `ssh -4`. It is still shared
-  with STV until the Basement gets its own Pi (planned name `basement.local`; update this file when it does).
+- The Basement's own Pi 4 (since 2026-11-02): `samisaifi@basementscreens.local` (192.168.1.232 on Wi-Fi SAIFI),
+  key `~/.ssh/basement_pi`, always `ssh -4`. Raspberry Pi OS with desktop (Debian 13, labwc), passwordless sudo.
+  HDMI goes into the TB6 (it reports itself as `NOVASTARM3`, 1920 × 1080); the walls take the top-left 256 × 384.
+- Set up with `install.sh` (desktop path: autostart kiosk, autologin, no blanking, blank cursor theme
+  `BarScreensBlank` so no pointer sits on the walls). Control page `http://basementscreens.local/control`.
+- STV's Pi (`stv@stv.local`, key `~/.ssh/stv_pi`) is STV's again; don't deploy Bar Screens there.
 - Deploy = push the branch, then on the Pi:
   `cd ~/bar-screens-src && git pull && sudo systemctl restart bar-screens && pkill -f "[b]ar-screens-chromium"`
   (the kiosk relaunches itself). Server runs on port 80.
-- Check the wall: `XDG_RUNTIME_DIR=/run/user/1001 WAYLAND_DISPLAY=$(ls /run/user/1001 | grep -m1 'wayland-[0-9]$') grim /tmp/w.png`, then scp it back.
+- Check the wall: `XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 grim /tmp/w.png`, then scp it back.
 - Secure guest link: `bar-screens-tunnel.service` (cloudflared quick tunnel, metrics 127.0.0.1:3998). Through the
   tunnel only the guest pages work; `/control`, `/api/state` and `/display` return 403.
 - Walls: s1 at HDMI x 0, s2 (right wall) at x 256, both 256 × 384. Different content per wall needs the TB6 set to
@@ -39,11 +43,10 @@ Raspberry Pi 4. The walls have **no sound**. Guests use their phones (games, dri
 
 ## Rules learned the hard way
 
-- **Never run `install.sh` on the shared Pi**: it switched the Pi to desktop boot and broke STV. On a dedicated
-  Basement Pi it is fine to adapt.
-- While shared: `bar-screens on|off` (our wrapper `/usr/local/bin/bar-screens.stv`) flips HDMI ↔ composite and
-  **reboots**. A Pi 4 can't drive both. Ask before running it.
-- The huge mouse pointer came from the 3.5" screen's touch panel; `~/stv-kiosk.sh` hides it with a runtime udev rule.
+- **Never run `install.sh` on STV's Pi**: it switched it to desktop boot and broke STV. On the Basement Pi it's fine.
+- Raspberry Pi Imager 2 writes cloud-init (`user-data`, `network-config` on bootfs). If SSH wasn't ticked, add
+  `ssh_authorized_keys` + `enable_ssh` to `user-data` and give it a new `instance-id` (meta-data and cmdline.txt) so
+  the Pi applies it again on the next boot.
 - The TB6 must be in HDMI/sync mode (ViPlex Handy) or the walls show only its test screens.
 - Don't claim something shows on the walls unless Sami confirms or a capture proves it.
 - Pushing to the branch and deploying to the Pi are outward actions: do them when Sami asks ("send it over").

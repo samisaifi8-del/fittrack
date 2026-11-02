@@ -128,6 +128,31 @@ Name=Bar Screens display
 Exec=env BAR_SCREENS_URL=http://localhost:$PORT/display $APP_DIR/kiosk.sh
 X-GNOME-Autostart-enabled=true
 DESKTOP
+  if command -v labwc >/dev/null; then
+    # The desktop draws a pointer even with no mouse plugged in, and it lands on the walls. A cursor
+    # theme whose every cursor is blank hides it for the desktop and Chromium alike (from next login).
+    echo "==> Hiding the mouse pointer (a blank cursor theme for the desktop)"
+    BLANK="$HOME/.local/share/icons/BarScreensBlank"
+    mkdir -p "$BLANK/cursors"
+    printf '[Icon Theme]\nName=BarScreensBlank\nComment=No pointer on the walls\n' > "$BLANK/index.theme"
+    python3 - "$BLANK/cursors/blank" <<'PY'
+import struct, sys
+w = h = 8; size = 24
+img = struct.pack('<9I', 36, 0xfffd0002, size, 1, w, h, 0, 0, 0) + b'\0' * (4 * w * h)
+hdr = struct.pack('<4sIII', b'Xcur', 16, 0x10000, 1) + struct.pack('<3I', 0xfffd0002, size, 28)
+open(sys.argv[1], 'wb').write(hdr + img)
+PY
+    for n in $(ls /usr/share/icons/*/cursors 2>/dev/null | grep -v ':$' | sort -u); do
+      [ "$n" = blank ] || ln -sf blank "$BLANK/cursors/$n"
+    done
+    ENVF="$HOME/.config/labwc/environment"
+    mkdir -p "$(dirname "$ENVF")"; touch "$ENVF"
+    if grep -q '^XCURSOR_THEME=' "$ENVF"; then
+      sed -i 's/^XCURSOR_THEME=.*/XCURSOR_THEME=BarScreensBlank/' "$ENVF"
+    else
+      echo 'XCURSOR_THEME=BarScreensBlank' >> "$ENVF"
+    fi
+  fi
 else
   echo "==> No desktop on this Pi, so setting up a minimal full-screen display (cage)"
   sudo apt-get install -y -qq cage

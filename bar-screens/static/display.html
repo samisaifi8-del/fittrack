@@ -9,6 +9,7 @@
   html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
   body.kiosk { cursor: none; }
   #pattern { position: fixed; inset: 0; display: block; }
+  #pattern[hidden], .grid[hidden] { display: none; }
   .screen { position: absolute; overflow: hidden; transform-origin: 0 0; background: #000; }
   .layer { position: absolute; inset: 0; opacity: 0; transition: opacity 0.5s ease; }
   .layer.in { opacity: 1; }

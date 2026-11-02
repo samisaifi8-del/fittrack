@@ -52,6 +52,8 @@ Raspberry Pi 4. The walls have **no sound**. Guests use their phones (games, dri
   `cd ~/bar-screens-src && git pull && sudo systemctl restart bar-screens && pkill -f "[b]ar-screens-chromium"`
   (the kiosk relaunches itself). Server runs on port 80.
 - Check the wall: `XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 grim /tmp/w.png`, then scp it back.
+- Check smoothness on the Pi, not the Mac: the wall reports its frame rate every 5 s as `fps` in `/api/state`.
+  Every channel should hold 60. Never draw a canvas onto itself in a loop (the city's river did that: 12 fps).
 - Secure guest link: `bar-screens-tunnel.service` (cloudflared quick tunnel, metrics 127.0.0.1:3998). Through the
   tunnel only the guest pages work; `/control`, `/api/state` and `/display` return 403.
 - Walls: s1 at HDMI x 0, s2 (right wall) at x 256, both 256 × 384. Different content per wall needs the TB6 set to

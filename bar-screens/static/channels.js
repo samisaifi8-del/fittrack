@@ -1452,8 +1452,8 @@
         ctx.lineTo(ax + r, bottom);
         ctx.closePath();
       };
-      return (ctx) => {
-        backdrop(ctx, W, H);
+      // the sign in gold, drawn once on its own transparent layer
+      const sign = offscreen(W, H, (ctx) => {
         ctx.strokeStyle = GOLD;
         ctx.lineWidth = lw;
         arch(ctx, 0);
@@ -1482,6 +1482,52 @@
           ? { x: ax + aw / 2 + aw * 0.45, y: H * 0.22, w: W - (ax + aw / 2 + aw * 0.45) - W * 0.08, h: H * 0.56 }
           : { x: W * 0.12, y: ay + ah / 2 + s * 0.06, w: W * 0.76, h: H - (ay + ah / 2) - s * 0.16 };
         nameplate(ctx, name, '', box, s);
+      });
+      // a band of light that crosses the gold now and then, kept to the sign's own lines
+      const sheen = offscreen(W, H, () => {});
+      const sx = sheen.getContext('2d');
+      const foot = { x: ax, y: ay + ah / 2 };
+      return (ctx, t) => {
+        backdrop(ctx, W, H);
+        // deco rays fanning up from the foot of the arch, turning very slowly
+        ctx.save();
+        ctx.translate(foot.x, foot.y);
+        ctx.rotate(Math.sin(t * 0.05) * 0.08);
+        const rays = 18, r = Math.hypot(W, H);
+        for (let i = 0; i < rays; i++) {
+          const a0 = Math.PI + (i / rays) * Math.PI, a1 = a0 + Math.PI / rays * 0.5;
+          const g = ctx.createLinearGradient(0, 0, Math.cos(a0) * r * 0.6, Math.sin(a0) * r * 0.6);
+          g.addColorStop(0, rgba(GOLD, 0.16 + 0.06 * Math.sin(t * 0.6 + i)));
+          g.addColorStop(1, rgba(GOLD, 0));
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos(a0) * r, Math.sin(a0) * r); ctx.lineTo(Math.cos(a1) * r, Math.sin(a1) * r);
+          ctx.closePath(); ctx.fill();
+        }
+        ctx.restore();
+        // the arch stays dark inside, so the monogram reads cleanly
+        ctx.fillStyle = '#000';
+        arch(ctx, 0);
+        ctx.fill();
+        ctx.drawImage(sign, 0, 0);
+        const cycle = 7, k = (t % cycle) / cycle;
+        if (k < 0.45) {
+          const p = k / 0.45, bx = -W * 0.4 + p * W * 1.8;
+          sx.clearRect(0, 0, W, H);
+          sx.globalCompositeOperation = 'source-over';
+          sx.drawImage(sign, 0, 0);
+          sx.globalCompositeOperation = 'source-in';
+          const g = sx.createLinearGradient(bx - W * 0.25, 0, bx + W * 0.25, H * 0.35);
+          g.addColorStop(0, 'rgba(255,240,200,0)');
+          g.addColorStop(0.5, 'rgba(255,240,200,0.9)');
+          g.addColorStop(1, 'rgba(255,240,200,0)');
+          sx.fillStyle = g;
+          sx.fillRect(0, 0, W, H);
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.drawImage(sheen, 0, 0);
+          ctx.restore();
+        }
       };
     },
 
@@ -1669,58 +1715,117 @@
     },
 
     // Fine gold bubbles rising slowly through black, like a glass of champagne in low light.
+    // Champagne: the glass lit warm from below, bubbles rising in fine streams from points on the
+    // bottom, growing as they climb, and bursting into a sparkle at the surface.
     bubbles(W, H) {
       const s = Math.min(W, H);
-      const n = Math.round(Math.max(24, (W * H) / 2600));
-      const make = (y) => ({ x: Math.random() * W, y: y ?? Math.random() * H, r: s * (0.004 + Math.random() * 0.012), v: 0.04 + Math.random() * 0.1, ph: Math.random() * 6 });
-      const list = Array.from({ length: n }, () => make());
+      const surface = H * 0.16;
+      const glass = offscreen(W, H, (x) => {
+        x.fillStyle = '#000'; x.fillRect(0, 0, W, H);
+        const g = x.createLinearGradient(0, surface, 0, H);
+        g.addColorStop(0, '#0e0a02'); g.addColorStop(0.5, '#1c1404'); g.addColorStop(1, '#33240a');
+        x.fillStyle = g; x.fillRect(0, surface, W, H - surface);
+        const glow = x.createRadialGradient(W / 2, H * 1.05, 0, W / 2, H * 1.05, H * 0.7);
+        glow.addColorStop(0, 'rgba(255,196,100,0.3)'); glow.addColorStop(1, 'rgba(255,196,100,0)');
+        x.fillStyle = glow; x.fillRect(0, surface, W, H - surface);
+        // the meniscus: a bright line where the wine meets the air
+        const m = x.createLinearGradient(0, surface - 2, 0, surface + s * 0.03);
+        m.addColorStop(0, 'rgba(255,236,190,0.9)'); m.addColorStop(1, 'rgba(255,236,190,0)');
+        x.fillStyle = m; x.fillRect(0, surface - 1, W, s * 0.03);
+      });
+      const rand = rng(W * 13 + H * 7);
+      const sources = Array.from({ length: Math.max(6, Math.round(W / 28)) }, () => ({ x: W * (0.06 + rand() * 0.88), rate: 0.25 + rand() * 0.5, ph: rand() * 10 }));
+      const bubbles = [], pops = [];
+      // streams already running when the scene starts
+      for (const src of sources) {
+        for (let y = H - 2; y > surface; y -= H * (0.03 + rand() * 0.05)) {
+          const climbed = (H - y) / H;
+          bubbles.push({ x: src.x + (rand() - 0.5) * 2, y, v: H * (0.08 + climbed * 0.25), r: 0.6 + rand() * 0.6 + climbed * 1.2, ph: rand() * 6 });
+        }
+      }
       let last = 0;
       return (ctx, t) => {
         const dt = last ? Math.min(0.1, t - last) : 0;
         last = t;
-        backdrop(ctx, W, H);
-        ctx.lineWidth = hair(s);
-        for (const b of list) {
-          b.y -= b.v * H * dt;
-          if (b.y < -b.r) Object.assign(b, make(H + b.r));
-          const x = b.x + Math.sin(t * 0.8 + b.ph) * s * 0.006;
-          ctx.strokeStyle = rgba(GOLD, Math.min(0.9, 0.35 + 0.5 * (1 - b.y / H)));
-          ctx.beginPath(); ctx.arc(x, b.y, b.r, 0, Math.PI * 2); ctx.stroke();
+        for (const src of sources) {
+          if (rand() < src.rate * dt * 6) bubbles.push({ x: src.x + (rand() - 0.5) * 2, y: H - 2, v: H * (0.06 + rand() * 0.05), r: 0.6 + rand() * 0.6, ph: rand() * 6 });
         }
+        ctx.drawImage(glass, 0, 0);
+        for (let i = bubbles.length - 1; i >= 0; i--) {
+          const b = bubbles[i];
+          b.v += H * 0.05 * dt;  // they speed up as they rise
+          b.y -= b.v * dt;
+          b.r += 0.25 * dt * s / 100;
+          if (b.y <= surface) { pops.push({ x: b.x, y: surface, at: t }); bubbles.splice(i, 1); continue; }
+          const x = b.x + Math.sin(t * 2 + b.ph) * 0.8;
+          ctx.fillStyle = 'rgba(255,238,200,0.75)';
+          ctx.beginPath(); ctx.arc(x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+          if (b.r > 1.3) { ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(Math.round(x - b.r * 0.4), Math.round(b.y - b.r * 0.4), 1, 1); }
+        }
+        if (bubbles.length > 600) bubbles.splice(0, bubbles.length - 600);
+        for (let i = pops.length - 1; i >= 0; i--) {
+          const p = pops[i], age = t - p.at;
+          if (age > 0.5) { pops.splice(i, 1); continue; }
+          ctx.fillStyle = `rgba(255,246,220,${(1 - age / 0.5).toFixed(3)})`;
+          const d = 1 + age * 6;
+          ctx.fillRect(Math.round(p.x - d), Math.round(p.y), 1, 1); ctx.fillRect(Math.round(p.x + d), Math.round(p.y), 1, 1);
+          ctx.fillRect(Math.round(p.x), Math.round(p.y - d * 0.7), 1, 1);
+        }
+        frame(ctx, W, H);
       };
     },
 
-    // Deco wallpaper: rows of fine gold fans, drifting very slowly.
+    // Deco wallpaper: rows of fine gold fans, drifting very slowly, with a light wandering across
+    // them that catches the gold (only the lines light up; the black stays black).
     fans(W, H) {
       const s = Math.min(W, H);
       const r = Math.max(8, Math.round(s / 6));
-      const tile = document.createElement('canvas');
-      tile.width = r * 2;
-      tile.height = r;
-      const x = tile.getContext('2d');
-      x.lineWidth = Math.max(1, hair(s));
-      for (let k = 4; k >= 1; k--) {
-        x.fillStyle = '#000';
-        x.beginPath(); x.arc(r, r, r * (k / 4), Math.PI, 0); x.closePath(); x.fill();
-        x.strokeStyle = rgba(GOLD, 0.55);
-        x.stroke();
-      }
-      const pattern = document.createElement('canvas');
-      pattern.width = W + r * 2;
-      pattern.height = H + r;
-      const p = pattern.getContext('2d');
-      p.fillStyle = '#000';
-      p.fillRect(0, 0, pattern.width, pattern.height);
-      for (let row = 0, y = 0; y < pattern.height + r; row++, y += r * 0.5) {
-        for (let xx = row % 2 ? -r : 0; xx < pattern.width; xx += r * 2) p.drawImage(tile, xx, y);
-      }
+      const tile = offscreen(r * 2, r, (x) => {
+        x.lineWidth = Math.max(1, hair(s));
+        for (let k = 4; k >= 1; k--) {
+          x.globalCompositeOperation = 'destination-out';
+          x.beginPath(); x.arc(r, r, r * (k / 4), Math.PI, 0); x.closePath(); x.fill();
+          x.globalCompositeOperation = 'source-over';
+          x.strokeStyle = GOLD;
+          x.beginPath(); x.arc(r, r, r * (k / 4), Math.PI, 0); x.stroke();
+        }
+      });
+      // just the lines, each row hiding the one behind it
+      const lines = offscreen(W + r * 2, H + r, (p) => {
+        for (let row = 0, y = 0; y < H + r * 2; row++, y += r * 0.5) {
+          for (let xx = row % 2 ? -r : 0; xx < W + r * 2; xx += r * 2) {
+            p.globalCompositeOperation = 'destination-out';
+            p.beginPath(); p.arc(xx + r, y + r, r, Math.PI, 0); p.closePath(); p.fill();
+            p.globalCompositeOperation = 'source-over';
+            p.drawImage(tile, xx, y);
+          }
+        }
+      });
+      const lit = offscreen(W, H, () => {});
+      const lx = lit.getContext('2d');
       return (ctx, t) => {
-        ctx.drawImage(pattern, -((t * r * 0.05) % (r * 2)), 0);
-        const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.1, W / 2, H / 2, Math.hypot(W, H) * 0.6);
-        g.addColorStop(0, 'rgba(0,0,0,0.1)');
-        g.addColorStop(1, 'rgba(0,0,0,0.85)');
-        ctx.fillStyle = g;
+        const ox = -((t * r * 0.05) % (r * 2));
+        ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, W, H);
+        ctx.globalAlpha = 0.4;
+        ctx.drawImage(lines, ox, 0);
+        ctx.globalAlpha = 1;
+        // the light: a soft spot drifting in a slow figure of eight
+        const cx = W * (0.5 + 0.38 * Math.sin(t * 0.13)), cy = H * (0.5 + 0.36 * Math.sin(t * 0.26 + 1));
+        lx.clearRect(0, 0, W, H);
+        lx.globalCompositeOperation = 'source-over';
+        lx.drawImage(lines, ox, 0);
+        lx.globalCompositeOperation = 'source-in';
+        const g = lx.createRadialGradient(cx, cy, 0, cx, cy, s * 0.55);
+        g.addColorStop(0, 'rgba(255,232,170,1)');
+        g.addColorStop(0.5, 'rgba(230,190,110,0.5)');
+        g.addColorStop(1, 'rgba(230,190,110,0)');
+        lx.fillStyle = g;
+        lx.fillRect(0, 0, W, H);
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.drawImage(lit, 0, 0);
+        ctx.restore();
         frame(ctx, W, H);
       };
     },

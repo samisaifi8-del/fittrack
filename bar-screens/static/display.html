@@ -14,6 +14,9 @@
   .layer { position: absolute; inset: 0; opacity: 0; transition: opacity 0.5s ease; }
   .layer.in { opacity: 1; }
   .layer img, .layer video { display: block; width: 100%; height: 100%; }
+  /* photos in The Bar drift and push in slowly (the compositor does it, so it costs the Pi nothing) */
+  @keyframes drift { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.08) translate(-2%, -1.5%); } }
+  .layer.drift canvas { animation: drift 20s ease-in-out infinite alternate; transform-origin: 50% 40%; }
   .layer canvas, .grid { position: absolute; inset: 0; display: block; width: 100%; height: 100%; image-rendering: pixelated; }
   .grid { z-index: 2; }
   .ident { position: absolute; inset: 0; z-index: 3; display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
@@ -197,6 +200,7 @@
     } else if (slide.type === 'image' && !/\.gif$/i.test(slide.file || '')) {
       const canvas = document.createElement('canvas');
       layer.appendChild(canvas);
+      if (slide.drift !== false) layer.classList.add('drift');
       const img = new Image();
       img.onload = () => { drawPhoto(canvas, img, slide, W, H); onReady(); };
       img.onerror = onReady;
@@ -588,6 +592,12 @@
           const bar = state.bar || {};
           slide.conf = bar.order ? { order: bar.order } : { menu: bar.menu || [] };
         }
+      }
+      if (!soloSlide && !slide && !live.channel && !screen.pinned && (screen.channel || 'rotation') === 'rotation') {
+        // The Bar with nothing in its rotation yet plays the house visuals instead of a black wall
+        const inUse = state.screens.filter((s) => s.enabled).map((s) => s.id);
+        const side = inUse.length > 1 ? (screen.id === inUse[0] ? 'left' : 'right') : '';
+        slide = { type: 'channel', channel: 'visuals', conf: { style: 'mix' }, barName: state.settings.barName, side };
       }
       const mirror = state.mirror, st = state.settings;
       if (!soloSlide && mirror && mirror.live && (st.mirrorScreen === 'all' || st.mirrorScreen === screen.id)) {

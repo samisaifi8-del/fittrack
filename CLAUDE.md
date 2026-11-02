@@ -12,6 +12,12 @@ Raspberry Pi 4. The walls have **no sound**. Guests use their phones (games, dri
   = party-game wall screens, `play.html` = guests' phones (`/play`), `control.html` = Sami's remote (`/control`,
   four tabs: Walls / Bar / Games / Settings), `film.html` = guests' intermission page, `live.html` = phone cameras.
 - `static/content/*.json` = fact-checked question decks (numbers, clues, nights, verdict, drinks). Keep facts sourced.
+  Closest Wins items may carry a `fact` (≤ 110 chars, sentence case) shown large after the answer. `used.json` in
+  the data folder stops repeats until a deck is played through, so more content = longer before anything returns.
+- Pictures on the walls (ESPN crests, BBC news photos) come through `/api/image`, which only fetches from those two
+  and keeps a copy. Game lobbies show a join QR (roster `joinQr`, made by `qrencode` on the Pi).
+- Look: black so unused LEDs stay off, ivory type, gold accents; a subject's own colours (a club's kit) come in as
+  light on the black. Every channel moves a little; static cards are drawn once and stamped.
 - Channels: 1 The Bar, 2 Scores, 3 News, 4 Weather, 5 Visuals, 6 Games (Closest Wins, Five Clues, Five Lights,
   arcade), 7 Basement Live, 8 Now Showing, 9 Colours, 10 The House Pour, 11 The Verdict. Picking Colours or The
   Verdict moves a wall on a game channel to 9 / 11 (`_pick_game` / `_follow_game`).

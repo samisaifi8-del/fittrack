@@ -78,7 +78,7 @@ NEWS_FEEDS = {
     "entertainment": ("https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml", "Entertainment"),
     "sport": ("https://feeds.bbci.co.uk/sport/rss.xml", "Sport"),
 }
-VISUAL_STYLES = ["mix", "botanical", "deco", "lift", "clockface", "skyline", "bubbles", "fans"]
+VISUAL_STYLES = ["mix", "botanical", "skyline"]
 GAMES = [["breaker", "Brick Breaker"], ["duel", "Deco Duel"], ["snake", "Serpentine"], ["quickdraw", "Quick Draw"],
          ["closest", "Closest Wins"], ["fiveclues", "Five Clues"], ["fivelights", "Five Lights"], ["verdict", "The Verdict"],
          ["colours", "Colours"]]  # the last ones are party games the Pi referees (partygames.py)
@@ -283,6 +283,8 @@ class Store:
             saved_conf = data.get("channels", {}).get(name)
             if isinstance(saved_conf, dict):
                 conf.update({k: v for k, v in saved_conf.items() if k in conf})
+        if state["channels"]["visuals"].get("style") not in VISUAL_STYLES:  # a style since retired
+            state["channels"]["visuals"]["style"] = "mix"
         cinema = data.get("cinema")
         if isinstance(cinema, dict) and cinema.get("phase") in CINEMA_PHASES:
             film = cinema.get("film")

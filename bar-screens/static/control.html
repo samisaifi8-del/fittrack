@@ -366,7 +366,7 @@ textarea.field { resize: none; line-height: 1.35; }
     snake: ['Everyone gets a snake.', 'arcade'],
     breaker: ['Slide to move the paddle.', 'arcade'],
   };
-  const STYLE_NAMES = { mix: 'Mix', botanical: 'Banana leaves', skyline: 'Dark deco city', deco: 'The Basement sign', lift: 'Lift indicator', clockface: 'Deco clock', fans: 'Art deco fans', bubbles: 'Champagne bubbles' };
+  const STYLE_NAMES = { mix: 'Both, taking turns', botanical: 'The jungle', skyline: 'The deco city' };
   const MSG_COL = [['Ivory', '#f2ead8'], ['Gold', '#d3b984'], ['Champagne', '#e8d58f'], ['Rouge', '#c06a55']];
   // single quotes inside: these go into style="..." attributes
   const FONTS = [['Poiret One', 'Poiret', "400 1em 'Poiret One'"], ['Josefin Sans', 'Josefin', "600 1em 'Josefin Sans'"], ['Bebas Neue', 'Bebas', "400 1em 'Bebas Neue'"], ['Anton', 'Anton', "400 1em 'Anton'"], ['Barlow Condensed', 'Barlow', "700 1em 'Barlow Condensed'"]];
@@ -1101,7 +1101,7 @@ textarea.field { resize: none; line-height: 1.35; }
     },
     news() { return { cap: 'Channel 3 · News', body: `<h1>Section</h1><p class="sub">Headlines from BBC News.</p><div class="gap"></div>${pickList(S.catalog.feeds, S.channels.news.feed, 'newsPick')}`, foot: '' }; },
     style() {
-      const items = S.catalog.styles.slice().sort((a, b) => (a === 'mix' ? -1 : b === 'mix' ? 1 : 0)).map((k) => [k, STYLE_NAMES[k] || title(k), k === 'mix' ? 'A new one every 45 seconds' : '']);
+      const items = S.catalog.styles.slice().sort((a, b) => (a === 'mix' ? -1 : b === 'mix' ? 1 : 0)).map((k) => [k, STYLE_NAMES[k] || title(k), k === 'mix' ? 'Switches every 90 seconds' : '']);
       return { cap: 'Channel 5 · Visuals', body: `<h1>Style</h1><div class="gap"></div>${pickList(items, S.channels.visuals.style, 'stylePick')}`, foot: '' };
     },
     town() {

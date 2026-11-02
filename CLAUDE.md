@@ -16,6 +16,8 @@ Raspberry Pi 4. The walls have **no sound**. Guests use their phones (games, dri
   the data folder stops repeats until a deck is played through, so more content = longer before anything returns.
 - Pictures on the walls (ESPN crests, BBC news photos) come through `/api/image`, which only fetches from those two
   and keeps a copy. Game lobbies show a join QR (roster `joinQr`, made by `qrencode` on the Pi).
+- Visuals (channel 5) has just two scenes, in `static/scenes.js`: the deco city (runs across both walls as one
+  panorama) and the jungle. Sami asked to keep only these two; new scenes come from his ideas, not a menu.
 - Look: black so unused LEDs stay off, ivory type, gold accents; a subject's own colours (a club's kit) come in as
   light on the black. Every channel moves a little; static cards are drawn once and stamped.
 - Channels: 1 The Bar, 2 Scores, 3 News, 4 Weather, 5 Visuals, 6 Games (Closest Wins, Five Clues, Five Lights,

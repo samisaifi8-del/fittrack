@@ -2,23 +2,15 @@
  "preparty": [
   {
    "id": "v001",
-   "text": "FIRST TO ORDER FOOD AT 3AM"
+   "text": "ORDER TALABAT AT 3AM"
   },
   {
    "id": "v002",
    "text": "LOSE THEIR PHONE TONIGHT"
   },
   {
-   "id": "v003",
-   "text": "BE THE LAST TO LEAVE"
-  },
-  {
    "id": "v004",
    "text": "GET EVERYONE ON THE FLOOR"
-  },
-  {
-   "id": "v005",
-   "text": "START THE DANCE FLOOR"
   },
   {
    "id": "v006",
@@ -27,14 +19,6 @@
   {
    "id": "v007",
    "text": "KNOW EVERY WORD TO THE SONG"
-  },
-  {
-   "id": "v008",
-   "text": "TAKE THE BEST PHOTO TONIGHT"
-  },
-  {
-   "id": "v009",
-   "text": "BEFRIEND THE DJ"
   },
   {
    "id": "v010",
@@ -57,24 +41,16 @@
    "text": "CHANGE OUTFITS TWICE"
   },
   {
-   "id": "v015",
-   "text": "HYPE UP THE WHOLE ROOM"
-  },
-  {
    "id": "v016",
    "text": "START A SINGALONG"
   },
   {
    "id": "v017",
-   "text": "MAKE A NEW BEST FRIEND"
+   "text": "MAKE A BFF IN THE BATHROOM QUEUE"
   },
   {
    "id": "v018",
    "text": "KNOW THE BOUNCER BY NAME"
-  },
-  {
-   "id": "v019",
-   "text": "GET US ON THE GUEST LIST"
   },
   {
    "id": "v020",
@@ -82,15 +58,11 @@
   },
   {
    "id": "v021",
-   "text": "BOOK THE CAR HOME"
+   "text": "KEEP THE CAREEM WAITING 20 MINS"
   },
   {
    "id": "v022",
    "text": "FORGET WHERE WE PARKED"
-  },
-  {
-   "id": "v023",
-   "text": "LOSE THEIR JACKET"
   },
   {
    "id": "v024",
@@ -98,11 +70,7 @@
   },
   {
    "id": "v025",
-   "text": "FILM THE WHOLE NIGHT"
-  },
-  {
-   "id": "v026",
-   "text": "SHOW UP FASHIONABLY LATE"
+   "text": "FILM THE ENTIRE CONCERT"
   },
   {
    "id": "v027",
@@ -118,7 +86,7 @@
   },
   {
    "id": "v030",
-   "text": "STILL BE UP FOR SUNRISE"
+   "text": "WATCH SUNRISE AT KITE BEACH"
   },
   {
    "id": "v031",
@@ -142,11 +110,7 @@
   },
   {
    "id": "v036",
-   "text": "NAME THE GROUP CHAT"
-  },
-  {
-   "id": "v037",
-   "text": "STILL BE DANCING AT 5AM"
+   "text": "RENAME THE GROUP CHAT WEEKLY"
   },
   {
    "id": "v038",
@@ -165,32 +129,20 @@
    "text": "DANCE SOLO AND OWN IT"
   },
   {
-   "id": "v042",
-   "text": "MAKE THE BEST PLAYLIST"
-  },
-  {
-   "id": "v043",
-   "text": "HAVE THE LOUDEST LAUGH"
-  },
-  {
    "id": "v044",
    "text": "STAY TILL THE LIGHTS COME ON"
   },
   {
-   "id": "v045",
-   "text": "NEED TEN MORE MINUTES"
-  },
-  {
    "id": "v046",
-   "text": "SAY \"I'M FIVE MINUTES AWAY\""
+   "text": "SAY \"OMW\" FROM THE SHOWER"
   },
   {
    "id": "v047",
-   "text": "ORGANIZE THE GROUP PHOTO"
+   "text": "RETAKE THE GROUP PHOTO 30 TIMES"
   },
   {
    "id": "v048",
-   "text": "NAIL THE KARAOKE HIGH NOTE"
+   "text": "ATTEMPT THE WHITNEY HIGH NOTE"
   },
   {
    "id": "v049",
@@ -202,23 +154,11 @@
   },
   {
    "id": "v051",
-   "text": "BRING A NEW FRIEND ALONG"
-  },
-  {
-   "id": "v052",
-   "text": "FIND THE BEST SPOT INSIDE"
-  },
-  {
-   "id": "v053",
-   "text": "GET THE DJ TO PLAY IT"
+   "text": "BRING A PLUS-ONE NOBODY'S MET"
   },
   {
    "id": "v054",
    "text": "COMPLIMENT EVERYONE'S FIT"
-  },
-  {
-   "id": "v055",
-   "text": "LEND OUT THEIR CHARGER"
   },
   {
    "id": "v056",
@@ -227,10 +167,6 @@
   {
    "id": "v057",
    "text": "CARRY A POWER BANK"
-  },
-  {
-   "id": "v058",
-   "text": "REMEMBER EVERYONE'S NAME"
   },
   {
    "id": "v059",
@@ -242,15 +178,11 @@
   },
   {
    "id": "v061",
-   "text": "MAKE BRUNCH ON TIME"
+   "text": "BOOK BRUNCH AND THEN MISS IT"
   },
   {
    "id": "v062",
-   "text": "TURN A CHILL NIGHT WILD"
-  },
-  {
-   "id": "v063",
-   "text": "BRING THE BEST ENERGY"
+   "text": "TURN A TUESDAY INTO A WEEKEND"
   },
   {
    "id": "v064",
@@ -273,10 +205,6 @@
    "text": "GET THE WHOLE CLUB CLAPPING"
   },
   {
-   "id": "v069",
-   "text": "BE ON THE AUX AT 4AM"
-  },
-  {
    "id": "v070",
    "text": "PLAN NEXT WEEKEND TONIGHT"
   },
@@ -293,14 +221,6 @@
    "text": "GET LOST FINDING THE VENUE"
   },
   {
-   "id": "v074",
-   "text": "WIN THE DANCE-OFF"
-  },
-  {
-   "id": "v075",
-   "text": "KNOW WHERE THE PARTY IS"
-  },
-  {
    "id": "v076",
    "text": "BE THE DESIGNATED DRIVER"
   },
@@ -313,18 +233,258 @@
    "text": "GET A SHOUTOUT FROM THE DJ"
   },
   {
-   "id": "v079",
-   "text": "TURN STRANGERS INTO FRIENDS"
+   "id": "v161",
+   "text": "SEND A FOUR-MINUTE VOICE NOTE"
   },
   {
-   "id": "v080",
-   "text": "STEAL THE SHOW AT KARAOKE"
+   "id": "v162",
+   "text": "LEAVE EVERYONE ON READ"
+  },
+  {
+   "id": "v163",
+   "text": "CANCEL WITH \"SOMETHING CAME UP\""
+  },
+  {
+   "id": "v164",
+   "text": "BACKSEAT-DRIVE THE CAREEM"
+  },
+  {
+   "id": "v165",
+   "text": "TURN BRUNCH INTO A 10-HOUR DAY"
+  },
+  {
+   "id": "v166",
+   "text": "BOOK FOR SIX AND BRING TWELVE"
+  },
+  {
+   "id": "v167",
+   "text": "GET THE 4X4 STUCK IN THE DUNES"
+  },
+  {
+   "id": "v168",
+   "text": "START A DABKE LINE ANYWHERE"
+  },
+  {
+   "id": "v169",
+   "text": "CALL 40 DEGREES \"NICE WEATHER\""
+  },
+  {
+   "id": "v170",
+   "text": "BRING A HOODIE FOR THE MALL AC"
+  },
+  {
+   "id": "v171",
+   "text": "SAY \"I'M EASY\" THEN VETO ALL"
+  },
+  {
+   "id": "v172",
+   "text": "BOOK THE TABLE UNDER A FAKE NAME"
+  },
+  {
+   "id": "v173",
+   "text": "SAY BYE THEN STAY TWO HOURS"
+  },
+  {
+   "id": "v174",
+   "text": "FAKE A PHONE CALL TO ESCAPE"
+  },
+  {
+   "id": "v175",
+   "text": "SHOW UP IN COSTUME, NO THEME"
+  },
+  {
+   "id": "v176",
+   "text": "REQUEST DESPACITO IN 2026"
+  },
+  {
+   "id": "v177",
+   "text": "SWITCH TO ARABIC BANGERS AT 2AM"
+  },
+  {
+   "id": "v178",
+   "text": "WALK INTO THE WRONG PARTY"
+  },
+  {
+   "id": "v179",
+   "text": "NEVER MAKE IT PAST THE PRE-PARTY"
+  },
+  {
+   "id": "v180",
+   "text": "BORROW A JACKET AND KEEP IT"
+  },
+  {
+   "id": "v181",
+   "text": "MAKE A SPREADSHEET FOR THE TRIP"
+  },
+  {
+   "id": "v182",
+   "text": "FORGET THEIR ID AT THE DOOR"
+  },
+  {
+   "id": "v183",
+   "text": "POSE AT THE BURJ LIKE A TOURIST"
+  },
+  {
+   "id": "v184",
+   "text": "ORDER SPARKLERS FOR NO REASON"
+  },
+  {
+   "id": "v185",
+   "text": "KNOW THE WAITER'S LIFE STORY"
+  },
+  {
+   "id": "v186",
+   "text": "ACCIDENTALLY LIKE A 2017 PHOTO"
+  },
+  {
+   "id": "v187",
+   "text": "POCKET-DIAL THEIR BOSS"
+  },
+  {
+   "id": "v188",
+   "text": "HAVE 12 MISSED CALLS FROM MUM"
+  },
+  {
+   "id": "v189",
+   "text": "CALL IN SICK ON MONDAY"
+  },
+  {
+   "id": "v190",
+   "text": "HAVE A DEEP TALK IN THE KITCHEN"
+  },
+  {
+   "id": "v191",
+   "text": "PITCH A STARTUP AT A HOUSE PARTY"
+  },
+  {
+   "id": "v192",
+   "text": "BOOK A FLIGHT FROM THE CLUB"
+  },
+  {
+   "id": "v193",
+   "text": "LOSE ONE AIRPOD BY MIDNIGHT"
+  },
+  {
+   "id": "v194",
+   "text": "CALL IT AN EARLY ONE AT 5AM"
+  },
+  {
+   "id": "v195",
+   "text": "SAY \"YALLA\" THEN NOT MOVE"
+  },
+  {
+   "id": "v196",
+   "text": "CALL SHOTGUN FROM THE FRONT DOOR"
+  },
+  {
+   "id": "v197",
+   "text": "PLAN A TRIP THAT NEVER HAPPENS"
+  },
+  {
+   "id": "v198",
+   "text": "ADD A RANDOM TO THE GROUP CHAT"
+  },
+  {
+   "id": "v199",
+   "text": "REPLY TO A TEXT FROM MARCH"
+  },
+  {
+   "id": "v200",
+   "text": "SEND 30 REELS BEFORE 8AM"
+  },
+  {
+   "id": "v201",
+   "text": "EXPLAIN CRYPTO AT THE PARTY"
+  },
+  {
+   "id": "v202",
+   "text": "SWEAR THEY SAW A FOOTBALLER"
+  },
+  {
+   "id": "v203",
+   "text": "COOK INDOMIE AFTER THE CLUB"
+  },
+  {
+   "id": "v204",
+   "text": "SHOW STRANGERS THEIR CAT PICS"
+  },
+  {
+   "id": "v205",
+   "text": "FALL ASLEEP AT THEIR OWN PARTY"
+  },
+  {
+   "id": "v206",
+   "text": "SAY \"I LOVE YOU GUYS\" AT 4AM"
+  },
+  {
+   "id": "v207",
+   "text": "SAVE A NUMBER AS \"BRUNCH GUY\""
+  },
+  {
+   "id": "v208",
+   "text": "ASK THE CLUB FOR THE WI-FI CODE"
+  },
+  {
+   "id": "v209",
+   "text": "FAKE THE LYRICS WITH CONFIDENCE"
+  },
+  {
+   "id": "v210",
+   "text": "FAKE A BIRTHDAY FOR FREE CAKE"
+  },
+  {
+   "id": "v211",
+   "text": "TEXT \"WHERE R U\" FROM THE BAR"
+  },
+  {
+   "id": "v212",
+   "text": "QUEUE TWO HOURS FOR A HYPE SPOT"
+  },
+  {
+   "id": "v213",
+   "text": "SAY THEIR COUSIN OWNS THE PLACE"
+  },
+  {
+   "id": "v214",
+   "text": "DANCE WITH EVERYONE'S UNCLE"
+  },
+  {
+   "id": "v215",
+   "text": "FORGET THE HOST'S NAME"
+  },
+  {
+   "id": "v216",
+   "text": "PLAY A PODCAST ON THE AUX"
+  },
+  {
+   "id": "v217",
+   "text": "DRIVE TO HATTA ON A WHIM"
+  },
+  {
+   "id": "v218",
+   "text": "FORGET THE CHARCOAL FOR THE CAMP"
+  },
+  {
+   "id": "v219",
+   "text": "FALL IN THE POOL FULLY DRESSED"
+  },
+  {
+   "id": "v220",
+   "text": "SEND THE FOOD BACK TWICE"
+  },
+  {
+   "id": "v221",
+   "text": "DANCE HARDEST ON JUST WATER"
+  },
+  {
+   "id": "v222",
+   "text": "STEAL A FRY FROM EVERY PLATE"
   }
  ],
  "gamenight": [
   {
    "id": "v081",
-   "text": "RAGE QUIT A BOARD GAME"
+   "text": "RAGE-QUIT AND BLAME THE WI-FI"
   },
   {
    "id": "v082",
@@ -340,11 +500,7 @@
   },
   {
    "id": "v085",
-   "text": "SAY \"BEST OF THREE\""
-  },
-  {
-   "id": "v086",
-   "text": "DEMAND A REMATCH"
+   "text": "SAY \"OK, BEST OF FIVE\""
   },
   {
    "id": "v087",
@@ -363,28 +519,16 @@
    "text": "EAT THE LAST SLICE"
   },
   {
-   "id": "v091",
-   "text": "ORDER WAY TOO MUCH FOOD"
-  },
-  {
    "id": "v092",
    "text": "EAT ALL SNACKS BY HALFTIME"
   },
   {
    "id": "v093",
-   "text": "SCREAM AT THE REFEREE"
+   "text": "SCREAM AT A REFEREE ON TV"
   },
   {
    "id": "v094",
    "text": "CELEBRATE A GOAL TOO EARLY"
-  },
-  {
-   "id": "v095",
-   "text": "PREDICT THE FINAL SCORE"
-  },
-  {
-   "id": "v096",
-   "text": "BACK THE UNDERDOG"
   },
   {
    "id": "v097",
@@ -404,11 +548,11 @@
   },
   {
    "id": "v101",
-   "text": "PICK THE SAME TEAM ALWAYS"
+   "text": "PICK REAL MADRID AND STILL LOSE"
   },
   {
    "id": "v102",
-   "text": "SCORE IN THE LAST MINUTE"
+   "text": "SCORE IN THE 94TH MINUTE"
   },
   {
    "id": "v103",
@@ -424,35 +568,15 @@
   },
   {
    "id": "v106",
-   "text": "TAKE MONOPOLY TOO SERIOUSLY"
-  },
-  {
-   "id": "v107",
-   "text": "NEED THE RULES TWICE"
-  },
-  {
-   "id": "v108",
-   "text": "NEVER LET A WIN GO"
+   "text": "TURN MONOPOLY INTO A COURT CASE"
   },
   {
    "id": "v109",
    "text": "BRING UP A WIN FROM 2019"
   },
   {
-   "id": "v110",
-   "text": "CELEBRATE LIKE A FINAL"
-  },
-  {
    "id": "v111",
    "text": "DO A KNEE SLIDE INDOORS"
-  },
-  {
-   "id": "v112",
-   "text": "CARRY THE WHOLE TEAM"
-  },
-  {
-   "id": "v113",
-   "text": "CLUTCH THE FINAL ROUND"
   },
   {
    "id": "v114",
@@ -475,20 +599,12 @@
    "text": "BUTTON MASH AND STILL WIN"
   },
   {
-   "id": "v119",
-   "text": "BLAME THE LAG"
-  },
-  {
    "id": "v120",
    "text": "ACCUSE SOMEONE OF CHEATING"
   },
   {
    "id": "v121",
    "text": "KEEP A SECRET SCOREBOARD"
-  },
-  {
-   "id": "v122",
-   "text": "REMEMBER EVERY SCORE EVER"
   },
   {
    "id": "v123",
@@ -511,10 +627,6 @@
    "text": "HOG THE GOOD CONTROLLER"
   },
   {
-   "id": "v128",
-   "text": "WIN AT PING PONG"
-  },
-  {
    "id": "v129",
    "text": "NEVER PASS THE BALL"
   },
@@ -532,11 +644,7 @@
   },
   {
    "id": "v133",
-   "text": "NAIL EVERY CHARADES ROUND"
-  },
-  {
-   "id": "v134",
-   "text": "KNOW ALL THE TRIVIA ANSWERS"
+   "text": "ACT OUT CHARADES WAY TOO HARD"
   },
   {
    "id": "v135",
@@ -567,20 +675,12 @@
    "text": "CALL THE PLOT TWIST EARLY"
   },
   {
-   "id": "v142",
-   "text": "GRILL THE BEST BURGERS"
-  },
-  {
    "id": "v143",
    "text": "BURN THE POPCORN"
   },
   {
    "id": "v144",
    "text": "DOUBLE-DIP THE NACHOS"
-  },
-  {
-   "id": "v145",
-   "text": "MAKE THE BEST GAME DAY SNACK"
   },
   {
    "id": "v146",
@@ -599,10 +699,6 @@
    "text": "PLAY ONE MORE ROUND AT 4AM"
   },
   {
-   "id": "v150",
-   "text": "PULL A GAMING ALL-NIGHTER"
-  },
-  {
    "id": "v151",
    "text": "COMMENTATE THEIR OWN PLAYS"
   },
@@ -612,7 +708,7 @@
   },
   {
    "id": "v153",
-   "text": "WIN THE FANTASY LEAGUE"
+   "text": "CHECK FANTASY POINTS AT DINNER"
   },
   {
    "id": "v154",
@@ -641,6 +737,226 @@
   {
    "id": "v160",
    "text": "CALL A FOUL ON THE SOFA"
+  },
+  {
+   "id": "v223",
+   "text": "PAUSE MID-ATTACK FOR \"TACTICS\""
+  },
+  {
+   "id": "v224",
+   "text": "CALL IT \"SCRIPTED\" AFTER LOSING"
+  },
+  {
+   "id": "v225",
+   "text": "DO SKILL MOVES IN THEIR OWN BOX"
+  },
+  {
+   "id": "v226",
+   "text": "SCREAM INTO A MUTED MIC"
+  },
+  {
+   "id": "v227",
+   "text": "LOSE TO A 12-YEAR-OLD ONLINE"
+  },
+  {
+   "id": "v228",
+   "text": "CURSE THE SPAWNS IN CALL OF DUTY"
+  },
+  {
+   "id": "v229",
+   "text": "DIE FIRST THEN BACKSEAT-GAME"
+  },
+  {
+   "id": "v230",
+   "text": "FALL OFF RAINBOW ROAD EVERY LAP"
+  },
+  {
+   "id": "v231",
+   "text": "DRIVE BACKWARDS AND NOT NOTICE"
+  },
+  {
+   "id": "v232",
+   "text": "LEAN INTO EVERY CORNER IRL"
+  },
+  {
+   "id": "v233",
+   "text": "CHANGE THE COLOUR OUT OF SPITE"
+  },
+  {
+   "id": "v234",
+   "text": "BUY ALL FOUR STATIONS AND GLOAT"
+  },
+  {
+   "id": "v235",
+   "text": "VOLUNTEER AS BANKER SUSPICIOUSLY"
+  },
+  {
+   "id": "v236",
+   "text": "TOPPLE THE JENGA ON TURN ONE"
+  },
+  {
+   "id": "v237",
+   "text": "GO ALL IN ON THE FIRST HAND"
+  },
+  {
+   "id": "v238",
+   "text": "TAKE TEN MINUTES PER CHESS MOVE"
+  },
+  {
+   "id": "v239",
+   "text": "SAY THE TABOO WORD IMMEDIATELY"
+  },
+  {
+   "id": "v240",
+   "text": "DRAW STICK MEN FOR EVERY WORD"
+  },
+  {
+   "id": "v241",
+   "text": "GIVE A CLUE ONLY THEY GET"
+  },
+  {
+   "id": "v242",
+   "text": "LIE TOO WELL AT MAFIA"
+  },
+  {
+   "id": "v243",
+   "text": "CALL SOMEONE \"SUS\" WITH NO PROOF"
+  },
+  {
+   "id": "v244",
+   "text": "EXPLAIN THE RULES FOR 40 MINUTES"
+  },
+  {
+   "id": "v245",
+   "text": "BRING A GAME WITH 80-PAGE RULES"
+  },
+  {
+   "id": "v246",
+   "text": "UNPLUG THE PS5 WHEN LOSING"
+  },
+  {
+   "id": "v247",
+   "text": "SOFT-THROW THE CONTROLLER"
+  },
+  {
+   "id": "v248",
+   "text": "GIVE A GUEST A DEAD CONTROLLER"
+  },
+  {
+   "id": "v249",
+   "text": "SCREEN-PEEK AND DENY IT"
+  },
+  {
+   "id": "v250",
+   "text": "SKY EVERY PENALTY IN EA FC"
+  },
+  {
+   "id": "v251",
+   "text": "SWITCH CLUBS WHEN THEIRS LOSES"
+  },
+  {
+   "id": "v252",
+   "text": "CRY AT A CHAMPIONS LEAGUE FINAL"
+  },
+  {
+   "id": "v253",
+   "text": "GO SILENT WHEN THEIR TEAM LOSES"
+  },
+  {
+   "id": "v254",
+   "text": "SEND A MEME AT THE FINAL WHISTLE"
+  },
+  {
+   "id": "v255",
+   "text": "PAUSE THE MOVIE TO EXPLAIN IT"
+  },
+  {
+   "id": "v256",
+   "text": "START A PS5 VS XBOX ARGUMENT"
+  },
+  {
+   "id": "v257",
+   "text": "PLAY ON EASY AND STILL BRAG"
+  },
+  {
+   "id": "v258",
+   "text": "FORGET TO SAVE THREE HOURS IN"
+  },
+  {
+   "id": "v259",
+   "text": "GO AFK DURING THE FINAL CIRCLE"
+  },
+  {
+   "id": "v260",
+   "text": "ARGUE WITH AN NPC OUT LOUD"
+  },
+  {
+   "id": "v261",
+   "text": "HIT THE SIUUU AFTER EVERY GOAL"
+  },
+  {
+   "id": "v262",
+   "text": "START A FAKE TRANSFER RUMOUR"
+  },
+  {
+   "id": "v263",
+   "text": "CLAIM THEY COULD'VE GONE PRO"
+  },
+  {
+   "id": "v264",
+   "text": "WIN ONCE AND RETIRE UNDEFEATED"
+  },
+  {
+   "id": "v265",
+   "text": "SHUFFLE LIKE A VEGAS DEALER"
+  },
+  {
+   "id": "v266",
+   "text": "PICK UP +12 AND STAY CALM"
+  },
+  {
+   "id": "v267",
+   "text": "BREAK AN ALLIANCE FOR ONE POINT"
+  },
+  {
+   "id": "v268",
+   "text": "HIT THE TV PLAYING WII SPORTS"
+  },
+  {
+   "id": "v269",
+   "text": "TAKE JUST DANCE TOO SERIOUSLY"
+  },
+  {
+   "id": "v270",
+   "text": "HIDE THE GOOD SNACKS FOR LATER"
+  },
+  {
+   "id": "v271",
+   "text": "MISS THE GOAL GETTING THE DOOR"
+  },
+  {
+   "id": "v272",
+   "text": "DODGE A FORFEIT WITH A LOOPHOLE"
+  },
+  {
+   "id": "v273",
+   "text": "STILL KNOW GTA CHEAT CODES"
+  },
+  {
+   "id": "v274",
+   "text": "SKIP THE MISSION TO CAUSE CHAOS"
+  },
+  {
+   "id": "v275",
+   "text": "LOSE AT THE GAME THEY BROUGHT"
+  },
+  {
+   "id": "v276",
+   "text": "DRAW A TOURNAMENT BRACKET AT 1AM"
+  },
+  {
+   "id": "v277",
+   "text": "PICK TEAMS SO THEY CAN'T LOSE"
   }
  ]
 }

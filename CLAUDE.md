@@ -33,7 +33,9 @@ Raspberry Pi 4. The walls have **no sound**. Guests use their phones (games, dri
   `BarScreensBlank` so no pointer sits on the walls). Control page `http://basementscreens.local/control`.
 - Power: the Pi is fed from the TB6's USB port (Sami's only option there). That's too little for a Pi 4: it sits
   under-voltage (`vcgencmd get_throttled` 0x50005) and the firmware drops it to ~480 MHz even idle. To ease it,
-  `/boot/firmware/config.txt` has `arm_boost=0`, `arm_freq=1200`, `dtoverlay=disable-bt` (original in `config.txt.orig`).
+  `/boot/firmware/config.txt` has `arm_boost=0`, `arm_freq=1200`, `dtoverlay=disable-bt` (original in `config.txt.orig`),
+  and `~/.config/kanshi/config` sets HDMI to 640 × 480 (the TB6 maps it 1:1; Sami confirmed the walls look the same).
+  Still under-voltage much of the time: tuning only narrows it, a lower-power board or proper supply fixes it.
 - STV's Pi (`stv@stv.local`, key `~/.ssh/stv_pi`) is STV's again; don't deploy Bar Screens there.
 - Deploy = push the branch, then on the Pi:
   `cd ~/bar-screens-src && git pull && sudo systemctl restart bar-screens && pkill -f "[b]ar-screens-chromium"`

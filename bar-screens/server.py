@@ -251,6 +251,7 @@ class Store:
         self.clients = set()
         self.live = {}       # screen id -> {"slide", "index", "until"}; not saved
         self.display = None  # HDMI picture size reported by the display page
+        self.fps = None      # frames a second the wall's page is managing (it reports every 5 s)
         self.mirroring = False  # a phone is mirroring to the wall over AirPlay
         self.live_info = dict   # Basement Live's link and cameras (set up in main)
         self.cinema_info = lambda: None  # Now Showing's film and phase, for phones and the wall
@@ -309,6 +310,7 @@ class Store:
                 **self.state,
                 "live": {sid: {"slide": v["slide"], "channel": v["channel"]} for sid, v in self.live.items()},
                 "display": self.display,
+                "fps": self.fps,
                 "displayOn": not os.path.exists(self.off_flag),
                 "mirror": {"available": bool(UXPLAY), "live": self.mirroring},
                 "golive": self.live_info(),
@@ -2576,6 +2578,11 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(201, store.create_slide(self._read_json()))
         if method == "POST" and path == "/api/upload":
             return self._json(201, self._upload(qs))
+        if method == "POST" and path == "/api/display/fps":
+            # kept quietly (no broadcast): how smoothly the walls are running, for checking
+            fps = self._read_json().get("fps")
+            store.fps = round(float(fps), 1) if isinstance(fps, (int, float)) and 0 <= fps <= 240 else None
+            return self._json(200, {"ok": True})
         if method == "POST" and path == "/api/display":
             store.set_display(self._read_json())
             return self._json(200, {"ok": True})

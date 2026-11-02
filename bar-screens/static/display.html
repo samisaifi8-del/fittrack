@@ -647,6 +647,22 @@
     }).catch(() => {});
   }
 
+  // How smoothly the wall is running: frames a second over the last 5 s, sent to the Pi (the
+  // control page's state shows it as "fps"), so a heavy channel shows up as a number.
+  if (kiosk) {
+    let frames = 0, since = performance.now();
+    const count = (now) => {
+      frames++;
+      if (now - since >= 5000) {
+        const fps = (frames * 1000) / (now - since);
+        frames = 0; since = now;
+        fetch('/api/display/fps', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fps }) }).catch(() => {});
+      }
+      requestAnimationFrame(count);
+    };
+    requestAnimationFrame(count);
+  }
+
   // Movie night's countdowns use the Pi's clock: how far this device's clock is from it, in
   // seconds. (Previews on the control page get the phone's figure along with the state.)
   function setClock(st) {

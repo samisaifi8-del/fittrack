@@ -105,6 +105,7 @@ input[type="text"] {
 .pp-go { min-height: 64px; font-size: 18px; }
 .pp-result.win .pp-big { color: var(--gold); }
 .pp-result .pp-text { color: var(--fg); font-size: 22px; }
+.pp-fact { margin: 18px 0 0; color: var(--gold, #d3b984); font-size: 17px; font-style: italic; text-align: center; line-height: 1.35; }
 .dial { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; min-height: 0; }
 .dial-unit { text-align: center; font: 700 13px/1 var(--f-label); letter-spacing: 0.3em; color: var(--gold); }
 .dial-num { display: block; text-align: center; font: 600 96px/1 var(--f-body); font-variant-numeric: tabular-nums; letter-spacing: 0.01em; white-space: nowrap; overflow: hidden; }
@@ -444,7 +445,7 @@ input[type="text"] {
       return update;
     },
     result(el, v) {
-      el.innerHTML = `<div class="pp-center pp-result ${esc(v.tone || '')}"><p class="pp-big">${esc(v.big || '')}</p><p class="pp-text">${esc(v.text || '')}</p></div>`;
+      el.innerHTML = `<div class="pp-center pp-result ${esc(v.tone || '')}"><p class="pp-big">${esc(v.big || '')}</p><p class="pp-text">${esc(v.text || '')}</p>${v.fact ? `<p class="pp-fact">${esc(v.fact)}</p>` : ''}</div>`;
     },
     next(el, v) {
       el.innerHTML = `<div class="pp-center"><p class="pp-big">${esc(v.big || '')}</p><p class="pp-text">${esc(v.text || '')}</p></div>

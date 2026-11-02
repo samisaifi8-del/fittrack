@@ -564,6 +564,34 @@
       }
       ctx.globalAlpha = 1;
     }
+    // a couple of seconds after the winner's line, the chart dims and the question's fact
+    // comes up large (with the answer over it, so the two read together)
+    if (st.fact && e >= T.line + 2.2) {
+      const a = ease((e - T.line - 2.2) / 0.7);
+      ctx.save();
+      ctx.globalAlpha = a * 0.9;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = a;
+      ctx.drawImage(g.layer(`${key}|fact`, (x) => {
+        x.textAlign = 'center';
+        x.textBaseline = 'top';
+        let y = H * 0.16;
+        y = stack(g, x, y, [['DID YOU KNOW', 'Josefin Sans', Math.round(s * 0.045), k.GOLD, s * 0.02]]);
+        y += s * 0.02;
+        k.decoRule(x, W * 0.3, y, W * 0.4, s);
+        y += s * 0.07;
+        const fb = k.fitWrapped(x, st.fact, 'Cormorant', W * 0.86, H * 0.5, 6, 1.12);
+        const size = Math.min(fb.size, Math.round(s * 0.1));
+        x.font = k.font('Cormorant', size);
+        x.fillStyle = k.IVORY;
+        x.textBaseline = 'top';
+        fb.lines.forEach((l, i) => x.fillText(l, W / 2, y + i * size * 1.12));
+        y += fb.lines.length * size * 1.12 + s * 0.06;
+        stack(g, x, y, [[`${st.answerText}${st.unit && !st.year ? ' ' + st.unit : ''}`, 'Josefin Sans', Math.round(s * 0.06), k.GOLD_LIGHT, s * 0.01]]);
+      }), 0, 0);
+      ctx.restore();
+    }
   }
 
   function answerPlate(g, x, st, P) {

@@ -60,6 +60,7 @@ class Decks(unittest.TestCase):
             self.assertLessEqual(i["answer"], i["max"], i["id"])
             self.assertEqual(i["answer"] % (i.get("step") or 1), 0, i["id"])  # the dial can reach it
             self.assertLessEqual(len(i["q"].split()), 10, i["id"])
+            self.assertLessEqual(len(i.get("fact") or ""), partygames.FACT_MAX, i["id"])
 
     def test_bad_names_and_files(self):
         self.assertEqual(partygames.load_deck("../server"), [])
@@ -180,7 +181,8 @@ class Hub(unittest.TestCase):
         send(hub, "pid-sami", "start")
         self.assertEqual((g.phase, g.round), ("card", 1))
         self.assertEqual(len(g.questions), 6)
-        self.assertEqual(len({i["category"] for i in g.questions}), 5)  # every kind of fan gets one
+        cats = {i["category"] for i in partygames.load_deck("numbers") if not (i["unit"] == "YEAR" and i["category"] in g.RELEASE)}
+        self.assertEqual(len({i["category"] for i in g.questions}), min(6, len(cats)))  # every kind of fan gets one
         run_for(hub, g.CARD + 0.5)
         for n in range(6):
             if n == 5:
@@ -200,7 +202,13 @@ class Hub(unittest.TestCase):
             self.assertEqual(g.phase, "reveal")
             self.assertTrue(g.data["spot"])
             self.assertTrue(g.data["winner"].endswith("SPOT ON"))
-            run_for(hub, g.data["times"]["end"] + 0.5)
+            # the question's fact comes with the answer, on the wall and on the phones
+            fact = str(item.get("fact") or "")[:partygames.FACT_MAX]
+            self.assertEqual(g.data["fact"], fact)
+            times = g.data["times"]
+            run_for(hub, times["answer"] + 0.5)
+            self.assertEqual(g.pad("pid-sami").get("fact", ""), fact)
+            run_for(hub, times["end"] - times["answer"])
         self.assertEqual(g.phase, "podium")
         self.assertEqual(g.points["pid-sami"], 30)  # spot on six times
         self.assertEqual(g.data["places"][0]["name"], "SAMI")

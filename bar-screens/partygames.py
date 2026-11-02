@@ -469,6 +469,12 @@ def score_guesses(answer, guesses, doubled=()):
     return rows
 
 
+# Closest Wins: a question may carry a fact that comes up with its answer (the wall swaps the
+# question for it once the answer has landed, and phones show it under the result).
+FACT_MAX = 110   # characters: three short lines at the top of the wall
+FACT_READ = 3.5  # seconds added to the reveal to read it
+
+
 def reveal_times(n):
     """Closest Wins' reveal, in seconds from its start: when each dot drops (furthest first, the
     last two slower), when the answer falls, when the winner's line shows, and the end."""
@@ -588,6 +594,9 @@ class ClosestWins(PartyGame):
         values = {pid: g["value"] for pid, g in self.guesses.items() if g.get("value") is not None and (g["locked"] or g["touched"])}
         rows = score_guesses(it["answer"], values, self.doubles)
         times = reveal_times(len(rows))
+        fact = str(it.get("fact") or "")[:FACT_MAX]
+        if fact:
+            times["end"] = round(times["end"] + FACT_READ, 2)  # time to read the fact once the winner's shown
         start = self.now()
         year = it.get("unit") == "YEAR"
         for r in rows:
@@ -614,7 +623,7 @@ class ClosestWins(PartyGame):
         self.wake(start + times["answer"])
         self.go("reveal", times["end"], text=it["q"], by=it.get("by", ""), year=year, answer=it["answer"],
                 answerText=fmt(it["answer"], year), unit=it.get("unit", ""), min=lo, max=hi,
-                spot=bool(rows) and rows[-1]["off"] == 0, winner=winner, times=times,
+                spot=bool(rows) and rows[-1]["off"] == 0, winner=winner, times=times, fact=fact,
                 rows=[{"slot": self.who(r["pid"])["slot"], "name": self.who(r["pid"])["name"],
                        "initial": ini.get(r["pid"]) or self.who(r["pid"])["name"][:1], "color": self.who(r["pid"])["color"],
                        "value": r["value"], "rank": r["rank"], "points": r["points"], "doubled": r["doubled"], "sip": r["sip"]}
@@ -701,8 +710,9 @@ class ClosestWins(PartyGame):
                 return self.base_pad(pid, {"ui": "result", "key": f"reveal:{self.at}", "big": "No guess", "text": "Get the next one in.", "tone": "plain"})
             off = "Spot on" if r["off"] == 0 else f"You were {fmt(r['off'])} off"
             pts = f"+{r['points']}" if r["points"] > 0 else f"{r['points']}" if r["points"] < 0 else "no points"
+            fact = self.data.get("fact")
             return self.base_pad(pid, {"ui": "result", "key": f"reveal:{self.at}", "big": ordinal(r["rank"]),
-                                       "text": f"{off} · {pts}" + (" (doubled)" if r["doubled"] else ""),
+                                       "text": f"{off} · {pts}" + (" (doubled)" if r["doubled"] else ""), "fact": fact or "",
                                        "tone": "win" if r["off"] == 0 or r["rank"] == 1 else "good" if r["points"] > 0 else "plain"})
         if ph == "podium":
             mine = next((s for s in self.standings() if s["pid"] == pid), None)

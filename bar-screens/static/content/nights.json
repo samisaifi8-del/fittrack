@@ -48,12 +48,6 @@
   "room": false
  },
  {
-  "id": "p009",
-  "text": "RIDDEN A HORSE",
-  "tier": "mild",
-  "room": false
- },
- {
   "id": "p010",
   "text": "GONE SKYDIVING",
   "tier": "mild",
@@ -73,7 +67,7 @@
  },
  {
   "id": "p013",
-  "text": "COOKED A FULL ROAST",
+  "text": "SET OFF THE SMOKE ALARM MAKING TOAST",
   "tier": "mild",
   "room": false
  },
@@ -108,20 +102,8 @@
   "room": true
  },
  {
-  "id": "p019",
-  "text": "DYED MY HAIR",
-  "tier": "mild",
-  "room": false
- },
- {
-  "id": "p020",
-  "text": "WON A RAFFLE",
-  "tier": "mild",
-  "room": false
- },
- {
   "id": "p021",
-  "text": "BEEN TO A MUSIC FESTIVAL",
+  "text": "LOST MY FRIENDS AT A FESTIVAL",
   "tier": "mild",
   "room": false
  },
@@ -156,12 +138,6 @@
   "room": false
  },
  {
-  "id": "p027",
-  "text": "BEEN SEASICK",
-  "tier": "mild",
-  "room": false
- },
- {
   "id": "p028",
   "text": "ORDERED BY POINTING",
   "tier": "mild",
@@ -175,7 +151,7 @@
  },
  {
   "id": "p030",
-  "text": "WON A TROPHY",
+  "text": "KEPT A PARTICIPATION TROPHY",
   "tier": "mild",
   "room": false
  },
@@ -210,12 +186,6 @@
   "room": false
  },
  {
-  "id": "p036",
-  "text": "FALLEN ASLEEP AT WORK",
-  "tier": "mild",
-  "room": false
- },
- {
   "id": "p037",
   "text": "REPLIED ALL BY MISTAKE",
   "tier": "mild",
@@ -235,19 +205,13 @@
  },
  {
   "id": "p040",
-  "text": "WORN ODD SOCKS ALL DAY",
+  "text": "WORN MY SHIRT INSIDE OUT ALL DAY",
   "tier": "mild",
   "room": false
  },
  {
   "id": "p041",
   "text": "EATEN A WHOLE PIZZA ALONE",
-  "tier": "mild",
-  "room": false
- },
- {
-  "id": "p042",
-  "text": "EATEN SNAILS",
   "tier": "mild",
   "room": false
  },
@@ -259,7 +223,7 @@
  },
  {
   "id": "p044",
-  "text": "DROPPED MY PHONE IN WATER",
+  "text": "PUT MY PHONE IN A BAG OF RICE",
   "tier": "mild",
   "room": false
  },
@@ -270,12 +234,6 @@
   "room": true
  },
  {
-  "id": "p046",
-  "text": "BEEN ON A CRUISE",
-  "tier": "mild",
-  "room": false
- },
- {
   "id": "p047",
   "text": "LOST MY LUGGAGE",
   "tier": "mild",
@@ -283,43 +241,19 @@
  },
  {
   "id": "p048",
-  "text": "TRAVELLED SOLO",
-  "tier": "mild",
-  "room": false
- },
- {
-  "id": "p049",
-  "text": "BEEN TO JAPAN",
-  "tier": "mild",
-  "room": false
- },
- {
-  "id": "p050",
-  "text": "SEEN THE NORTHERN LIGHTS",
+  "text": "GONE ON HOLIDAY AND NEVER LEFT THE HOTEL",
   "tier": "mild",
   "room": false
  },
  {
   "id": "p051",
-  "text": "CLIMBED A MOUNTAIN",
+  "text": "TURNED BACK HALFWAY UP A HIKE",
   "tier": "mild",
   "room": false
  },
  {
   "id": "p052",
   "text": "BEEN CAMPING IN THE RAIN",
-  "tier": "mild",
-  "room": false
- },
- {
-  "id": "p053",
-  "text": "SURFED A REAL WAVE",
-  "tier": "mild",
-  "room": false
- },
- {
-  "id": "p054",
-  "text": "GONE SCUBA DIVING",
   "tier": "mild",
   "room": false
  },
@@ -331,13 +265,7 @@
  },
  {
   "id": "p056",
-  "text": "PLAYED FOR A SCHOOL TEAM",
-  "tier": "mild",
-  "room": false
- },
- {
-  "id": "p057",
-  "text": "BEEN CAPTAIN OF A TEAM",
+  "text": "BEEN PICKED LAST FOR A TEAM",
   "tier": "mild",
   "room": false
  },
@@ -354,12 +282,6 @@
   "room": false
  },
  {
-  "id": "p060",
-  "text": "SEEN A MATCH LIVE ABROAD",
-  "tier": "mild",
-  "room": false
- },
- {
   "id": "p061",
   "text": "WATCHED A 3AM KICKOFF",
   "tier": "mild",
@@ -367,7 +289,7 @@
  },
  {
   "id": "p062",
-  "text": "LEARNED AN INSTRUMENT",
+  "text": "QUIT AN INSTRUMENT AFTER A WEEK",
   "tier": "mild",
   "room": false
  },
@@ -385,7 +307,7 @@
  },
  {
   "id": "p065",
-  "text": "BOUGHT VINYL FOR THE COVER",
+  "text": "BOUGHT VINYL WITH NO RECORD PLAYER",
   "tier": "mild",
   "room": false
  },
@@ -403,7 +325,7 @@
  },
  {
   "id": "p068",
-  "text": "BEEN TO AN OPERA",
+  "text": "CLAPPED AT THE WRONG MOMENT",
   "tier": "mild",
   "room": false
  },
@@ -422,12 +344,6 @@
  {
   "id": "p071",
   "text": "READ A BOOK IN A DAY",
-  "tier": "mild",
-  "room": false
- },
- {
-  "id": "p072",
-  "text": "DONE A 1000-PIECE PUZZLE",
   "tier": "mild",
   "room": false
  },
@@ -456,20 +372,8 @@
   "room": false
  },
  {
-  "id": "p077",
-  "text": "GROWN A PLANT FROM SEED",
-  "tier": "mild",
-  "room": false
- },
- {
   "id": "p078",
   "text": "KILLED A CACTUS",
-  "tier": "mild",
-  "room": false
- },
- {
-  "id": "p079",
-  "text": "OWNED A FISH",
   "tier": "mild",
   "room": false
  },
@@ -481,7 +385,7 @@
  },
  {
   "id": "p082",
-  "text": "KEPT A 100-DAY APP STREAK",
+  "text": "LOST A 100-DAY DUOLINGO STREAK",
   "tier": "mild",
   "room": false
  },
@@ -511,7 +415,7 @@
  },
  {
   "id": "p088",
-  "text": "CHANGED MY MAJOR",
+  "text": "HIDDEN A BAD GRADE FROM MY PARENTS",
   "tier": "mild",
   "room": false
  },
@@ -529,7 +433,7 @@
  },
  {
   "id": "p091",
-  "text": "HAD A SUMMER JOB",
+  "text": "BEEN FIRED FROM A SUMMER JOB",
   "tier": "mild",
   "room": false
  },
@@ -544,18 +448,6 @@
   "text": "CALLED MY TEACHER MUM",
   "tier": "mild",
   "room": true
- },
- {
-  "id": "p095",
-  "text": "BAKED BREAD",
-  "tier": "mild",
-  "room": false
- },
- {
-  "id": "p096",
-  "text": "MADE SUSHI AT HOME",
-  "tier": "mild",
-  "room": false
  },
  {
   "id": "p097",
@@ -582,12 +474,6 @@
   "room": false
  },
  {
-  "id": "p101",
-  "text": "GONE VEGGIE FOR A MONTH",
-  "tier": "mild",
-  "room": false
- },
- {
   "id": "p102",
   "text": "EATEN THE SAME MEAL A WEEK",
   "tier": "mild",
@@ -595,7 +481,7 @@
  },
  {
   "id": "p103",
-  "text": "SENT FOOD BACK",
+  "text": "TOLD A WAITER IT WAS LOVELY. IT WASN'T",
   "tier": "mild",
   "room": false
  },
@@ -637,55 +523,31 @@
  },
  {
   "id": "p110",
-  "text": "USED A FLIP PHONE",
-  "tier": "mild",
-  "room": false
- },
- {
-  "id": "p111",
-  "text": "BUILT A PC",
+  "text": "HUNG UP ON SOMEONE BY ACCIDENT",
   "tier": "mild",
   "room": false
  },
  {
   "id": "p112",
-  "text": "BUILT IKEA WITH NO MANUAL",
-  "tier": "mild",
-  "room": false
- },
- {
-  "id": "p113",
-  "text": "PAINTED A ROOM MYSELF",
+  "text": "BUILT IKEA AND HAD SCREWS LEFT OVER",
   "tier": "mild",
   "room": false
  },
  {
   "id": "p114",
-  "text": "DRIVEN A MANUAL CAR",
+  "text": "STALLED A CAR AT A GREEN LIGHT",
   "tier": "mild",
   "room": false
  },
  {
   "id": "p115",
-  "text": "DRIVEN ABROAD",
-  "tier": "mild",
-  "room": false
- },
- {
-  "id": "p116",
-  "text": "SHAVED MY HEAD",
+  "text": "DRIVEN ON THE WRONG SIDE ABROAD",
   "tier": "mild",
   "room": false
  },
  {
   "id": "p117",
-  "text": "WORN A COSTUME IN PUBLIC",
-  "tier": "mild",
-  "room": false
- },
- {
-  "id": "p118",
-  "text": "BEEN TO A WEDDING ABROAD",
+  "text": "WORN A COSTUME TO A NON-COSTUME PARTY",
   "tier": "mild",
   "room": false
  },
@@ -696,34 +558,10 @@
   "room": false
  },
  {
-  "id": "p122",
-  "text": "SEEN A SHOOTING STAR",
-  "tier": "mild",
-  "room": false
- },
- {
-  "id": "p123",
-  "text": "SWUM WITH DOLPHINS",
-  "tier": "mild",
-  "room": false
- },
- {
-  "id": "p124",
-  "text": "SEEN A WHALE",
-  "tier": "mild",
-  "room": false
- },
- {
   "id": "p125",
   "text": "CLUNG TO THE RINK WALL",
   "tier": "mild",
   "room": true
- },
- {
-  "id": "p126",
-  "text": "BEEN SKIING",
-  "tier": "mild",
-  "room": false
  },
  {
   "id": "p127",
@@ -756,32 +594,14 @@
   "room": false
  },
  {
-  "id": "p132",
-  "text": "TAKEN A NIGHT TRAIN",
-  "tier": "mild",
-  "room": false
- },
- {
   "id": "p133",
   "text": "MISSED A TRAIN BY SECONDS",
   "tier": "mild",
   "room": false
  },
  {
-  "id": "p135",
-  "text": "BEEN IN A HOT AIR BALLOON",
-  "tier": "mild",
-  "room": false
- },
- {
   "id": "p136",
   "text": "PREDICTED A SCORE EXACTLY",
-  "tier": "mild",
-  "room": false
- },
- {
-  "id": "p137",
-  "text": "BEEN TO A CUP FINAL",
   "tier": "mild",
   "room": false
  },
@@ -798,32 +618,302 @@
   "room": false
  },
  {
-  "id": "p141",
-  "text": "SWUM A LENGTH UNDERWATER",
-  "tier": "mild",
-  "room": false
- },
- {
-  "id": "p142",
-  "text": "SEEN A WEST END SHOW",
-  "tier": "mild",
-  "room": false
- },
- {
   "id": "p143",
-  "text": "BEEN TO STAND-UP COMEDY",
+  "text": "BEEN PICKED ON AT A COMEDY SHOW",
   "tier": "mild",
   "room": false
  },
  {
   "id": "p144",
-  "text": "BEEN ON THE RADIO",
+  "text": "CALLED IN TO A RADIO SHOW",
   "tier": "mild",
   "room": false
  },
  {
   "id": "p145",
   "text": "WON A QUIZ NIGHT",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p357",
+  "text": "CLAPPED AS A PLANE LANDED",
+  "tier": "mild",
+  "room": true
+ },
+ {
+  "id": "p359",
+  "text": "RUN FOR A BUS THAT WASN'T MINE",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p360",
+  "text": "GOT A TIME ZONE WRONG FOR A MEETING",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p361",
+  "text": "RUINED A JOKE BY LAUGHING FIRST",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p362",
+  "text": "PUT SALT IN MY COFFEE BY MISTAKE",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p363",
+  "text": "SAT AT THE WRONG GATE FOR AN HOUR",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p364",
+  "text": "GOOGLED HOW TO BOIL AN EGG",
+  "tier": "mild",
+  "room": true
+ },
+ {
+  "id": "p365",
+  "text": "STUDIED A MENU, THEN ORDERED THE USUAL",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p366",
+  "text": "ASKED A CELEBRITY LOOKALIKE FOR A PHOTO",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p367",
+  "text": "STAYED IN A CLASS I WASN'T TAKING",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p368",
+  "text": "GONE FOR A HUG AND GOT A HANDSHAKE",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p369",
+  "text": "JOINED A GYM AND GONE ONCE",
+  "tier": "mild",
+  "room": true
+ },
+ {
+  "id": "p370",
+  "text": "SPOILED A SURPRISE PARTY",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p371",
+  "text": "GIVEN A TOURIST WRONG DIRECTIONS",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p372",
+  "text": "TAKEN THE STAIRS TO AVOID SMALL TALK",
+  "tier": "mild",
+  "room": true
+ },
+ {
+  "id": "p373",
+  "text": "SAID I LOVED A HAIRCUT I HATED",
+  "tier": "mild",
+  "room": true
+ },
+ {
+  "id": "p374",
+  "text": "ORDERED WHAT THEY HAD IN A PANIC",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p375",
+  "text": "BEEN TOLD OFF BY A CHILD",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p376",
+  "text": "LOST TO A KID AT A BOARD GAME",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p377",
+  "text": "TURNED UP TO WORK ON A HOLIDAY",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p378",
+  "text": "BEEN LOCKED IN A BATHROOM",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p379",
+  "text": "LOOKED FOR MY PHONE WHILE ON IT",
+  "tier": "mild",
+  "room": true
+ },
+ {
+  "id": "p380",
+  "text": "SEARCHED FOR GLASSES ON MY HEAD",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p381",
+  "text": "DRUNK FROM SOMEONE ELSE'S GLASS",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p382",
+  "text": "HAD A FULL CHAT WITH SOMEONE'S DOG",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p383",
+  "text": "APOLOGISED TO A CHAIR",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p384",
+  "text": "DONE NOTHING IN A GROUP PROJECT",
+  "tier": "mild",
+  "room": true
+ },
+ {
+  "id": "p385",
+  "text": "PRESSED EVERY BUTTON IN A LIFT",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p386",
+  "text": "FALLEN ASLEEP ON A STRANGER ON A PLANE",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p387",
+  "text": "SUNG AT MY PHONE TO FIND A SONG",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p388",
+  "text": "CRIED AT AN ADVERT",
+  "tier": "mild",
+  "room": true
+ },
+ {
+  "id": "p389",
+  "text": "READ THE ENDING OF A BOOK FIRST",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p390",
+  "text": "KEPT ARGUING AFTER I KNEW I WAS WRONG",
+  "tier": "mild",
+  "room": true
+ },
+ {
+  "id": "p391",
+  "text": "SWIRLED WINE AND PRETENDED TO GET IT",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p392",
+  "text": "FORGOTTEN THE PUNCHLINE MID-JOKE",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p393",
+  "text": "BEEN PULLED ON STAGE BY A PERFORMER",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p394",
+  "text": "DROPPED MY PHONE ON MY FACE IN BED",
+  "tier": "mild",
+  "room": true
+ },
+ {
+  "id": "p395",
+  "text": "SCROLLED FOR AN HOUR AND WATCHED NOTHING",
+  "tier": "mild",
+  "room": true
+ },
+ {
+  "id": "p396",
+  "text": "STARTED A CLAP NOBODY JOINED",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p397",
+  "text": "BROKEN SOMETHING IN A SHOP",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p398",
+  "text": "SET AN ALARM FOR PM INSTEAD OF AM",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p399",
+  "text": "POSED FOR A SELFIE WITH A WAXWORK",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p400",
+  "text": "MISSED THE TWIST LOOKING AT MY PHONE",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p401",
+  "text": "TRIED MY CAR KEY ON MY FRONT DOOR",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p402",
+  "text": "TURNED UP TO A PARTY ON THE WRONG DAY",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p403",
+  "text": "SUNG HAPPY BIRTHDAY WITH THE WRONG NAME",
+  "tier": "mild",
+  "room": false
+ },
+ {
+  "id": "p404",
+  "text": "HUGGED A STRANGER I THOUGHT I KNEW",
   "tier": "mild",
   "room": false
  },
@@ -838,18 +928,6 @@
   "text": "DONE A DESERT SAFARI",
   "tier": "dubai",
   "room": true
- },
- {
-  "id": "p148",
-  "text": "DUNE BASHED IN A 4X4",
-  "tier": "dubai",
-  "room": false
- },
- {
-  "id": "p149",
-  "text": "SANDBOARDED A DUNE",
-  "tier": "dubai",
-  "room": false
  },
  {
   "id": "p150",
@@ -888,12 +966,6 @@
   "room": false
  },
  {
-  "id": "p156",
-  "text": "BEEN UP THE BURJ KHALIFA",
-  "tier": "dubai",
-  "room": false
- },
- {
   "id": "p157",
   "text": "WAITED FOR THE FOUNTAINS",
   "tier": "dubai",
@@ -901,7 +973,7 @@
  },
  {
   "id": "p158",
-  "text": "DONE A FRIDAY BRUNCH",
+  "text": "FALLEN ASLEEP BY 7PM AFTER BRUNCH",
   "tier": "dubai",
   "room": true
  },
@@ -912,26 +984,14 @@
   "room": false
  },
  {
-  "id": "p160",
-  "text": "BRUNCHED TWICE IN A WEEK",
-  "tier": "dubai",
-  "room": false
- },
- {
   "id": "p161",
   "text": "BEEN BURNT BY A SEATBELT",
   "tier": "dubai",
   "room": false
  },
  {
-  "id": "p162",
-  "text": "SEEN IT HIT 50 DEGREES",
-  "tier": "dubai",
-  "room": true
- },
- {
   "id": "p163",
-  "text": "WALKED 10 MINS IN AUGUST",
+  "text": "WALKED 10 MINUTES OUTSIDE IN AUGUST",
   "tier": "dubai",
   "room": false
  },
@@ -949,7 +1009,7 @@
  },
  {
   "id": "p166",
-  "text": "WORN A HOODIE IN A MALL",
+  "text": "TAKEN A JACKET TO A MALL IN AUGUST",
   "tier": "dubai",
   "room": false
  },
@@ -984,12 +1044,6 @@
   "room": false
  },
  {
-  "id": "p172",
-  "text": "CANCELLED A CAREEM TWICE",
-  "tier": "dubai",
-  "room": false
- },
- {
   "id": "p173",
   "text": "TAKEN A CAREEM 500 METRES",
   "tier": "dubai",
@@ -1010,12 +1064,6 @@
  {
   "id": "p176",
   "text": "HAGGLED AT THE GOLD SOUK",
-  "tier": "dubai",
-  "room": false
- },
- {
-  "id": "p177",
-  "text": "BOUGHT OUD AT A SOUK",
   "tier": "dubai",
   "room": false
  },
@@ -1050,18 +1098,6 @@
   "room": true
  },
  {
-  "id": "p183",
-  "text": "STAYED UP FOR SUHOOR",
-  "tier": "dubai",
-  "room": false
- },
- {
-  "id": "p184",
-  "text": "BEEN TO A RAMADAN MARKET",
-  "tier": "dubai",
-  "room": false
- },
- {
   "id": "p185",
   "text": "ROAD-TRIPPED TO OMAN",
   "tier": "dubai",
@@ -1076,12 +1112,6 @@
  {
   "id": "p187",
   "text": "CAMPED IN MUSANDAM",
-  "tier": "dubai",
-  "room": false
- },
- {
-  "id": "p188",
-  "text": "DONE A DHOW CRUISE",
   "tier": "dubai",
   "room": false
  },
@@ -1117,7 +1147,7 @@
  },
  {
   "id": "p194",
-  "text": "BEEN TO LOUVRE ABU DHABI",
+  "text": "NODDED AT ART I DIDN'T GET AT THE LOUVRE",
   "tier": "dubai",
   "room": false
  },
@@ -1170,20 +1200,8 @@
   "room": false
  },
  {
-  "id": "p204",
-  "text": "LIVED IN THE MARINA",
-  "tier": "dubai",
-  "room": false
- },
- {
   "id": "p205",
   "text": "WATCHED SUNRISE AT KITE",
-  "tier": "dubai",
-  "room": false
- },
- {
-  "id": "p206",
-  "text": "WATCHED SUNSET AT JBR",
   "tier": "dubai",
   "room": false
  },
@@ -1194,12 +1212,6 @@
   "room": false
  },
  {
-  "id": "p208",
-  "text": "PLAYED FOOTBALL AT 1AM",
-  "tier": "dubai",
-  "room": true
- },
- {
   "id": "p209",
   "text": "BEEN ON A YACHT IN DUBAI",
   "tier": "dubai",
@@ -1208,18 +1220,6 @@
  {
   "id": "p210",
   "text": "RENTED A JET SKI",
-  "tier": "dubai",
-  "room": false
- },
- {
-  "id": "p211",
-  "text": "BEEN TO EXPO 2020",
-  "tier": "dubai",
-  "room": false
- },
- {
-  "id": "p212",
-  "text": "BEEN UP THE DUBAI FRAME",
   "tier": "dubai",
   "room": false
  },
@@ -1255,19 +1255,13 @@
  },
  {
   "id": "p219",
-  "text": "HAD 'CLEAN ME' ON MY CAR",
+  "text": "HAD 'CLEAN ME' WRITTEN ON MY CAR",
   "tier": "dubai",
   "room": false
  },
  {
   "id": "p220",
   "text": "HAD TALABAT 3 TIMES A DAY",
-  "tier": "dubai",
-  "room": false
- },
- {
-  "id": "p221",
-  "text": "BEEN TO MIRACLE GARDEN",
   "tier": "dubai",
   "room": false
  },
@@ -1296,18 +1290,6 @@
   "room": false
  },
  {
-  "id": "p227",
-  "text": "WORKED A SUMMER IN DIFC",
-  "tier": "dubai",
-  "room": false
- },
- {
-  "id": "p228",
-  "text": "BEEN TO A DIFC ROOFTOP",
-  "tier": "dubai",
-  "room": false
- },
- {
   "id": "p229",
   "text": "WATCHED NYE AT THE BURJ",
   "tier": "dubai",
@@ -1320,20 +1302,8 @@
   "room": false
  },
  {
-  "id": "p231",
-  "text": "USED THE SMART GATE",
-  "tier": "dubai",
-  "room": false
- },
- {
   "id": "p232",
   "text": "BEEN ON A FLYDUBAI RED-EYE",
-  "tier": "dubai",
-  "room": false
- },
- {
-  "id": "p233",
-  "text": "FLOWN ON AN A380",
   "tier": "dubai",
   "room": false
  },
@@ -1374,24 +1344,6 @@
   "room": false
  },
  {
-  "id": "p240",
-  "text": "BEEN TO A DESERT FESTIVAL",
-  "tier": "dubai",
-  "room": false
- },
- {
-  "id": "p241",
-  "text": "BEEN TO SOLE DXB",
-  "tier": "dubai",
-  "room": false
- },
- {
-  "id": "p242",
-  "text": "BEEN TO A FAN ZONE",
-  "tier": "dubai",
-  "room": false
- },
- {
   "id": "p243",
   "text": "BEEN TO THE DUBAI SEVENS",
   "tier": "dubai",
@@ -1405,7 +1357,7 @@
  },
  {
   "id": "p245",
-  "text": "BEEN TO MEYDAN RACES",
+  "text": "BEEN TO MEYDAN AND WATCHED NO RACES",
   "tier": "dubai",
   "room": false
  },
@@ -1429,13 +1381,7 @@
  },
  {
   "id": "p249",
-  "text": "BEEN TO DRAGON MART",
-  "tier": "dubai",
-  "room": false
- },
- {
-  "id": "p250",
-  "text": "GOTTEN LOST IN IBN BATTUTA",
+  "text": "BOUGHT SOMETHING USELESS AT DRAGON MART",
   "tier": "dubai",
   "room": false
  },
@@ -1446,22 +1392,10 @@
   "room": false
  },
  {
-  "id": "p252",
-  "text": "BEEN TO AL FAHIDI",
-  "tier": "dubai",
-  "room": false
- },
- {
   "id": "p253",
   "text": "SWUM IN A BATH-HOT POOL",
   "tier": "dubai",
   "room": true
- },
- {
-  "id": "p254",
-  "text": "BLAMED MY HAIR ON HUMIDITY",
-  "tier": "dubai",
-  "room": false
  },
  {
   "id": "p255",
@@ -1476,14 +1410,278 @@
   "room": true
  },
  {
-  "id": "p257",
-  "text": "TEXTED THE WRONG PERSON",
-  "tier": "cheeky",
+  "id": "p405",
+  "text": "ORDERED TALABAT FROM THE SAME BUILDING",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p406",
+  "text": "BEEN RECOGNISED BY MY TALABAT RIDER",
+  "tier": "dubai",
   "room": true
  },
  {
-  "id": "p258",
-  "text": "FAKED BEING BUSY",
+  "id": "p407",
+  "text": "WAITED HALF AN HOUR FOR MY VALET",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p408",
+  "text": "LET SOMEONE THINK A RENTAL WAS MINE",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p409",
+  "text": "FORGOTTEN FRIDAY IS A WORK DAY NOW",
+  "tier": "dubai",
+  "room": true
+ },
+ {
+  "id": "p410",
+  "text": "TAKEN A WORK CALL FROM BRUNCH",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p411",
+  "text": "MADE BRUNCH PLANS FOR 12 AND 4 CAME",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p412",
+  "text": "ARGUED IN MY BUILDING'S GROUP CHAT",
+  "tier": "dubai",
+  "room": true
+ },
+ {
+  "id": "p413",
+  "text": "HAD MY AC DIE IN AUGUST",
+  "tier": "dubai",
+  "room": true
+ },
+ {
+  "id": "p414",
+  "text": "SIGNED A LEASE WITHOUT SEEING THE FLAT",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p415",
+  "text": "LIVED IN A FLAT WITH A FAKE 'SEA VIEW'",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p416",
+  "text": "LEFT MY CAR RUNNING TO KEEP IT COLD",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p417",
+  "text": "OPENED MY CAR DOOR AND CLOSED IT AGAIN",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p418",
+  "text": "GONE TO THE MALL JUST FOR THE AC",
+  "tier": "dubai",
+  "room": true
+ },
+ {
+  "id": "p419",
+  "text": "HIT 10K STEPS INSIDE A MALL",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p420",
+  "text": "GOT A CAR STUCK IN THE SAND",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p421",
+  "text": "ASKED A SAFARI DRIVER TO SLOW DOWN",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p422",
+  "text": "FOUND DESERT SAND IN MY BAG MONTHS LATER",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p423",
+  "text": "PANICKED THAT MY VISA HAD EXPIRED",
+  "tier": "dubai",
+  "room": true
+ },
+ {
+  "id": "p424",
+  "text": "HAD AN EMIRATES ID PHOTO I HATE",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p425",
+  "text": "SAID I'D ONLY STAY IN DUBAI 2 YEARS",
+  "tier": "dubai",
+  "room": true
+ },
+ {
+  "id": "p426",
+  "text": "CALLED A 20-MINUTE DRIVE 'TOO FAR'",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p427",
+  "text": "GIVEN MY ADDRESS AS 'BEHIND SPINNEYS'",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p428",
+  "text": "CALLED DUBAI 'HOME' ON A TRIP HOME",
+  "tier": "dubai",
+  "room": true
+ },
+ {
+  "id": "p429",
+  "text": "SAID 'KHALAS' TO END AN ARGUMENT",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p430",
+  "text": "QUEUED FOR THE VIRAL DUBAI CHOCOLATE",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p431",
+  "text": "BOOKED A RESTAURANT FOR THE INSTAGRAM",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p432",
+  "text": "POSED WITH A SUPERCAR THAT WASN'T MINE",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p433",
+  "text": "SPOTTED A FOOTBALLER AT A DUBAI BRUNCH",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p434",
+  "text": "GOT A 'WELCOME TO OMAN' TEXT IN HATTA",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p435",
+  "text": "STAYED HOME BECAUSE IT RAINED",
+  "tier": "dubai",
+  "room": true
+ },
+ {
+  "id": "p436",
+  "text": "MISSED MY EXIT AND ENDED UP IN SHARJAH",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p437",
+  "text": "SAID 'YALLA BYE' ON A WORK CALL",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p438",
+  "text": "ASKED FOR A BLANKET AT THE CINEMA",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p439",
+  "text": "LEFT THE BEACH IN 5 MINUTES IN AUGUST",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p440",
+  "text": "DRIVEN TO A SHOP I COULD SEE",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p441",
+  "text": "VIEWED A FLAT ON A VIDEO CALL",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p442",
+  "text": "MET A DUBIZZLE SELLER IN A CAR PARK",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p443",
+  "text": "SAID '5 MINS' FROM SHARJAH TRAFFIC",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p444",
+  "text": "BEEN HONKED AT THE SECOND IT WENT GREEN",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p445",
+  "text": "POSTED MY CAR SAYING 50 DEGREES",
+  "tier": "dubai",
+  "room": true
+ },
+ {
+  "id": "p446",
+  "text": "BEEN BLOCKED AT THE METRO GATE",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p447",
+  "text": "HAD THREE PHONE NUMBERS AT ONCE",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p448",
+  "text": "KNOWN MY KARAK GUY BY NAME",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p449",
+  "text": "FED A BUILDING CAT LIKE IT WAS MINE",
+  "tier": "dubai",
+  "room": false
+ },
+ {
+  "id": "p257",
+  "text": "TEXTED THE WRONG PERSON",
   "tier": "cheeky",
   "room": true
  },
@@ -1494,12 +1692,6 @@
   "room": false
  },
  {
-  "id": "p260",
-  "text": "CRIED AT A FILM",
-  "tier": "cheeky",
-  "room": true
- },
- {
   "id": "p261",
   "text": "DEEP-LIKED AN OLD PHOTO",
   "tier": "cheeky",
@@ -1507,7 +1699,7 @@
  },
  {
   "id": "p262",
-  "text": "PRETENDED TO KNOW A SONG",
+  "text": "PRETENDED TO KNOW A SONG AT A CONCERT",
   "tier": "cheeky",
   "room": true
  },
@@ -1633,7 +1825,7 @@
  },
  {
   "id": "p284",
-  "text": "WATCHED AHEAD SECRETLY",
+  "text": "WATCHED AHEAD ON A SHOW WE SHARE",
   "tier": "cheeky",
   "room": false
  },
@@ -1663,7 +1855,7 @@
  },
  {
   "id": "p289",
-  "text": "SLID INTO DMS WITH A MEME",
+  "text": "SLID INTO SOMEONE'S DMS ON LINKEDIN",
   "tier": "cheeky",
   "room": false
  },
@@ -1676,12 +1868,6 @@
  {
   "id": "p291",
   "text": "DANCED ALONE IN A LIFT",
-  "tier": "cheeky",
-  "room": false
- },
- {
-  "id": "p292",
-  "text": "LEARNED A TIKTOK DANCE",
   "tier": "cheeky",
   "room": false
  },
@@ -1704,20 +1890,8 @@
   "room": false
  },
  {
-  "id": "p296",
-  "text": "TAKEN A DATE TO A MATCH",
-  "tier": "cheeky",
-  "room": false
- },
- {
   "id": "p297",
   "text": "SAID LOVE YOU TO MY BOSS",
-  "tier": "cheeky",
-  "room": false
- },
- {
-  "id": "p298",
-  "text": "LIED ABOUT SEEING A FILM",
   "tier": "cheeky",
   "room": false
  },
@@ -1812,12 +1986,6 @@
   "room": false
  },
  {
-  "id": "p315",
-  "text": "BEEN A SORE LOSER AT FIFA",
-  "tier": "cheeky",
-  "room": false
- },
- {
   "id": "p316",
   "text": "BLAMED LAG FOR A LOSS",
   "tier": "cheeky",
@@ -1861,7 +2029,7 @@
  },
  {
   "id": "p323",
-  "text": "BEEN TO A BOYBAND CONCERT",
+  "text": "SCREAMED AT A BOYBAND CONCERT",
   "tier": "cheeky",
   "room": false
  },
@@ -2011,7 +2179,7 @@
  },
  {
   "id": "p349",
-  "text": "EATEN PARTY FOOD EARLY",
+  "text": "EATEN THE SNACKS BEFORE GUESTS ARRIVED",
   "tier": "cheeky",
   "room": false
  },
@@ -2052,20 +2220,278 @@
   "room": false
  },
  {
-  "id": "p356",
-  "text": "AGREED WITHOUT HEARING",
+  "id": "p358",
+  "text": "SENT A 5-MIN VOICE NOTE",
   "tier": "cheeky",
   "room": false
  },
  {
-  "id": "p357",
-  "text": "CLAPPED AS A PLANE LANDED",
-  "tier": "mild",
+  "id": "p450",
+  "text": "SHARED MY SCREEN WITH THE WRONG TAB OPEN",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p451",
+  "text": "SAID IT WAS MY BIRTHDAY FOR A TABLE",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p452",
+  "text": "BEEN TURNED AWAY AT A CLUB DOOR",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p453",
+  "text": "FAKED LIKING A BAND TO IMPRESS SOMEONE",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p454",
+  "text": "GIVEN SOMEONE A FAKE NUMBER",
+  "tier": "cheeky",
   "room": true
  },
  {
-  "id": "p358",
-  "text": "SENT A 5-MIN VOICE NOTE",
+  "id": "p455",
+  "text": "FLIRTED TO SKIP A QUEUE",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p456",
+  "text": "PRETENDED A FRIEND WAS MY PARTNER",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p457",
+  "text": "BEEN CAUGHT STARING AT SOMEONE CUTE",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p458",
+  "text": "WINKED AT SOMEONE AND REGRETTED IT",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p459",
+  "text": "HAD A CRUSH ON A FRIEND'S SIBLING",
+  "tier": "cheeky",
+  "room": true
+ },
+ {
+  "id": "p460",
+  "text": "SET UP TWO FRIENDS AND IT WENT BADLY",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p461",
+  "text": "BLUSHED WHEN MY BARISTA SAID MY NAME",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p462",
+  "text": "JOINED A CLASS JUST FOR A CRUSH",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p463",
+  "text": "ANSWERED MY OWN PHONE AS MY ASSISTANT",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p464",
+  "text": "SAID 'LET'S CATCH UP' AND MEANT NEVER",
+  "tier": "cheeky",
+  "room": true
+ },
+ {
+  "id": "p465",
+  "text": "BEEN MATCHED WITH A COLLEAGUE ON AN APP",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p466",
+  "text": "HAD A FIRST DATE LAST SIX HOURS",
+  "tier": "cheeky",
+  "room": true
+ },
+ {
+  "id": "p467",
+  "text": "LEFT A DATE SAYING I'D BE RIGHT BACK",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p468",
+  "text": "GONE TO BED DURING MY OWN PARTY",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p469",
+  "text": "LOST A SHOE ON A NIGHT OUT",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p470",
+  "text": "LEFT A PARTY WITH THE WRONG JACKET",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p471",
+  "text": "DANCED ON A TABLE",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p472",
+  "text": "ASKED A DJ FOR A SONG THEY JUST PLAYED",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p473",
+  "text": "PICKED A KARAOKE SONG I DIDN'T KNOW",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p474",
+  "text": "MADE A TOAST NOBODY ASKED FOR",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p475",
+  "text": "WOKEN UP AND CHECKED WHAT I TEXTED",
+  "tier": "cheeky",
+  "room": true
+ },
+ {
+  "id": "p476",
+  "text": "ORDERED FOOD AND SLEPT BEFORE IT CAME",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p477",
+  "text": "TOLD A STRANGER MY LIFE STORY AT A BAR",
+  "tier": "cheeky",
+  "room": true
+ },
+ {
+  "id": "p478",
+  "text": "MADE A BEST FRIEND IN A TOILET QUEUE",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p479",
+  "text": "READ SOMEONE'S TEXTS OVER THEIR SHOULDER",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p480",
+  "text": "SAID MY PHONE DIED TO DODGE A REPLY",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p481",
+  "text": "BEEN SET UP ON A DATE BY MY MUM",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p482",
+  "text": "PRETENDED TO REMEMBER SOMEONE",
+  "tier": "cheeky",
+  "room": true
+ },
+ {
+  "id": "p483",
+  "text": "SNUCK INTO A VIP SECTION",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p484",
+  "text": "BEEN THE LAST ONE LEFT ON THE DANCEFLOOR",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p485",
+  "text": "TURNED UP IN THE SAME OUTFIT AS SOMEONE",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p486",
+  "text": "LEFT A PARTY WITHOUT SAYING BYE",
+  "tier": "cheeky",
+  "room": true
+ },
+ {
+  "id": "p487",
+  "text": "REALISED DAYS LATER SOMEONE WAS FLIRTING",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p488",
+  "text": "SENT A TEXT AND THROWN MY PHONE",
+  "tier": "cheeky",
+  "room": true
+ },
+ {
+  "id": "p489",
+  "text": "POSTED FROM A FRIEND'S UNLOCKED PHONE",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p490",
+  "text": "FAKED SLEEP TO DODGE A CONVERSATION",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p491",
+  "text": "POSTED AN OLD PHOTO AS IF IT WAS TONIGHT",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p492",
+  "text": "SAID 'NEARLY DONE' BEFORE I'D STARTED",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p493",
+  "text": "BLAMED AUTOCORRECT FOR SOMETHING I MEANT",
+  "tier": "cheeky",
+  "room": false
+ },
+ {
+  "id": "p494",
+  "text": "UNSENT A MESSAGE BEFORE THEY SAW IT",
   "tier": "cheeky",
   "room": false
  }

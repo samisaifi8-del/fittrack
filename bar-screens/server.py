@@ -94,7 +94,7 @@ FILM_KEY = re.compile(r"[0-9]{1,12}")  # a Wikipedia page id
 DRINKS_FILE = os.path.join(STATIC, "content", "drinks.json")
 GLASSES = ["coupe", "rocks", "highball", "flute", "martini", "mug", "wine"]
 GARNISHES = ["orange", "lime", "lemon", "mint", "cherry", "olive", "none"]
-TONIGHT = ["d001", "d002", "d004", "d003", "d006", "d007", "d021", "d024"]
+TONIGHT = ["d001", "d002", "d004", "d003", "d006", "d007", "d021"]
 
 for ext, ctype in ((".webp", "image/webp"), (".avif", "image/avif"), (".mp4", "video/mp4"),
                    (".m4v", "video/mp4"), (".webm", "video/webm"), (".mkv", "video/x-matroska")):

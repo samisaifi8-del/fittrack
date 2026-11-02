@@ -276,18 +276,6 @@
   "blurb": "GULF FAVOURITE"
  },
  {
-  "id": "d024",
-  "name": "ICED KARAK",
-  "glass": "highball",
-  "colour": "#c08a58",
-  "colour2": "#f2e2c4",
-  "bubbles": false,
-  "ice": true,
-  "garnish": "none",
-  "alcohol": false,
-  "blurb": "CARDAMOM, CREAMY"
- },
- {
   "id": "d025",
   "name": "PASSION NOJITO",
   "glass": "highball",

@@ -22,7 +22,7 @@ def fresh():
 class Drinks(unittest.TestCase):
     def test_seeded_file(self):
         drinks = server.load_drinks(server.DRINKS_FILE)
-        self.assertEqual(len(drinks), 26)
+        self.assertEqual(len(drinks), 25)
         for d in drinks:
             self.assertIn(d["glass"], server.GLASSES)
             self.assertIn(d["garnish"], server.GARNISHES)
@@ -176,7 +176,7 @@ class Order(unittest.TestCase):
         self.assertEqual(snap["bar"]["order"]["drink"]["id"], "d004")
         self.assertNotIn("pid", snap["bar"]["order"])
         self.assertEqual(snap["bar"]["names"], ["SARAH"])
-        self.assertEqual(len(snap["catalog"]["drinks"]), 26)
+        self.assertEqual(len(snap["catalog"]["drinks"]), 25)
         self.assertEqual(snap["catalog"]["glasses"], server.GLASSES)
 
     def test_names_include_guests_on_their_phones(self):

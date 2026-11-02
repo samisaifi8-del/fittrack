@@ -40,11 +40,11 @@
   "type": "A FOOTBALLER",
   "answer": "NEYMAR",
   "clues": [
+   "SANTOS NO 10",
    "LEFT AL HILAL 2025",
-   "222M EURO TRANSFER",
-   "MSN TRIO AT BARCA",
    "BRAZIL TOP SCORER",
-   "SANTOS NO 10"
+   "222M EURO TRANSFER",
+   "MSN TRIO AT BARCA"
   ],
   "decoys": [
    "VINICIUS",
@@ -69,7 +69,7 @@
    "MBAPPE",
    "GRIEZMANN"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c005",
@@ -87,14 +87,14 @@
    "MAHREZ",
    "FIRMINO"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c006",
   "type": "A FOOTBALLER",
   "answer": "MAHREZ",
   "clues": [
-   "LE HAVRE YOUTH",
+   "SARCELLES YOUTH",
    "2016 PFA AWARD",
    "LEICESTER 5000-1",
    "MAN CITY TREBLE",
@@ -105,7 +105,7 @@
    "ZIYECH",
    "MANE"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c007",
@@ -113,7 +113,7 @@
   "answer": "AL DAWSARI",
   "clues": [
    "VILLARREAL LOAN",
-   "2022 ASIAN POTY",
+   "ASIAN POTY X2",
    "HILAL WINGER",
    "WINNER V ARGENTINA",
    "SAUDI NUMBER 10"
@@ -141,7 +141,7 @@
    "KHALIL",
    "MATAR"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c009",
@@ -177,7 +177,7 @@
    "DEMBELE",
    "HAALAND"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c011",
@@ -195,7 +195,7 @@
    "KANE",
    "OSIMHEN"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c012",
@@ -231,7 +231,7 @@
    "PLATINI",
    "FIGO"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c014",
@@ -267,7 +267,7 @@
    "GERRARD",
    "LAMPARD"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c016",
@@ -285,7 +285,7 @@
    "RIVALDO",
    "ROMARIO"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c017",
@@ -303,7 +303,7 @@
    "MATUIDI",
    "MAKELELE"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c018",
@@ -312,8 +312,8 @@
   "clues": [
    "DINAMO ZAGREB",
    "SPURS 2008-12",
+   "MILAN SIGNING 2025",
    "2018 BALLON D'OR",
-   "CROATIA CAPTAIN",
    "LUKA"
   ],
   "decoys": [
@@ -365,8 +365,8 @@
   "answer": "HAKIMI",
   "clues": [
    "MADRID ACADEMY",
-   "DORTMUND LOAN",
    "INTER TITLE 2021",
+   "2025 AFRICAN POTY",
    "PSG RIGHT-BACK",
    "ACHRAF"
   ],
@@ -393,7 +393,7 @@
    "BOWEN",
    "MITROVIC"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c023",
@@ -429,7 +429,7 @@
    "MAHREZ",
    "KOULIBALY"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c025",
@@ -465,7 +465,7 @@
    "J COLE",
    "TRAVIS SCOTT"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c027",
@@ -483,7 +483,7 @@
    "SCHOOLBOY Q",
    "ASAP ROCKY"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c028",
@@ -501,7 +501,7 @@
    "LOGIC",
    "NAS"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c029",
@@ -519,7 +519,7 @@
    "SWIZZ BEATZ",
    "NO I.D."
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c030",
@@ -537,7 +537,7 @@
    "SOUTHSIDE",
    "WHEEZY"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c031",
@@ -555,7 +555,7 @@
    "SWIZZ BEATZ",
    "CHAD HUGO"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c032",
@@ -573,7 +573,7 @@
    "PLAYBOI CARTI",
    "FUTURE"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c033",
@@ -591,7 +591,7 @@
    "BIG SEAN",
    "WALE"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c034",
@@ -609,7 +609,7 @@
    "BUSTA RHYMES",
    "NAS"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c035",
@@ -627,7 +627,7 @@
    "BIGGIE",
    "LL COOL J"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c036",
@@ -645,7 +645,7 @@
    "JAY-Z",
    "KRS-ONE"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c037",
@@ -663,7 +663,7 @@
    "ICE CUBE",
    "WARREN G"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c038",
@@ -681,7 +681,7 @@
    "SKEPTA",
    "KANO"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c039",
@@ -699,7 +699,7 @@
    "DIGGA D",
    "HEADIE ONE"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c040",
@@ -717,7 +717,7 @@
    "LITTLE SIMZ",
    "KANO"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c041",
@@ -735,7 +735,7 @@
    "GUNNA",
    "21 SAVAGE"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c042",
@@ -753,7 +753,7 @@
    "LIL BABY",
    "YOUNG THUG"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c043",
@@ -761,17 +761,17 @@
   "answer": "TIMBALAND",
   "clues": [
    "SWING MOB",
-   "VERZUZ CO-FOUNDER",
    "MISSY'S PRODUCER",
-   "APOLOGIZE REMIX",
-   "CRY ME A RIVER"
+   "VERZUZ CO-FOUNDER",
+   "CRY ME A RIVER",
+   "APOLOGIZE REMIX"
   ],
   "decoys": [
    "PHARRELL",
    "DR DRE",
    "SWIZZ BEATZ"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c044",
@@ -789,7 +789,7 @@
    "J DILLA",
    "MURDA BEATZ"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c045",
@@ -807,7 +807,7 @@
    "PETE ROCK",
    "9TH WONDER"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c046",
@@ -825,7 +825,7 @@
    "JUVENILE",
    "T.I."
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c047",
@@ -843,7 +843,7 @@
    "DOJA CAT",
    "LIL KIM"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c048",
@@ -852,16 +852,16 @@
   "clues": [
    "LOVE & HIP HOP NY",
    "RAP ALBUM GRAMMY",
+   "BRONX STAR",
    "I LIKE IT",
-   "BODAK YELLOW",
-   "BRONX STAR"
+   "BODAK YELLOW"
   ],
   "decoys": [
    "NICKI MINAJ",
    "SAWEETIE",
    "DOJA CAT"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c049",
@@ -879,7 +879,7 @@
    "MUSTARD",
    "SWIZZ BEATZ"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c050",
@@ -897,16 +897,16 @@
    "DJ KHALED",
    "TAY KEITH"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c051",
   "type": "A DJ",
   "answer": "BLACK COFFEE",
   "clues": [
+   "60-HOUR DJ SET",
    "SOULISTIC MUSIC",
-   "SUBCONSCIOUSLY LP",
-   "HI IBIZA RESIDENT",
+   "USHER'S LALALA",
    "GRAMMY DANCE 2022",
    "SA HOUSE LEGEND"
   ],
@@ -915,18 +915,18 @@
    "CULOE DE SONG",
    "ENOO NAPA"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c052",
   "type": "A DJ",
   "answer": "SOLOMUN",
   "clues": [
-   "HAMBURG-BASED",
-   "BOSNIAN-GERMAN",
-   "+1 RESIDENCY",
+   "BORN IN TRAVNIK",
+   "GREW UP IN HAMBURG",
+   "DIYNAMIC BOSS",
    "PACHA SUNDAYS",
-   "DIYNAMIC FOUNDER"
+   "+1 RESIDENCY"
   ],
   "decoys": [
    "DIXON",
@@ -951,7 +951,7 @@
    "HONEY DIJON",
    "DJ HOLOGRAPHIC"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c054",
@@ -969,7 +969,7 @@
    "RICHIE HAWTIN",
    "SVEN VATH"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c055",
@@ -987,7 +987,7 @@
    "KERRI CHANDLER",
    "SOLOMUN"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c056",
@@ -1001,29 +1001,29 @@
    "ADAM PORT'S CREW"
   ],
   "decoys": [
-   "INNERVISIONS",
-   "AFTERLIFE",
-   "DIYNAMIC"
+   "SWEDISH HOUSE MAFIA",
+   "TALE OF US",
+   "CAMELPHAT"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c057",
   "type": "A DJ",
-  "answer": "AFTERLIFE",
+  "answer": "TALE OF US",
   "clues": [
-   "SINCE 2016",
-   "MELODIC TECHNO",
-   "HI IBIZA SHOWS",
-   "ANYMA'S HOME",
-   "TALE OF US LABEL"
+   "MET AT SAE MILAN",
+   "CARMINE & MATTEO",
+   "ITALIAN TECHNO DUO",
+   "HALF IS ANYMA",
+   "AFTERLIFE FOUNDERS"
   ],
   "decoys": [
-   "DRUMCODE",
-   "KEINEMUSIK",
-   "INNERVISIONS"
+   "ARTBAT",
+   "CAMELPHAT",
+   "AGENTS OF TIME"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c058",
@@ -1041,25 +1041,25 @@
    "CAMELPHAT",
    "MASSANO"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c059",
   "type": "A DJ",
-  "answer": "DRUMCODE",
+  "answer": "ADAM BEYER",
   "clues": [
-   "STOCKHOLM 1996",
-   "A-SIDES SERIES",
-   "WEEKLY RADIO SHOW",
-   "SWEDISH TECHNO",
-   "ADAM BEYER LABEL"
+   "STOCKHOLM-BORN",
+   "DECODED LP 1996",
+   "TEACH ME (2014)",
+   "DRUMCODE LIVE SHOW",
+   "DRUMCODE FOUNDER"
   ],
   "decoys": [
-   "AFTERLIFE",
-   "MINUS",
-   "KOMPAKT"
+   "RICHIE HAWTIN",
+   "SVEN VATH",
+   "JOSEPH CAPRIATI"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c060",
@@ -1077,7 +1077,7 @@
    "JOHN SUMMIT",
    "CLOONEE"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c061",
@@ -1095,7 +1095,7 @@
    "JAMIE XX",
    "OVERMONO"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c062",
@@ -1113,7 +1113,7 @@
    "CARIBOU",
    "BONOBO"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c063",
@@ -1131,7 +1131,7 @@
    "JEFF MILLS",
    "LUCIANO"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c064",
@@ -1149,7 +1149,7 @@
    "MARTIN SOLVEIG",
    "TIESTO"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c065",
@@ -1167,7 +1167,7 @@
    "AVICII",
    "ZEDD"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c066",
@@ -1185,7 +1185,7 @@
    "TENET",
    "MEMENTO"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c067",
@@ -1203,7 +1203,7 @@
    "THE MARTIAN",
    "AD ASTRA"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c068",
@@ -1221,7 +1221,7 @@
    "BRAVEHEART",
    "300"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c069",
@@ -1239,7 +1239,7 @@
    "GOODFELLAS",
    "CASINO"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c070",
@@ -1257,7 +1257,7 @@
    "CASINO",
    "BLOW"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c071",
@@ -1275,7 +1275,7 @@
    "PEARL HARBOR",
    "THE NOTEBOOK"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c072",
@@ -1293,7 +1293,7 @@
    "BATMAN BEGINS",
    "THE BATMAN"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c073",
@@ -1311,7 +1311,7 @@
    "JOHN WICK",
    "DARK CITY"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c074",
@@ -1329,7 +1329,7 @@
    "THE EQUALIZER",
    "TAKEN"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c075",
@@ -1347,7 +1347,7 @@
    "HOT SHOTS",
    "STEALTH"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c076",
@@ -1365,7 +1365,7 @@
    "BABY DRIVER",
    "NEED FOR SPEED"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c077",
@@ -1383,7 +1383,7 @@
    "SPECTRE",
    "GOLDENEYE"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c078",
@@ -1401,7 +1401,7 @@
    "EASY A",
    "HEATHERS"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c079",
@@ -1419,7 +1419,7 @@
    "OLD SCHOOL",
    "STEP BROTHERS"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c080",
@@ -1437,7 +1437,7 @@
    "COCO",
    "RATATOUILLE"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c081",
@@ -1455,7 +1455,7 @@
    "WONKA",
    "LITTLE WOMEN"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c082",
@@ -1473,15 +1473,15 @@
    "TENET",
    "DUNKIRK"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c083",
   "type": "A FILM",
   "answer": "DUNE",
   "clues": [
-   "FRANK HERBERT",
    "LIWA OASIS SHOOT",
+   "FRANK HERBERT",
    "VILLENEUVE",
    "SANDWORMS",
    "ARRAKIS"
@@ -1491,7 +1491,7 @@
    "AVATAR",
    "PROMETHEUS"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c084",
@@ -1509,7 +1509,7 @@
    "DUNE",
    "AVATAR"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c085",
@@ -1527,7 +1527,7 @@
    "TARZAN",
    "ALADDIN"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c086",
@@ -1545,7 +1545,7 @@
    "HERCULES",
    "THE LION KING"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c087",
@@ -1563,7 +1563,7 @@
    "DUNE",
    "THE ABYSS"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c088",
@@ -1581,7 +1581,7 @@
    "DEEP BLUE SEA",
    "ORCA"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c089",
@@ -1599,7 +1599,7 @@
    "RAGING BULL",
    "SOUTHPAW"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c090",
@@ -1617,7 +1617,7 @@
    "THE GRINCH",
    "KRAMPUS"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c091",
@@ -1625,7 +1625,7 @@
   "answer": "BURJ KHALIFA",
   "clues": [
    "ADRIAN SMITH",
-   "163 FLOORS",
+   "ONCE BURJ DUBAI",
    "AT.MOSPHERE 122F",
    "NYE FIREWORKS",
    "WORLD'S TALLEST"
@@ -1653,7 +1653,7 @@
    "BURJ KHALIFA",
    "ARMANI HOTEL"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c093",
@@ -1671,7 +1671,7 @@
    "MADINAT",
    "ONE&ONLY"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c094",
@@ -1689,7 +1689,7 @@
    "BLUEWATERS",
    "DUBAI MARINA"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c095",
@@ -1725,7 +1725,7 @@
    "IMG WORLDS",
    "AQUAVENTURE"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c097",
@@ -1739,11 +1739,11 @@
    "GIANT GOLD BORDER"
   ],
   "decoys": [
-   "FUTURE MUSEUM",
+   "THE VIEW AT PALM",
    "AIN DUBAI",
    "SKY VIEWS"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c098",
@@ -1761,7 +1761,7 @@
    "SKY VIEWS",
    "THE VIEW"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c099",
@@ -1784,56 +1784,56 @@
  {
   "id": "c100",
   "type": "A DUBAI PLACE",
-  "answer": "ABRA",
+  "answer": "DUBAI CREEK",
   "clues": [
-   "1 AED FARE",
-   "DIESEL WOODEN BOAT",
-   "DEIRA TO BUR DUBAI",
-   "CREEK CROSSER",
-   "WATER TAXI"
+   "14KM NATURAL INLET",
+   "JADDAF DHOW YARD",
+   "DUBAI CANAL LINK",
+   "ABRA CROSSINGS",
+   "DEIRA V BUR DUBAI"
   ],
   "decoys": [
-   "DHOW",
-   "FERRY",
-   "WATER BUS"
+   "DUBAI WATER CANAL",
+   "DUBAI MARINA",
+   "AL MAMZAR"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c101",
   "type": "A DUBAI PLACE",
-  "answer": "KARAK",
+  "answer": "GLOBAL VILLAGE",
   "clues": [
-   "CARDAMOM HINT",
-   "EVAPORATED MILK",
-   "CAFETERIA STAPLE",
-   "PAPER CUP CHAI",
-   "STRONG MILKY TEA"
+   "STARTED IN 1996",
+   "ONCE IN OUD METHA",
+   "SZR EXIT 37",
+   "WINTER SEASON ONLY",
+   "COUNTRY PAVILIONS"
   ],
   "decoys": [
-   "QAHWA",
-   "SULEIMANI",
-   "MINT TEA"
+   "DRAGON MART",
+   "IMG WORLDS",
+   "DUBAI PARKS"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c102",
   "type": "A DUBAI PLACE",
-  "answer": "LUQAIMAT",
+  "answer": "MIRACLE GARDEN",
   "clues": [
-   "SAFFRON DOUGH",
-   "SESAME TOPPING",
-   "EMIRATI SWEET",
-   "DATE SYRUP DRIZZLE",
-   "FRIED DOUGH BALLS"
+   "VALENTINE'S 2013",
+   "OCT TO APR ONLY",
+   "18M MICKEY TOPIARY",
+   "A380 OF FLOWERS",
+   "GIANT FLOWER PARK"
   ],
   "decoys": [
-   "KUNAFA",
-   "BALALEET",
-   "UM ALI"
+   "BUTTERFLY GARDEN",
+   "ZABEEL PARK",
+   "SAFA PARK"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c103",
@@ -1851,7 +1851,7 @@
    "D3",
    "DIFC"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c104",
@@ -1869,7 +1869,7 @@
    "BUSINESS BAY",
    "DMCC"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c105",
@@ -1887,7 +1887,7 @@
    "LA MER",
    "KITE BEACH"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c106",
@@ -1905,7 +1905,7 @@
    "JBR",
    "BLUEWATERS"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c107",
@@ -1923,11 +1923,11 @@
    "FUJAIRAH",
    "LIWA"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c108",
-  "type": "A DUBAI PLACE",
+  "type": "A UAE PLACE",
   "answer": "JEBEL JAIS",
   "clues": [
    "1484 RESTAURANT",
@@ -1941,11 +1941,11 @@
    "JEBEL HAFEET",
    "WADI SHAWKA"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c109",
-  "type": "A DUBAI PLACE",
+  "type": "A UAE PLACE",
   "answer": "LOUVRE",
   "clues": [
    "JEAN NOUVEL",
@@ -1959,11 +1959,11 @@
    "TEAMLAB",
    "QASR AL WATAN"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c110",
-  "type": "A DUBAI PLACE",
+  "type": "A UAE PLACE",
   "answer": "FERRARI WORLD",
   "clues": [
    "OPENED 2010",
@@ -1977,7 +1977,7 @@
    "YAS WATERWORLD",
    "IMG WORLDS"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c111",
@@ -1995,7 +1995,7 @@
    "PUBG",
    "WARZONE"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c112",
@@ -2013,7 +2013,7 @@
    "SAINTS ROW",
    "WATCH DOGS"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c113",
@@ -2031,7 +2031,7 @@
    "ROCKET LEAGUE",
    "MADDEN"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c114",
@@ -2049,7 +2049,7 @@
    "SWEET HOME",
    "BLACK MIRROR"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c115",
@@ -2067,16 +2067,16 @@
    "NARCOS",
    "THE WIRE"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c116",
   "type": "POP CULTURE",
   "answer": "MINECRAFT",
   "clues": [
-   "MOJANG 2011",
    "REDSTONE",
    "ENDER DRAGON",
+   "CHICKEN JOCKEY!",
    "CREEPERS",
    "BLOCKY BUILDING"
   ],
@@ -2085,7 +2085,7 @@
    "TERRARIA",
    "FORTNITE"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c117",
@@ -2103,7 +2103,7 @@
    "INSTAGRAM",
    "VINE"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c118",
@@ -2121,7 +2121,7 @@
    "YU-GI-OH",
    "PALWORLD"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c119",
@@ -2139,7 +2139,7 @@
    "PARKS AND REC",
    "SUPERSTORE"
   ],
-  "as_of": 2026
+  "as_of": null
  },
  {
   "id": "c120",
@@ -2156,6 +2156,1698 @@
    "AEW",
    "UFC",
    "TNA"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c121",
+  "type": "A FOOTBALLER",
+  "answer": "SON HEUNG-MIN",
+  "clues": [
+   "HAMBURG AT 16",
+   "LEVERKUSEN 2013-15",
+   "LAFC SIGNING 2025",
+   "2020 PUSKAS AWARD",
+   "SPURS' KOREAN STAR"
+  ],
+  "decoys": [
+   "PARK JI-SUNG",
+   "KAGAWA",
+   "MITOMA"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c122",
+  "type": "A FOOTBALLER",
+  "answer": "IBRAHIMOVIC",
+  "clues": [
+   "MALMO FF YOUTH",
+   "AJAX 2001-04",
+   "2013 PUSKAS AWARD",
+   "SWEDEN TOP SCORER",
+   "ZLATAN"
+  ],
+  "decoys": [
+   "LEWANDOWSKI",
+   "CAVANI",
+   "SUAREZ"
+  ],
+  "as_of": 2026
+ },
+ {
+  "id": "c123",
+  "type": "A FOOTBALLER",
+  "answer": "DROGBA",
+  "clues": [
+   "LE MANS 1998-2002",
+   "GUINGAMP 2002-03",
+   "MARSEILLE 2003-04",
+   "2012 FINAL PENALTY",
+   "CHELSEA NO 11"
+  ],
+  "decoys": [
+   "ETO'O",
+   "ADEBAYOR",
+   "ANELKA"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c124",
+  "type": "A FOOTBALLER",
+  "answer": "MITOMA",
+  "clues": [
+   "DRIBBLING THESIS",
+   "UNION SG LOAN",
+   "SPAIN WC ASSIST 22",
+   "BRIGHTON WINGER",
+   "KAORU"
+  ],
+  "decoys": [
+   "KUBO",
+   "MINAMINO",
+   "DOAN"
+  ],
+  "as_of": 2026
+ },
+ {
+  "id": "c125",
+  "type": "A FOOTBALLER",
+  "answer": "ZIYECH",
+  "clues": [
+   "HEERENVEEN START",
+   "AJAX UCL SEMI 2019",
+   "CHELSEA 2020-23",
+   "BOTAFOGO 2026",
+   "HAKIM"
+  ],
+  "decoys": [
+   "BOUFAL",
+   "EN-NESYRI",
+   "AMRABAT"
+  ],
+  "as_of": 2026
+ },
+ {
+  "id": "c126",
+  "type": "A FOOTBALLER",
+  "answer": "YAMAL",
+  "clues": [
+   "304 CELEBRATION",
+   "KOPA TROPHY X3",
+   "YOUNGEST EURO GOAL",
+   "BARCA NO 10",
+   "LAMINE"
+  ],
+  "decoys": [
+   "PEDRI",
+   "GAVI",
+   "NICO WILLIAMS"
+  ],
+  "as_of": 2026
+ },
+ {
+  "id": "c127",
+  "type": "A FOOTBALLER",
+  "answer": "PARK JI-SUNG",
+  "clues": [
+   "KYOTO PURPLE SANGA",
+   "PSV 2003-05",
+   "THREE LUNGS",
+   "MAN UTD 2005-12",
+   "UTD'S KOREAN ACE"
+  ],
+  "decoys": [
+   "SON HEUNG-MIN",
+   "NAKATA",
+   "KAGAWA"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c128",
+  "type": "A FOOTBALLER",
+  "answer": "CANTONA",
+  "clues": [
+   "AUXERRE START",
+   "LEEDS 1992 TITLE",
+   "ACTED IN ELIZABETH",
+   "UPTURNED COLLAR",
+   "KING ERIC"
+  ],
+  "decoys": [
+   "GINOLA",
+   "PAPIN",
+   "HENRY"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c129",
+  "type": "A FOOTBALLER",
+  "answer": "VAN DIJK",
+  "clues": [
+   "GRONINGEN START",
+   "CELTIC 2013-15",
+   "SAINTS TO LFC 2018",
+   "2019 UEFA POTY",
+   "VIRGIL"
+  ],
+  "decoys": [
+   "KOULIBALY",
+   "RUBEN DIAS",
+   "MARQUINHOS"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c130",
+  "type": "A FOOTBALLER",
+  "answer": "SAKA",
+  "clues": [
+   "BORN IN EALING",
+   "HALE END ACADEMY",
+   "STARBOY",
+   "ARSENAL NO 7",
+   "BUKAYO"
+  ],
+  "decoys": [
+   "RASHFORD",
+   "FODEN",
+   "STERLING"
+  ],
+  "as_of": 2026
+ },
+ {
+  "id": "c131",
+  "type": "A FOOTBALLER",
+  "answer": "VINICIUS JR",
+  "clues": [
+   "FLAMENGO TEEN",
+   "UCL FINAL GOAL '22",
+   "2024 FIFA BEST",
+   "REAL MADRID NO 7",
+   "VINI JR"
+  ],
+  "decoys": [
+   "RODRYGO",
+   "RAPHINHA",
+   "NEYMAR"
+  ],
+  "as_of": 2026
+ },
+ {
+  "id": "c132",
+  "type": "A FOOTBALLER",
+  "answer": "SAMI AL JABER",
+  "clues": [
+   "WOLVES LOAN 2000",
+   "156 SAUDI CAPS",
+   "4 WORLD CUPS",
+   "HILAL 1989-2007",
+   "FIRST NAME SAMI"
+  ],
+  "decoys": [
+   "MAJED ABDULLAH",
+   "YASSER AL QAHTANI",
+   "AL DAWSARI"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c133",
+  "type": "A FILM",
+  "answer": "PULP FICTION",
+  "clues": [
+   "1994 PALME D'OR",
+   "BIG KAHUNA BURGER",
+   "JACK RABBIT SLIM'S",
+   "JULES & VINCENT",
+   "TARANTINO 1994"
+  ],
+  "decoys": [
+   "RESERVOIR DOGS",
+   "JACKIE BROWN",
+   "KILL BILL"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c134",
+  "type": "A FILM",
+  "answer": "PARASITE",
+  "clues": [
+   "SCHOLAR'S ROCK",
+   "PEACH ALLERGY",
+   "RAM-DON NOODLES",
+   "BONG JOON-HO",
+   "4 OSCARS IN 2020"
+  ],
+  "decoys": [
+   "OLDBOY",
+   "TRAIN TO BUSAN",
+   "MINARI"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c135",
+  "type": "A FILM",
+  "answer": "WOLF OF WALL STREET",
+  "clues": [
+   "STRATTON OAKMONT",
+   "SWEARING RECORD",
+   "SCORSESE 2013",
+   "JORDAN BELFORT",
+   "DICAPRIO BROKER"
+  ],
+  "decoys": [
+   "THE BIG SHORT",
+   "WALL STREET",
+   "CATCH ME IF YOU CAN"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c136",
+  "type": "A FILM",
+  "answer": "SHAWSHANK",
+  "clues": [
+   "ZIHUATANEJO",
+   "RITA HAYWORTH",
+   "STEPHEN KING TALE",
+   "ANDY AND RED",
+   "FREEMAN & ROBBINS"
+  ],
+  "decoys": [
+   "THE GREEN MILE",
+   "FORREST GUMP",
+   "ESCAPE FROM ALCATRAZ"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c137",
+  "type": "A FILM",
+  "answer": "SPIRITED AWAY",
+  "clues": [
+   "YUBABA'S BATHHOUSE",
+   "NO-FACE",
+   "2002 GOLDEN BEAR",
+   "GHIBLI 2001",
+   "CHIHIRO"
+  ],
+  "decoys": [
+   "MY NEIGHBOR TOTORO",
+   "PRINCESS MONONOKE",
+   "HOWL'S MOVING CASTLE"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c138",
+  "type": "A FILM",
+  "answer": "JURASSIC PARK",
+  "clues": [
+   "ISLA NUBLAR",
+   "MOSQUITO IN AMBER",
+   "CRICHTON NOVEL",
+   "SPIELBERG 1993",
+   "CLONED DINOSAURS"
+  ],
+  "decoys": [
+   "KING KONG",
+   "GODZILLA",
+   "JUMANJI"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c139",
+  "type": "A FILM",
+  "answer": "BACK TO THE FUTURE",
+  "clues": [
+   "HILL VALLEY",
+   "1.21 GIGAWATTS",
+   "88 MPH",
+   "DOC'S DELOREAN",
+   "MARTY MCFLY"
+  ],
+  "decoys": [
+   "GHOSTBUSTERS",
+   "E.T.",
+   "BIG"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c140",
+  "type": "A FILM",
+  "answer": "GHOST PROTOCOL",
+  "clues": [
+   "BRAD BIRD DIRECTS",
+   "KREMLIN BLAST",
+   "DUBAI SANDSTORM",
+   "TOM CRUISE 2011",
+   "BURJ KHALIFA CLIMB"
+  ],
+  "decoys": [
+   "FALLOUT",
+   "ROGUE NATION",
+   "DEAD RECKONING"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c141",
+  "type": "A FILM",
+  "answer": "3 IDIOTS",
+  "clues": [
+   "FIVE POINT SOMEONE",
+   "ICE DIRECTOR VIRUS",
+   "AAMIR KHAN 2009",
+   "RANCHO",
+   "ALL IZZ WELL"
+  ],
+  "decoys": [
+   "DANGAL",
+   "PK",
+   "LAGAAN"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c142",
+  "type": "A FILM",
+  "answer": "DDLJ",
+  "clues": [
+   "ADITYA CHOPRA 1995",
+   "MARATHA MANDIR RUN",
+   "BADE BADE DESHON",
+   "RAJ AND SIMRAN",
+   "SRK AND KAJOL"
+  ],
+  "decoys": [
+   "KAL HO NAA HO",
+   "MOHABBATEIN",
+   "DEVDAS"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c143",
+  "type": "A FILM",
+  "answer": "SHREK",
+  "clues": [
+   "1ST ANIMATED OSCAR",
+   "LORD FARQUAAD",
+   "ALL STAR OPENING",
+   "EDDIE AS DONKEY",
+   "GREEN OGRE"
+  ],
+  "decoys": [
+   "MADAGASCAR",
+   "KUNG FU PANDA",
+   "ICE AGE"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c144",
+  "type": "A DUBAI PLACE",
+  "answer": "MUSEUM OF THE FUTURE",
+  "clues": [
+   "KILLA DESIGN",
+   "MATAR BIN LAHEJ",
+   "OPENED 22-02-2022",
+   "CALLIGRAPHY FACADE",
+   "SILVER TORUS"
+  ],
+  "decoys": [
+   "DUBAI FRAME",
+   "ETIHAD MUSEUM",
+   "DUBAI OPERA"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c145",
+  "type": "A DUBAI PLACE",
+  "answer": "ALSERKAL AVENUE",
+  "clues": [
+   "SINCE 2008",
+   "39 OLD WAREHOUSES",
+   "60+ CREATIVE HUBS",
+   "GALLERY DISTRICT",
+   "AL QUOZ ART HUB"
+  ],
+  "decoys": [
+   "D3",
+   "CITY WALK",
+   "AL FAHIDI"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c146",
+  "type": "A DUBAI PLACE",
+  "answer": "AL FAHIDI",
+  "clues": [
+   "BUILT IN THE 1890S",
+   "RENAMED IN 2005",
+   "COFFEE MUSEUM",
+   "NAMED AFTER BASTAK",
+   "AKA BASTAKIYA"
+  ],
+  "decoys": [
+   "AL SEEF",
+   "AL SHINDAGHA",
+   "HATTA VILLAGE"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c147",
+  "type": "A DUBAI PLACE",
+  "answer": "DEEP DIVE DUBAI",
+  "clues": [
+   "OPENED JULY 2021",
+   "OYSTER-SHAPED TANK",
+   "SUNKEN CITY",
+   "60M DEEP",
+   "DEEPEST POOL"
+  ],
+  "decoys": [
+   "LOST CHAMBERS",
+   "DUBAI AQUARIUM",
+   "AQUAVENTURE"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c148",
+  "type": "A DUBAI PLACE",
+  "answer": "QE2",
+  "clues": [
+   "1969 MAIDEN VOYAGE",
+   "CUNARD UNTIL 2008",
+   "MINA RASHID BERTH",
+   "FLOATING HOTEL",
+   "QUEEN ELIZABETH 2"
+  ],
+  "decoys": [
+   "ATLANTIS",
+   "JUMEIRAH BEACH HOTEL",
+   "ARMANI HOTEL"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c149",
+  "type": "A DUBAI PLACE",
+  "answer": "MEYDAN",
+  "clues": [
+   "HOTEL IN THE STAND",
+   "OPENED MARCH 2010",
+   "HALF-MILE STAND",
+   "NAD AL SHEBA SITE",
+   "DUBAI WORLD CUP"
+  ],
+  "decoys": [
+   "JEBEL ALI RACECOURSE",
+   "DUBAI AUTODROME",
+   "AL HABTOOR POLO"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c150",
+  "type": "A DUBAI PLACE",
+  "answer": "DXB",
+  "clues": [
+   "OPENED SEPT 1960",
+   "AL GARHOUD",
+   "DWC TO REPLACE IT",
+   "EMIRATES' T3",
+   "BUSIEST INTL HUB"
+  ],
+  "decoys": [
+   "DWC",
+   "SHJ",
+   "AUH"
+  ],
+  "as_of": 2026
+ },
+ {
+  "id": "c151",
+  "type": "A DUBAI PLACE",
+  "answer": "MADINAT JUMEIRAH",
+  "clues": [
+   "DAR AL MASYAF",
+   "AL NASEEM HOTEL",
+   "MINA A'SALAM HOTEL",
+   "5.4KM OF CANALS",
+   "RESORT ABRA RIDES"
+  ],
+  "decoys": [
+   "ATLANTIS",
+   "ONE&ONLY",
+   "BURJ AL ARAB"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c152",
+  "type": "A DUBAI PLACE",
+  "answer": "COCA-COLA ARENA",
+  "clues": [
+   "OPENED JUNE 2019",
+   "MAYWEATHER V DEJI",
+   "17,000 CAPACITY",
+   "CITY WALK ARENA",
+   "SODA BRAND VENUE"
+  ],
+  "decoys": [
+   "ETIHAD ARENA",
+   "DUBAI OPERA",
+   "HAMDAN SPORTS COMPLEX"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c153",
+  "type": "A DUBAI PLACE",
+  "answer": "DUBAI OPERA",
+  "clues": [
+   "ATKINS DESIGN",
+   "FLAT-FLOOR MODE",
+   "DOMINGO OPENED IT",
+   "2,000 SEATS",
+   "DHOW-SHAPED VENUE"
+  ],
+  "decoys": [
+   "COCA-COLA ARENA",
+   "MUSEUM OF THE FUTURE",
+   "DUBAI FRAME"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c154",
+  "type": "A DUBAI PLACE",
+  "answer": "DUBAI MARINA",
+  "clues": [
+   "VANCOUVER-INSPIRED",
+   "EMAAR WATERFRONT",
+   "CAYAN TOWER TWIST",
+   "MAN-MADE CANAL",
+   "YACHTS BY JBR"
+  ],
+  "decoys": [
+   "BUSINESS BAY",
+   "JLT",
+   "DUBAI HARBOUR"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c155",
+  "type": "A DUBAI PLACE",
+  "answer": "IBN BATTUTA MALL",
+  "clues": [
+   "OPENED 2005",
+   "ELEPHANT CLOCK",
+   "CHINESE JUNK SHIP",
+   "6 THEMED COURTS",
+   "MOROCCAN EXPLORER"
+  ],
+  "decoys": [
+   "MOE",
+   "WAFI MALL",
+   "DUBAI MALL"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c156",
+  "type": "A DJ",
+  "answer": "MARTIN GARRIX",
+  "clues": [
+   "YTRAM ALIAS",
+   "AREA21 WITH MAEJOR",
+   "EURO 2020 ANTHEM",
+   "DJ MAG NO 1 X5",
+   "ANIMALS AT 17"
+  ],
+  "decoys": [
+   "HARDWELL",
+   "AFROJACK",
+   "ALESSO"
+  ],
+  "as_of": 2026
+ },
+ {
+  "id": "c157",
+  "type": "A DJ",
+  "answer": "SKRILLEX",
+  "clues": [
+   "FROM FIRST TO LAST",
+   "SONNY MOORE",
+   "9 GRAMMYS",
+   "JACK U WITH DIPLO",
+   "BANGARANG"
+  ],
+  "decoys": [
+   "ZEDD",
+   "DEADMAU5",
+   "DIPLO"
+  ],
+  "as_of": 2026
+ },
+ {
+  "id": "c158",
+  "type": "A DJ",
+  "answer": "DIPLO",
+  "clues": [
+   "THOMAS WESLEY",
+   "MAD DECENT 2006",
+   "LSD WITH SIA",
+   "JACK U HALF",
+   "MAJOR LAZER"
+  ],
+  "decoys": [
+   "SKRILLEX",
+   "DJ SNAKE",
+   "ZEDD"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c159",
+  "type": "A DJ",
+  "answer": "SWEDISH HOUSE MAFIA",
+  "clues": [
+   "PARADISE AGAIN LP",
+   "ONE LAST TOUR",
+   "MOTH TO A FLAME",
+   "AXWELL & INGROSSO",
+   "DON'T YOU WORRY..."
+  ],
+  "decoys": [
+   "DAFT PUNK",
+   "CHEMICAL BROTHERS",
+   "CAMELPHAT"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c160",
+  "type": "A DJ",
+  "answer": "TIESTO",
+  "clues": [
+   "TIJS VERWEST",
+   "MAGIK MIX SERIES",
+   "OLYMPICS 2004 SET",
+   "DJ MAG NO 1 X3",
+   "THE BUSINESS"
+  ],
+  "decoys": [
+   "ARMIN VAN BUUREN",
+   "HARDWELL",
+   "AFROJACK"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c161",
+  "type": "A DJ",
+  "answer": "KYGO",
+  "clues": [
+   "BORN IN SINGAPORE",
+   "PALM TREE RECORDS",
+   "RIO 2016 CLOSING",
+   "FIRESTONE (2014)",
+   "IT AIN'T ME"
+  ],
+  "decoys": [
+   "AVICII",
+   "LOST FREQUENCIES",
+   "FELIX JAEHN"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c162",
+  "type": "A DJ",
+  "answer": "JOHN SUMMIT",
+  "clues": [
+   "EX-EY ACCOUNTANT",
+   "NAPERVILLE NATIVE",
+   "EXPERTS ONLY LABEL",
+   "COMFORT IN CHAOS",
+   "WHERE YOU ARE"
+  ],
+  "decoys": [
+   "CHRIS LAKE",
+   "DOM DOLLA",
+   "FISHER"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c163",
+  "type": "A DJ",
+  "answer": "CAMELPHAT",
+  "clues": [
+   "WRESTLING MASKS",
+   "DARK MATTER LP",
+   "PANIC ROOM (2018)",
+   "LIVERPOOL DUO",
+   "COLA (2017)"
+  ],
+  "decoys": [
+   "SOLARDO",
+   "DISCLOSURE",
+   "OVERMONO"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c164",
+  "type": "A DJ",
+  "answer": "CHARLOTTE DE WITTE",
+  "clues": [
+   "AKA RAVING GEORGE",
+   "FROM GHENT",
+   "AGE OF LOVE REMIX",
+   "KNTXT LABEL",
+   "BELGIAN TECHNO DJ"
+  ],
+  "decoys": [
+   "NINA KRAVIZ",
+   "ANNA",
+   "INDIRA PAGANOTTO"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c165",
+  "type": "A DJ",
+  "answer": "ERIC PRYDZ",
+  "clues": [
+   "MOUSEVILLE LABEL",
+   "CIREZ D ALIAS",
+   "HOLOSPHERE SHOW",
+   "PRYDA ALIAS",
+   "CALL ON ME (2004)"
+  ],
+  "decoys": [
+   "AXWELL",
+   "ALESSO",
+   "DEADMAU5"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c166",
+  "type": "A DJ",
+  "answer": "DJ SNAKE",
+  "clues": [
+   "ENCORE (2016) LP",
+   "GAGA PRODUCER",
+   "TAKI TAKI",
+   "LEAN ON",
+   "TURN DOWN FOR WHAT"
+  ],
+  "decoys": [
+   "DAVID GUETTA",
+   "DIPLO",
+   "MARSHMELLO"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c167",
+  "type": "A DJ",
+  "answer": "MARSHMELLO",
+  "clues": [
+   "ALONE (2016)",
+   "FORTNITE GIG 2019",
+   "FRIENDS (2018)",
+   "HAPPIER (BASTILLE)",
+   "WHITE HELMET DJ"
+  ],
+  "decoys": [
+   "DEADMAU5",
+   "DJ SNAKE",
+   "KYGO"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c168",
+  "type": "A DJ",
+  "answer": "DAFT PUNK",
+  "clues": [
+   "THOMAS & GUY-MAN",
+   "HOMEWORK (1997)",
+   "TRON LEGACY SCORE",
+   "GET LUCKY",
+   "ROBOT HELMET DUO"
+  ],
+  "decoys": [
+   "JUSTICE",
+   "CHEMICAL BROTHERS",
+   "AIR"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c169",
+  "type": "A DJ",
+  "answer": "ARMIN VAN BUUREN",
+  "clues": [
+   "LEIDEN LAW GRAD",
+   "ARMADA MUSIC",
+   "ASOT SINCE 2001",
+   "DJ MAG NO 1 X5",
+   "A STATE OF TRANCE"
+  ],
+  "decoys": [
+   "TIESTO",
+   "FERRY CORSTEN",
+   "PAUL VAN DYK"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c170",
+  "type": "A DJ",
+  "answer": "DEADMAU5",
+  "clues": [
+   "NIAGARA FALLS-BORN",
+   "JOEL ZIMMERMAN",
+   "GHOSTS 'N' STUFF",
+   "MOUSE-EAR HELMET",
+   "FOUND A DEAD MOUSE"
+  ],
+  "decoys": [
+   "SKRILLEX",
+   "ERIC PRYDZ",
+   "MARSHMELLO"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c171",
+  "type": "A DJ",
+  "answer": "CHEMICAL BROTHERS",
+  "clues": [
+   "MANCHESTER UNI DUO",
+   "ONCE DUST BROTHERS",
+   "SETTING SUN (1996)",
+   "GALVANIZE",
+   "HEY BOY HEY GIRL"
+  ],
+  "decoys": [
+   "DAFT PUNK",
+   "THE PRODIGY",
+   "UNDERWORLD"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c172",
+  "type": "A PRODUCER",
+  "answer": "RICK RUBIN",
+  "clues": [
+   "BAREFOOT SAGE",
+   "SHANGRI-LA STUDIO",
+   "THE CREATIVE ACT",
+   "CASH'S 1994 ALBUM",
+   "DEF JAM CO-FOUNDER"
+  ],
+  "decoys": [
+   "QUINCY JONES",
+   "DR DRE",
+   "TIMBALAND"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c173",
+  "type": "A PRODUCER",
+  "answer": "MARK RONSON",
+  "clues": [
+   "VERSION (2007)",
+   "REHAB PRODUCER",
+   "SHALLOW OSCAR",
+   "I'M JUST KEN",
+   "UPTOWN FUNK"
+  ],
+  "decoys": [
+   "PHARRELL",
+   "CALVIN HARRIS",
+   "DIPLO"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c174",
+  "type": "A PRODUCER",
+  "answer": "SWIZZ BEATZ",
+  "clues": [
+   "KASSEEM DEAN",
+   "HARVARD BIZ ALUM",
+   "DEAN COLLECTION",
+   "RUFF RYDERS NEPHEW",
+   "MR ALICIA KEYS"
+  ],
+  "decoys": [
+   "TIMBALAND",
+   "JUST BLAZE",
+   "DJ KHALED"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c175",
+  "type": "A PRODUCER",
+  "answer": "MIKE WILL MADE-IT",
+  "clues": [
+   "MARIETTA, GEORGIA",
+   "EARDRUMMERS LABEL",
+   "WE CAN'T STOP",
+   "FORMATION",
+   "BLACK BEATLES"
+  ],
+  "decoys": [
+   "METRO BOOMIN",
+   "SOUTHSIDE",
+   "ZAYTOVEN"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c176",
+  "type": "A PRODUCER",
+  "answer": "QUINCY JONES",
+  "clues": [
+   "SINATRA & BASIE",
+   "FRESH PRINCE EXEC",
+   "28 GRAMMYS",
+   "WE ARE THE WORLD",
+   "THRILLER PRODUCER"
+  ],
+  "decoys": [
+   "NILE RODGERS",
+   "BABYFACE",
+   "RICK RUBIN"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c177",
+  "type": "A PRODUCER",
+  "answer": "FINNEAS",
+  "clues": [
+   "GLEE'S ALISTAIR",
+   "TWO OSCAR WINS",
+   "NO TIME TO DIE",
+   "BAD GUY PRODUCER",
+   "BILLIE'S BROTHER"
+  ],
+  "decoys": [
+   "JACK ANTONOFF",
+   "DAN NIGRO",
+   "LOUIS BELL"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c178",
+  "type": "A PRODUCER",
+  "answer": "MAX MARTIN",
+  "clues": [
+   "KARL SANDBERG",
+   "CHEIRON STUDIOS",
+   "31 HOT 100 NO 1S",
+   "BLINDING LIGHTS",
+   "BABY ONE MORE TIME"
+  ],
+  "decoys": [
+   "RYAN TEDDER",
+   "JACK ANTONOFF",
+   "SHELLBACK"
+  ],
+  "as_of": 2026
+ },
+ {
+  "id": "c179",
+  "type": "A RAPPER",
+  "answer": "SKEPTA",
+  "clues": [
+   "CHIEF ENTERTAINER",
+   "JME'S BIG BROTHER",
+   "BOY BETTER KNOW",
+   "MERCURY PRIZE 2016",
+   "SHUTDOWN"
+  ],
+  "decoys": [
+   "STORMZY",
+   "KANO",
+   "WILEY"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c180",
+  "type": "A RAPPER",
+  "answer": "LITTLE SIMZ",
+  "clues": [
+   "AGE 101 MUSIC",
+   "LOTUS (2025)",
+   "GREY AREA (2019)",
+   "TOP BOY'S SHELLEY",
+   "2022 MERCURY PRIZE"
+  ],
+  "decoys": [
+   "DAVE",
+   "KANO",
+   "LADY LESHURR"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c181",
+  "type": "A RAPPER",
+  "answer": "AITCH",
+  "clues": [
+   "HARRISON ARMSTRONG",
+   "CLOSE TO HOME LP",
+   "STRIKE A POSE",
+   "BABY FT ASHANTI",
+   "MAKE IT SHAKE"
+  ],
+  "decoys": [
+   "HEADIE ONE",
+   "DIGGA D",
+   "ARRDEE"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c182",
+  "type": "A RAPPER",
+  "answer": "TYLER THE CREATOR",
+  "clues": [
+   "CAMP FLOG GNAW",
+   "GOLF WANG",
+   "CHROMAKOPIA",
+   "ODD FUTURE",
+   "EARFQUAKE"
+  ],
+  "decoys": [
+   "FRANK OCEAN",
+   "EARL SWEATSHIRT",
+   "ASAP ROCKY"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c183",
+  "type": "A RAPPER",
+  "answer": "DOJA CAT",
+  "clues": [
+   "MOOO! COW SONG",
+   "HOT PINK LP",
+   "KISS ME MORE",
+   "SAY SO",
+   "PAINT THE TOWN RED"
+  ],
+  "decoys": [
+   "NICKI MINAJ",
+   "CARDI B",
+   "MEGAN THEE STALLION"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c184",
+  "type": "A RAPPER",
+  "answer": "MISSY ELLIOTT",
+  "clues": [
+   "FROM PORTSMOUTH VA",
+   "ROCK HALL 2023",
+   "SUPA DUPA FLY 1997",
+   "WORK IT",
+   "GET UR FREAK ON"
+  ],
+  "decoys": [
+   "LIL KIM",
+   "EVE",
+   "QUEEN LATIFAH"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c185",
+  "type": "A RAPPER",
+  "answer": "ANDRE 3000",
+  "clues": [
+   "NEW BLUE SUN FLUTE",
+   "ATLIENS (1996)",
+   "MS. JACKSON",
+   "HALF OF OUTKAST",
+   "HEY YA!"
+  ],
+  "decoys": [
+   "BIG BOI",
+   "LUDACRIS",
+   "T.I."
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c186",
+  "type": "A RAPPER",
+  "answer": "BAD BUNNY",
+  "clues": [
+   "SUPERMARKET BAGGER",
+   "WWE 24/7 CHAMP",
+   "UN VERANO SIN TI",
+   "2026 ALBUM OF YEAR",
+   "SUPER BOWL LX STAR"
+  ],
+  "decoys": [
+   "J BALVIN",
+   "DADDY YANKEE",
+   "OZUNA"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c187",
+  "type": "A RAPPER",
+  "answer": "WEGZ",
+  "clues": [
+   "AL WARDIAN KID",
+   "BIMBO (TV ROLE)",
+   "DORAK GAI",
+   "2022 WC FINAL SHOW",
+   "EL BAKHT"
+  ],
+  "decoys": [
+   "MARWAN PABLO",
+   "MARWAN MOUSSA",
+   "ABYUSIF"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c188",
+  "type": "A RAPPER",
+  "answer": "ELGRANDETOTO",
+  "clues": [
+   "TAHA FAHSSI",
+   "CAMELEON (2021)",
+   "LOVE NWANTITI RMX",
+   "SALGOAT",
+   "MOROCCO'S NO 1 MC"
+  ],
+  "decoys": [
+   "DIZZY DROS",
+   "INKONNU",
+   "ISSAM"
+  ],
+  "as_of": 2026
+ },
+ {
+  "id": "c189",
+  "type": "POP CULTURE",
+  "answer": "FRIENDS",
+  "clues": [
+   "CRANE & KAUFFMAN",
+   "REMBRANDTS THEME",
+   "CENTRAL PERK",
+   "WE WERE ON A BREAK",
+   "ROSS AND RACHEL"
+  ],
+  "decoys": [
+   "SEINFELD",
+   "HOW I MET YOUR MOTHER",
+   "THE BIG BANG THEORY"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c190",
+  "type": "POP CULTURE",
+  "answer": "GAME OF THRONES",
+  "clues": [
+   "PAINT HALL BELFAST",
+   "DUBROVNIK SHOOTS",
+   "RECORD 59 EMMYS",
+   "IRON THRONE",
+   "WINTER IS COMING"
+  ],
+  "decoys": [
+   "HOUSE OF THE DRAGON",
+   "THE WITCHER",
+   "VIKINGS"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c191",
+  "type": "POP CULTURE",
+  "answer": "STRANGER THINGS",
+  "clues": [
+   "DUFFER BROTHERS",
+   "STARCOURT MALL",
+   "KATE BUSH REVIVAL",
+   "HAWKINS, INDIANA",
+   "ELEVEN'S EGGOS"
+  ],
+  "decoys": [
+   "WEDNESDAY",
+   "DARK",
+   "LOCKE & KEY"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c192",
+  "type": "POP CULTURE",
+  "answer": "PEAKY BLINDERS",
+  "clues": [
+   "GARRISON PUB",
+   "SMALL HEATH",
+   "IMMORTAL MAN FILM",
+   "CILLIAN MURPHY",
+   "TOMMY SHELBY"
+  ],
+  "decoys": [
+   "BOARDWALK EMPIRE",
+   "TOP BOY",
+   "GANGS OF LONDON"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c193",
+  "type": "POP CULTURE",
+  "answer": "THE SIMPSONS",
+  "clues": [
+   "TRACEY ULLMAN 1987",
+   "D'OH IN THE OED",
+   "MATT GROENING",
+   "SPRINGFIELD",
+   "HOMER, MARGE, BART"
+  ],
+  "decoys": [
+   "FAMILY GUY",
+   "FUTURAMA",
+   "SOUTH PARK"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c194",
+  "type": "POP CULTURE",
+  "answer": "MONEY HEIST",
+  "clues": [
+   "SPAIN'S ROYAL MINT",
+   "TOKYO & NAIROBI",
+   "THE PROFESSOR",
+   "BELLA CIAO",
+   "DALI MASKS"
+  ],
+  "decoys": [
+   "ELITE",
+   "NARCOS",
+   "LUPIN"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c195",
+  "type": "POP CULTURE",
+  "answer": "SUCCESSION",
+  "clues": [
+   "JESSE ARMSTRONG",
+   "3 BEST DRAMA EMMYS",
+   "WAYSTAR ROYCO",
+   "COUSIN GREG",
+   "LOGAN ROY"
+  ],
+  "decoys": [
+   "BILLIONS",
+   "YELLOWSTONE",
+   "THE CROWN"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c196",
+  "type": "POP CULTURE",
+  "answer": "LOVE ISLAND",
+  "clues": [
+   "SA VINYASSA VILLA",
+   "IAIN STIRLING",
+   "CASA AMOR",
+   "RECOUPLINGS",
+   "MAYA JAMA HOSTS"
+  ],
+  "decoys": [
+   "TOO HOT TO HANDLE",
+   "MADE IN CHELSEA",
+   "THE BACHELOR"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c197",
+  "type": "POP CULTURE",
+  "answer": "DUBAI BLING",
+  "clues": [
+   "NETFLIX OCT 2022",
+   "EBRAHEEM AL SAMADI",
+   "SAFA & FAHAD",
+   "DJ BLISS & DANYA",
+   "KRIS FADE"
+  ],
+  "decoys": [
+   "SELLING SUNSET",
+   "BLING EMPIRE",
+   "REAL HOUSEWIVES"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c198",
+  "type": "POP CULTURE",
+  "answer": "MARIO",
+  "clues": [
+   "ONCE A CARPENTER",
+   "JUMPMAN IN 1981",
+   "CHARLES MARTINET",
+   "CHRIS PRATT VOICE",
+   "LUIGI'S BROTHER"
+  ],
+  "decoys": [
+   "SONIC",
+   "LINK",
+   "DONKEY KONG"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c199",
+  "type": "POP CULTURE",
+  "answer": "CALL OF DUTY",
+  "clues": [
+   "INFINITY WARD 2003",
+   "ZOMBIES MODE 2008",
+   "WARZONE (2020)",
+   "BLACK OPS",
+   "MODERN WARFARE"
+  ],
+  "decoys": [
+   "BATTLEFIELD",
+   "HALO",
+   "COUNTER-STRIKE"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c200",
+  "type": "POP CULTURE",
+  "answer": "AMONG US",
+  "clues": [
+   "INNERSLOTH 2018",
+   "THE SKELD MAP",
+   "EMERGENCY MEETING",
+   "CREWMATES",
+   "WHO'S THE IMPOSTOR"
+  ],
+  "decoys": [
+   "FALL GUYS",
+   "ROBLOX",
+   "GOOSE GOOSE DUCK"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c201",
+  "type": "POP CULTURE",
+  "answer": "TETRIS",
+  "clues": [
+   "KOROBEINIKI THEME",
+   "ALEXEY PAJITNOV",
+   "GAME BOY 1989",
+   "7 TETROMINOES",
+   "FALLING BLOCKS"
+  ],
+  "decoys": [
+   "PAC-MAN",
+   "SPACE INVADERS",
+   "SNAKE"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c202",
+  "type": "POP CULTURE",
+  "answer": "PAC-MAN",
+  "clues": [
+   "TORU IWATANI",
+   "3,333,360 PERFECT",
+   "BLINKY AND CLYDE",
+   "POWER PELLETS",
+   "YELLOW GHOST-EATER"
+  ],
+  "decoys": [
+   "TETRIS",
+   "SPACE INVADERS",
+   "DONKEY KONG"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c203",
+  "type": "POP CULTURE",
+  "answer": "RICKROLL",
+  "clues": [
+   "FAKE GTA IV LINK",
+   "4CHAN, MAY 2007",
+   "BAIT-AND-SWITCH",
+   "NEVER GONNA...",
+   "RICK ASTLEY"
+  ],
+  "decoys": [
+   "GANGNAM STYLE",
+   "HARLEM SHAKE",
+   "NYAN CAT"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c204",
+  "type": "POP CULTURE",
+  "answer": "GANGNAM STYLE",
+  "clues": [
+   "JULY 2012",
+   "1ST TO 1B ON YT",
+   "SEOUL DISTRICT",
+   "HORSE-RIDING DANCE",
+   "PSY"
+  ],
+  "decoys": [
+   "DESPACITO",
+   "HARLEM SHAKE",
+   "BABY SHARK"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c205",
+  "type": "POP CULTURE",
+  "answer": "ICE BUCKET CHALLENGE",
+  "clues": [
+   "$220M RAISED",
+   "SUMMER OF 2014",
+   "ALS FUNDRAISER",
+   "NOMINATE 3 FRIENDS",
+   "COLD WATER DUNK"
+  ],
+  "decoys": [
+   "HARLEM SHAKE",
+   "MANNEQUIN CHALLENGE",
+   "PLANKING"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c206",
+  "type": "POP CULTURE",
+  "answer": "DUBAI CHOCOLATE",
+  "clues": [
+   "SARAH HAMOUDA",
+   "CAN'T GET KNAFEH..",
+   "FIX CHOCOLATIER",
+   "2024 TIKTOK CRAZE",
+   "KNAFEH-FILLED BAR"
+  ],
+  "decoys": [
+   "LABUBU",
+   "PRIME",
+   "STANLEY CUP"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c207",
+  "type": "POP CULTURE",
+  "answer": "LABUBU",
+  "clues": [
+   "KASING LUNG",
+   "THE MONSTERS",
+   "BEWARE LAFUFUS",
+   "LISA'S BAG CHARM",
+   "POP MART BLIND BOX"
+  ],
+  "decoys": [
+   "SONNY ANGEL",
+   "SQUISHMALLOW",
+   "JELLYCAT"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c208",
+  "type": "POP CULTURE",
+  "answer": "AIR JORDAN",
+  "clues": [
+   "PETER MOORE DESIGN",
+   "$5,000 A GAME FINE",
+   "FLU GAME XII",
+   "JUMPMAN LOGO",
+   "MJ'S NIKE SNEAKERS"
+  ],
+  "decoys": [
+   "AIR FORCE 1",
+   "AIR MAX",
+   "ADIDAS SAMBA"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c209",
+  "type": "POP CULTURE",
+  "answer": "CROCS",
+  "clues": [
+   "BOAT SHOW DEBUT",
+   "CROSLITE FOAM",
+   "BALENCIAGA COLLAB",
+   "JIBBITZ CHARMS",
+   "HOLEY FOAM CLOGS"
+  ],
+  "decoys": [
+   "BIRKENSTOCK",
+   "UGG",
+   "HEELYS"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c210",
+  "type": "POP CULTURE",
+  "answer": "WHATSAPP",
+  "clues": [
+   "EX-YAHOO DUO",
+   "KOUM AND ACTON",
+   "$19B IN 2014",
+   "3 BILLION USERS",
+   "GREEN CHAT APP"
+  ],
+  "decoys": [
+   "TELEGRAM",
+   "SIGNAL",
+   "IMESSAGE"
+  ],
+  "as_of": 2026
+ },
+ {
+  "id": "c211",
+  "type": "POP CULTURE",
+  "answer": "SPONGEBOB",
+  "clues": [
+   "STEPHEN HILLENBURG",
+   "BIKINI BOTTOM",
+   "KRUSTY KRAB COOK",
+   "NEXT TO SQUIDWARD",
+   "PINEAPPLE HOME"
+  ],
+  "decoys": [
+   "PHINEAS AND FERB",
+   "ADVENTURE TIME",
+   "FAIRLY ODDPARENTS"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c212",
+  "type": "POP CULTURE",
+  "answer": "TOM AND JERRY",
+  "clues": [
+   "ONCE JASPER & JINX",
+   "PUSS GETS THE BOOT",
+   "7 OSCARS",
+   "SPIKE THE BULLDOG",
+   "CAT CHASES MOUSE"
+  ],
+  "decoys": [
+   "LOONEY TUNES",
+   "PINK PANTHER",
+   "SCOOBY-DOO"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c213",
+  "type": "POP CULTURE",
+  "answer": "ONE PIECE",
+  "clues": [
+   "JUMP SINCE 1997",
+   "EIICHIRO ODA",
+   "GOING MERRY",
+   "GUM-GUM FRUIT",
+   "STRAW HAT LUFFY"
+  ],
+  "decoys": [
+   "NARUTO",
+   "DRAGON BALL",
+   "BLEACH"
+  ],
+  "as_of": null
+ },
+ {
+  "id": "c214",
+  "type": "POP CULTURE",
+  "answer": "MRBEAST",
+  "clues": [
+   "COUNTED TO 100,000",
+   "$456K SQUID GAME",
+   "FEASTABLES BARS",
+   "BEAST GAMES $5M",
+   "NO 1 YOUTUBER"
+  ],
+  "decoys": [
+   "KSI",
+   "LOGAN PAUL",
+   "PEWDIEPIE"
   ],
   "as_of": 2026
  }

@@ -727,7 +727,7 @@ class ClosestWins(PartyGame):
 
 # The deck's card types, grouped so a round of six has one of each kind of fan's card.
 CLUE_GROUPS = {"A FOOTBALLER": "football", "A RAPPER": "hiphop", "A PRODUCER": "hiphop", "A DJ": "dance",
-               "A FILM": "film", "A DUBAI PLACE": "dubai", "POP CULTURE": "pop"}
+               "A FILM": "film", "A DUBAI PLACE": "dubai", "A UAE PLACE": "dubai", "POP CULTURE": "pop"}
 
 
 def leaders_line(rows):

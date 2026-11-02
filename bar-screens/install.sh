@@ -187,6 +187,14 @@ UNIT
   sudo systemctl set-default graphical.target
 fi
 
+echo "==> Rebooting the Pi by itself if it ever freezes (the hardware watchdog)"
+if [ -e /dev/watchdog ]; then
+  sudo mkdir -p /etc/systemd/system.conf.d
+  printf '# Bar Screens: reboot the Pi if it ever freezes (the Pi 4 hardware watchdog)\n[Manager]\nRuntimeWatchdogSec=15s\nRebootWatchdogSec=2min\n' \
+    | sudo tee /etc/systemd/system.conf.d/bar-screens-watchdog.conf >/dev/null
+  sudo systemctl daemon-reexec
+fi
+
 echo "==> Adding the bar-screens on/off command"
 sudo ln -sf "$APP_DIR/bar-screens" /usr/local/bin/bar-screens
 

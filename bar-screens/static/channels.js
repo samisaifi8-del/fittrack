@@ -2417,6 +2417,35 @@
   }
 
   // The type-only card: the house presents tonight's film. With no film chosen, it's movie night.
+  // A cinema marquee's ring of bulbs along the card's edge: every third one lit warm, the rest
+  // glowing faintly, for one step of the chase.
+  function marqueeBulbs(W, H, step) {
+    const s = Math.min(W, H);
+    return offscreen(W, H, (x) => {
+      const inset = Math.max(4, Math.round(s * 0.028)), gap = Math.max(8, Math.round(s * 0.05));
+      const r = Math.max(1.5, s * 0.008);
+      const pts = [];
+      const w = W - inset * 2, h = H - inset * 2;
+      const nx = Math.round(w / gap), ny = Math.round(h / gap);
+      for (let i = 0; i < nx; i++) pts.push([inset + (i * w) / nx, inset]);
+      for (let i = 0; i < ny; i++) pts.push([W - inset, inset + (i * h) / ny]);
+      for (let i = 0; i < nx; i++) pts.push([W - inset - (i * w) / nx, H - inset]);
+      for (let i = 0; i < ny; i++) pts.push([inset, H - inset - (i * h) / ny]);
+      pts.forEach(([px, py], i) => {
+        const on = i % 3 === step;
+        if (on) {
+          const g = x.createRadialGradient(px, py, 0, px, py, r * 3.5);
+          g.addColorStop(0, 'rgba(255,214,140,0.55)');
+          g.addColorStop(1, 'rgba(255,214,140,0)');
+          x.fillStyle = g;
+          x.fillRect(px - r * 3.5, py - r * 3.5, r * 7, r * 7);
+        }
+        x.fillStyle = on ? '#ffe2a8' : '#4a3816';
+        x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fill();
+      });
+    });
+  }
+
   function presentsCard(W, H, film, barName) {
     const s = Math.min(W, H);
     return offscreen(W, H, (x) => {
@@ -2602,8 +2631,13 @@
     function render(x, name, c, T, dry) {
       const f = c && c.film;
       if (name === 'idle') {
-        if (!dry) x.drawImage(card('idle', () => presentsCard(W, H, null, opts.barName)), 0, 0);
-        return 'idle';
+        // the marquee's bulbs chase round the card, three steps a cycle
+        const step = Math.floor(T * 6) % 3;
+        if (!dry) {
+          x.drawImage(card('idle', () => presentsCard(W, H, null, opts.barName)), 0, 0);
+          x.drawImage(card(`bulbs${step}`, () => marqueeBulbs(W, H, step)), 0, 0);
+        }
+        return `idle${step}`;
       }
       if (name === 'film') {
         if (!dry) x.drawImage(card('dark', () => darkCard(W, H)), 0, 0);
@@ -2615,7 +2649,11 @@
       }
       if (name === 'poster') {
         const type = card('presents', () => presentsCard(W, H, f, opts.barName));
-        if (!posterOk) { if (!dry) x.drawImage(type, 0, 0); return 'type'; }
+        if (!posterOk) {
+          const step = Math.floor(T * 6) % 3;
+          if (!dry) { x.drawImage(type, 0, 0); x.drawImage(card(`bulbs${step}`, () => marqueeBulbs(W, H, step)), 0, 0); }
+          return `type${step}`;
+        }
         const pic = card('poster', () => posterCard(W, H, f, poster));
         const cycle = NS_POSTER + NS_CARD + NS_TURN * 2;
         const u = (((T - c.at) % cycle) + cycle) % cycle;
@@ -3010,12 +3048,18 @@
   }
 
   // One page of the menu: up to three drinks, each a gold glass beside its name.
+  // Where each of a menu page's three drinks sits: its row, and its glass.
+  function pourLayout(W, H) {
+    const top = Math.round(H * 0.18), bottom = Math.round(H * 0.91);
+    const rowH = (bottom - top) / 3;
+    const iconW = Math.round(W * 0.2), iconH = Math.round(rowH * 0.78);
+    return { top, rowH, iconW, iconH, iconX: Math.round(W * 0.07), iconY: (i) => Math.round(top + i * rowH + rowH / 2 - iconH / 2) };
+  }
+
   function pourPage(W, H, drinks, icons) {
     const s = Math.min(W, H);
     return offscreen(W, H, (x) => {
-      const top = Math.round(H * 0.18), bottom = Math.round(H * 0.91);
-      const rowH = (bottom - top) / 3;
-      const iconW = Math.round(W * 0.2), iconH = Math.round(rowH * 0.78);
+      const { top, rowH, iconW, iconH } = pourLayout(W, H);
       const textX = Math.round(W * 0.31), textW = Math.round(W * 0.93) - textX;
       x.textAlign = 'left';
       x.textBaseline = 'middle';
@@ -3036,11 +3080,65 @@
           const b = fitWrapped(x, d.name, 'Josefin Sans', textW, Math.min(rowH * 0.7, max * 2.3), 2, 1.12);
           if (b.size > size) { size = b.size; lines = b.lines; }
         }
+        // the name, with what's in it underneath in small gold capitals
+        const blurb = d.blurb || '';
+        const bs = blurb ? Math.max(MIN_TEXT, Math.round(s * 0.034)) : 0;
+        const shift = blurb ? bs * 0.75 : 0;
         x.font = font('Josefin Sans', size);
         x.fillStyle = IVORY;
-        lines.forEach((l, k) => x.fillText(l, textX, Math.round(cy + (k - (lines.length - 1) / 2) * size * 1.12 + size * 0.06)));
+        lines.forEach((l, k) => x.fillText(l, textX, Math.round(cy - shift + (k - (lines.length - 1) / 2) * size * 1.12 + size * 0.06)));
+        if (blurb) {
+          tracking(x, s * 0.01);
+          x.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(x, blurb, 'Josefin Sans', textW, bs)));
+          x.fillStyle = GOLD;
+          x.fillText(blurb, textX, Math.round(cy - shift + ((lines.length - 1) / 2) * size * 1.12 + size * 0.62 + bs * 0.9));
+        }
         tracking(x, 0);
       });
+    });
+  }
+
+  // The menu's glasses come alive: bubbles rising in anything sparkling, and every few seconds a
+  // light crossing one glass after another. Drawn only where the glass is (the black stays black).
+  function pourLife(ctx, W, H, drinks, icons, t, scratch) {
+    const L = pourLayout(W, H);
+    const sx = scratch.getContext('2d');
+    drinks.forEach((d, i) => {
+      const icon = icons(d, L.iconW, L.iconH);
+      const x0 = L.iconX, y0 = L.iconY(i);
+      const fill = icon.yTop + (icon.yBottom - icon.yTop) * 0.3;  // the menu shows glasses 70% full
+      if (d.bubbles) {
+        sx.clearRect(0, 0, scratch.width, scratch.height);
+        sx.globalCompositeOperation = 'source-over';
+        sx.drawImage(icon.liquid, 0, 0);
+        sx.clearRect(0, 0, L.iconW, Math.ceil(fill));
+        sx.globalCompositeOperation = 'source-atop';
+        sx.fillStyle = 'rgba(255,246,220,0.85)';
+        for (let b = 0; b < 7; b++) {
+          const span = icon.yBottom - fill;
+          const y = icon.yBottom - (((t * 0.35 + b * 0.37 + i * 0.21) % 1) * span);
+          const bx = L.iconW * (0.3 + ((b * 0.29 + i * 0.13) % 0.4)) + Math.sin(t * 2 + b) * 0.7;
+          sx.fillRect(Math.round(bx), Math.round(y), 1, 1);
+        }
+        ctx.drawImage(scratch, 0, 0, L.iconW, L.iconH, x0, y0, L.iconW, L.iconH);
+      }
+      // the light: a band crossing each glass in turn, one every two seconds or so
+      const k = ((t * 0.5 - i * 0.66) % 2 + 2) % 2;
+      if (k < 0.6) {
+        const bx = -L.iconW * 0.5 + (k / 0.6) * L.iconW * 2;
+        sx.clearRect(0, 0, scratch.width, scratch.height);
+        sx.globalCompositeOperation = 'source-over';
+        sx.drawImage(icon.outline, 0, 0);
+        sx.globalCompositeOperation = 'source-in';
+        const g = sx.createLinearGradient(bx - L.iconW * 0.25, 0, bx + L.iconW * 0.25, L.iconH * 0.4);
+        g.addColorStop(0, 'rgba(255,240,200,0)'); g.addColorStop(0.5, 'rgba(255,240,200,0.9)'); g.addColorStop(1, 'rgba(255,240,200,0)');
+        sx.fillStyle = g;
+        sx.fillRect(0, 0, L.iconW, L.iconH);
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.drawImage(scratch, 0, 0, L.iconW, L.iconH, x0, y0, L.iconW, L.iconH);
+        ctx.restore();
+      }
     });
   }
 
@@ -3080,20 +3178,20 @@
         const gap = Math.round(s * 0.04), x0 = Math.round(W / 2 - ((pages.length - 1) * gap) / 2);
         for (let i = 0; i < pages.length; i++) x.fillRect(x0 + i * gap - 1, 5, 3, 3);
       }) : null;
-      let shown = -1, card = null, fontsIn = false;
+      let card = null, fontsIn = false;
+      const scratch = offscreen(Math.round(W * 0.2), Math.round(H), () => {});
       const stop = animate((t) => {
         if (t0 === null) t0 = t;
         const age = t - t0;
-        if (!card || (!fontsIn && pourFonts())) { fontsIn = pourFonts(); card = menuCard(); pageAt.clear(); shown = -1; }
+        if (!card || (!fontsIn && pourFonts())) { fontsIn = pourFonts(); card = menuCard(); pageAt.clear(); }
         const i = pages.length ? Math.floor(age / POUR_PAGE) % pages.length : -1;
         const into = age % POUR_PAGE;
         const fade = pages.length > 1 ? Math.min(1, into / 0.9, (POUR_PAGE - into) / 0.6) : Math.min(1, age / 0.6);
-        if (fade >= 1 && shown === i) return; // a page holding still: nothing to redraw
-        shown = fade >= 1 ? i : -1;
         ctx.drawImage(card, 0, 0);
         if (i < 0) return;
         ctx.globalAlpha = Math.max(0, fade);
         ctx.drawImage(pageImg(i), 0, 0);
+        pourLife(ctx, W, H, pages[i], iconFor, t, scratch);
         ctx.globalAlpha = 1;
         if (dots) {
           ctx.drawImage(dots, 0, Math.round(H * 0.935));
@@ -3101,7 +3199,7 @@
           ctx.fillStyle = GOLD_LIGHT;
           ctx.fillRect(x0 + i * gap - 2, Math.round(H * 0.935) + 4, 5, 5);
         }
-      }, 30);
+      }, 20);
       return { stop };
     }
 

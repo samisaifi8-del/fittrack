@@ -2041,6 +2041,7 @@ def load_drinks(path):
                 "bubbles": bool(d.get("bubbles")), "ice": bool(d.get("ice")),
                 "garnish": d.get("garnish") if d.get("garnish") in GARNISHES else "none",
                 "alcohol": bool(d.get("alcohol", True)),
+                "blurb": " ".join(str(d.get("blurb") or "").split()).upper()[:28],
             })
         except (AttributeError, KeyError, TypeError, ValueError):
             continue

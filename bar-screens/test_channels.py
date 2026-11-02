@@ -83,5 +83,39 @@ class GameChannels(unittest.TestCase):
         self.assertEqual(again._screen("s1")["channel"], "verdict")
 
 
+class ScoresDetail(unittest.TestCase):
+    """Scores' hero match: goals and red cards per side from ESPN's details, and crests via the Pi."""
+
+    COMP = {
+        "competitors": [{"homeAway": "home", "team": {"id": "359", "abbreviation": "ARS", "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/359.png"}},
+                        {"homeAway": "away", "team": {"id": "364", "abbreviation": "LIV", "logo": "http://evil.example/x.png"}}],
+        "details": [
+            {"type": {"text": "Goal"}, "clock": {"displayValue": "16'"}, "team": {"id": "359"}, "scoringPlay": True, "athletesInvolved": [{"shortName": "K. Havertz"}]},
+            {"type": {"text": "Yellow Card"}, "clock": {"displayValue": "45'+2'"}, "team": {"id": "364"}, "yellowCard": True, "athletesInvolved": [{"shortName": "B. Barcola"}]},
+            {"type": {"text": "Penalty - Scored"}, "clock": {"displayValue": "34'"}, "team": {"id": "364"}, "scoringPlay": True, "penaltyKick": True, "athletesInvolved": [{"athlete": {"shortName": "M. Salah"}}]},
+            {"type": {"text": "Own Goal"}, "clock": {"displayValue": "70'"}, "team": {"id": "359"}, "scoringPlay": True, "ownGoal": True, "athletesInvolved": []},
+            {"type": {"text": "Red Card"}, "clock": {"displayValue": "61'"}, "team": {"id": "364"}, "redCard": True, "athletesInvolved": [{"shortName": "V. van Dijk"}]},
+            {"type": {"text": "Goal"}, "team": {"id": "999"}, "scoringPlay": True},
+        ],
+    }
+
+    def test_events(self):
+        sides = {c["homeAway"]: c for c in self.COMP["competitors"]}
+        self.assertEqual(server._match_events(self.COMP, sides), [
+            {"side": "home", "min": "16'", "who": "K. Havertz", "kind": "goal"},
+            {"side": "away", "min": "34'", "who": "M. Salah", "kind": "pen"},
+            {"side": "home", "min": "70'", "who": "", "kind": "og"},
+            {"side": "away", "min": "61'", "who": "V. van Dijk", "kind": "red"},
+        ])
+
+    def test_crests_only_from_espn(self):
+        home, away = (server._team(c) for c in self.COMP["competitors"])
+        self.assertEqual(home["logo"], "https://a.espncdn.com/i/teamlogos/soccer/500/359.png")
+        self.assertIsNone(away["logo"])
+        with tempfile.TemporaryDirectory() as d:
+            for bad in ("http://evil.example/x.png", "https://a.espncdn.com/../../etc/passwd", "file:///etc/passwd", None):
+                self.assertIsNone(server.crest_file(d, bad))
+
+
 if __name__ == "__main__":
     unittest.main()

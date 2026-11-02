@@ -9,6 +9,7 @@ the walls. Standard library only, so it runs on a fresh Raspberry Pi OS.
 import argparse
 import concurrent.futures
 import datetime
+import hashlib
 import json
 import mimetypes
 import os
@@ -683,15 +684,62 @@ def _hexcolor(v):
     return "#" + v.lower() if isinstance(v, str) and re.fullmatch(r"[0-9a-fA-F]{6}", v) else None
 
 
+# Club crests for Scores come from ESPN's image server through the Pi (/api/crest), which keeps a
+# copy, so the wall never waits on ESPN for a crest it has shown before.
+CREST_URL = re.compile(r"https://a\.espncdn\.com/i/teamlogos/[a-z0-9/_-]+\.png", re.I)
+
+
+def crest_file(data_dir, url):
+    """The crest's file on the Pi, fetched once from ESPN. None for anything that isn't an ESPN crest."""
+    if not isinstance(url, str) or not CREST_URL.fullmatch(url):
+        return None
+    folder = os.path.join(data_dir, "crests")
+    os.makedirs(folder, exist_ok=True)
+    path = os.path.join(folder, hashlib.sha1(url.encode()).hexdigest()[:20] + ".png")
+    if not os.path.exists(path):
+        data = fetch_url(url)
+        if not data.startswith(b"\x89PNG"):
+            raise IOError("not a PNG")
+        tmp = f"{path}.{threading.get_ident()}.part"
+        with open(tmp, "wb") as f:
+            f.write(data)
+        os.replace(tmp, path)
+    return path
+
+
 def _team(competitor):
     t = competitor.get("team") or {}
+    logo = t.get("logo")
     return {
         "abbr": (t.get("abbreviation") or t.get("shortDisplayName") or "?")[:4].upper(),
         "name": t.get("shortDisplayName") or t.get("displayName") or "",
         "score": str(competitor.get("score") or ""),
         "color": _hexcolor(t.get("color")),
         "alt": _hexcolor(t.get("alternateColor")),
+        "logo": logo if isinstance(logo, str) and CREST_URL.fullmatch(logo) else None,
     }
+
+
+def _match_events(comp, sides):
+    """Goals and red cards, oldest first: {"side": "home"|"away", "min": "16'", "who": "K. Havertz",
+    "kind": "goal"|"pen"|"og"|"red"}. ESPN lists them under the competition's details."""
+    side_of = {(c.get("team") or {}).get("id"): k for k, c in sides.items()}
+    events = []
+    for d in comp.get("details") or []:
+        side = side_of.get((d.get("team") or {}).get("id"))
+        if not side:
+            continue
+        if d.get("scoringPlay"):
+            kind = "og" if d.get("ownGoal") else "pen" if d.get("penaltyKick") else "goal"
+        elif d.get("redCard"):
+            kind = "red"
+        else:
+            continue
+        who = next((a.get("shortName") or (a.get("athlete") or {}).get("shortName") or a.get("displayName")
+                    for a in d.get("athletesInvolved") or [] if isinstance(a, dict)), "") or ""
+        events.append({"side": side, "min": str((d.get("clock") or {}).get("displayValue") or "")[:8],
+                       "who": who[:24], "kind": kind})
+    return events[:16]
 
 
 def fetch_scores(conf):
@@ -726,6 +774,8 @@ def fetch_scores(conf):
                 "clock": status.get("displayClock", ""),
                 "home": _team(sides["home"]),
                 "away": _team(sides["away"]),
+                "venue": str((comp.get("venue") or {}).get("fullName") or "")[:40],
+                "events": _match_events(comp, sides),
             })
         leagues.append({"key": key, "name": title, "matches": matches})
     if failures and not leagues:
@@ -2416,6 +2466,12 @@ class Handler(BaseHTTPRequestHandler):
             m = re.fullmatch(r"/api/feed/(scores|news|weather)", path)
             if m:
                 return self._json(200, self.feeds.get(m.group(1)))
+            if path == "/api/crest":
+                try:
+                    full = crest_file(store.data_dir, qs.get("u", [""])[0])
+                except Exception:
+                    return self._json(502, {"error": "Couldn't get that crest."})
+                return self._file(full, cache=True) if full else self._json(404, {"error": "Not a crest."})
             m = re.fullmatch(r"/api/game/(years|house)", path)
             if m:
                 return self._json(200, self._list(m.group(1)))

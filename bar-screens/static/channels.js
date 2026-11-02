@@ -4,7 +4,8 @@
 // The look is quiet luxury with a deco accent: black (so unused LEDs stay off), ivory type, and
 // one muted gold kept for hairlines. Type does the work: Poiret One for titles, Cormorant Garamond
 // for anything read like a headline, and small widely spaced Josefin Sans capitals for labels.
-// Motion is slow and mostly fades.
+// Motion is slow and mostly fades. Where the subject has colours of its own (a club's kit and
+// crest), they come in as light on the black, never as a filled background.
 (() => {
   'use strict';
 
@@ -299,102 +300,306 @@
     return matches.slice().sort((a, b) => rank(a) - rank(b) || new Date(a.date) - new Date(b.date)).slice(0, 30);
   }
 
+  // Club crests come through the Pi (/api/crest) and are drawn down to each size once, in halving
+  // steps so a 500 px PNG still looks crisp at 16 LEDs. Null until the image has loaded.
+  const crests = new Map();
+  function crest(url, size) {
+    if (!url) return null;
+    let c = crests.get(url);
+    if (!c) {
+      c = { img: new Image(), ok: false, sizes: new Map() };
+      c.img.onload = () => { c.ok = true; };
+      c.img.src = '/api/crest?u=' + encodeURIComponent(url);
+      crests.set(url, c);
+    }
+    if (!c.ok) return null;
+    const px = Math.max(4, Math.round(size));
+    if (!c.sizes.has(px)) {
+      let src = c.img, w = src.naturalWidth || px;
+      while (w / 2 >= px * 1.5) {
+        const k = document.createElement('canvas');
+        k.width = k.height = Math.round(w / 2);
+        const x = k.getContext('2d');
+        x.imageSmoothingQuality = 'high';
+        x.drawImage(src, 0, 0, k.width, k.height);
+        src = k; w = k.width;
+      }
+      const out = document.createElement('canvas');
+      out.width = out.height = px;
+      const x = out.getContext('2d');
+      x.imageSmoothingQuality = 'high';
+      x.drawImage(src, 0, 0, px, px);
+      c.sizes.set(px, out);
+    }
+    return c.sizes.get(px);
+  }
+
+  // A team's colour that shows up on black: its kit colour, else its second colour, else gold.
+  function teamTint(t) {
+    for (const c of [t.color, t.alt]) {
+      if (!c) continue;
+      const n = parseInt(c.slice(1), 16);
+      const lum = (0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+      if (lum > 0.14) return c;
+    }
+    return GOLD;
+  }
+
+  const EVENT_MARK = { goal: '', pen: ' (P)', og: ' (OG)', red: '' };
+
+  // Where everything in the hero sits, and how tall it is: crests, names, up to five goals or red
+  // cards a side, then the venue.
+  function heroLayout(m, W, s) {
+    const cs = Math.round(W * 0.27);
+    const cy = Math.round(cs * 0.62);
+    const nameY = cy + cs * 0.5 + s * 0.045;
+    const lineH = Math.max(MIN_TEXT + 2, Math.round(s * 0.042));
+    const evTop = nameY + lineH * 1.3;
+    const per = (side) => (m.events || []).filter((e) => e.side === side).length;
+    const lines = Math.min(5, Math.max(per('home'), per('away')));
+    const venueY = lines ? evTop + lines * lineH + lineH * 0.3 : nameY + lineH * 1.6;
+    return { cs, cy, nameY, lineH, evTop, lines, venueY, h: Math.round(venueY + (m.venue ? s * 0.045 : 0)) };
+  }
+
+  // The match at the top of the page, drawn once into its own canvas: both crests over a glow in
+  // each team's colour, the score between them, the names, then the goals and red cards per side.
+  function drawHero(m, W, s, L) {
+    const c = document.createElement('canvas');
+    c.width = W; c.height = L.h;
+    const x = c.getContext('2d');
+    const pre = m.state === 'pre';
+    const { cs, cy } = L;
+    const sides = [['home', W * 0.24], ['away', W * 0.76]];
+    for (const [side, cx] of sides) {
+      const t = m[side], tint = teamTint(t);
+      const g = x.createRadialGradient(cx, cy, cs * 0.1, cx, cy, cs * 0.95);
+      g.addColorStop(0, rgba(tint, 0.42));
+      g.addColorStop(0.55, rgba(tint, 0.12));
+      g.addColorStop(1, rgba(tint, 0));
+      x.fillStyle = g;
+      x.fillRect(cx - cs, cy - cs, cs * 2, cs * 2);
+      const img = crest(t.logo, cs);
+      if (img) x.drawImage(img, Math.round(cx - cs / 2), Math.round(cy - cs / 2));
+      else {
+        // no crest (yet): the team's initials in a ring of its colour
+        x.strokeStyle = tint;
+        x.lineWidth = Math.max(2, Math.round(s * 0.008));
+        x.beginPath(); x.arc(cx, cy, cs * 0.42, 0, Math.PI * 2); x.stroke();
+        x.fillStyle = IVORY; x.textAlign = 'center'; x.textBaseline = 'middle';
+        x.font = font('Josefin Sans', fitSize(x, t.abbr, 'Josefin Sans', cs * 0.62, cs * 0.3));
+        x.fillText(t.abbr, cx, cy + 1);
+      }
+      // the name under the crest
+      const name = (t.name || t.abbr).toUpperCase();
+      tracking(x, s * 0.004);
+      x.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(x, name, 'Josefin Sans', W * 0.42, s * 0.046)));
+      x.fillStyle = IVORY; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.fillText(name, cx, L.nameY);
+      tracking(x, 0);
+    }
+    // the score (or the kickoff) between the crests
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    if (pre) {
+      const d = new Date(m.date), ko = Number.isNaN(d.getTime()) ? '' : timeStr(d);
+      x.font = font('Josefin Light', fitSize(x, ko, 'Josefin Light', W * 0.24, s * 0.1));
+      x.fillStyle = IVORY;
+      x.fillText(ko, W / 2, cy);
+    } else {
+      const sc = `${m.home.score}–${m.away.score}`;
+      x.font = font('Josefin Light', fitSize(x, sc, 'Josefin Light', W * 0.26, s * 0.17));
+      x.fillStyle = m.state === 'in' ? GOLD_LIGHT : IVORY;
+      x.fillText(sc, W / 2, cy + 1);
+    }
+    // goals and red cards, under each team's name
+    const { lineH, evTop } = L, maxLines = L.lines;
+    for (const [side, cx] of sides) {
+      const list = (m.events || []).filter((e) => e.side === side);
+      const shown = list.slice(0, maxLines);
+      shown.forEach((e, i) => {
+        const last = (e.who || '').replace(/^\p{Lu}\.\s*/u, '').toUpperCase();  // 'V. van Dijk' -> VAN DIJK
+        const label = `${e.min} ${last}${EVENT_MARK[e.kind] || ''}`;
+        const y = evTop + i * lineH;
+        tracking(x, s * 0.003);
+        x.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(x, label, 'Josefin Sans', W * 0.38, lineH * 0.78)));
+        const tw = x.measureText(label).width;
+        x.fillStyle = e.kind === 'red' ? '#d23a3a' : GOLD_LIGHT;
+        const mk = Math.max(3, Math.round(lineH * 0.42));
+        if (e.kind === 'red') x.fillRect(Math.round(cx - tw / 2 - mk - 3), Math.round(y - mk * 0.65), mk, Math.round(mk * 1.3));
+        else { x.beginPath(); x.arc(cx - tw / 2 - mk * 0.5 - 3, y, mk * 0.42, 0, Math.PI * 2); x.fill(); }
+        x.fillStyle = IVORY;
+        x.textAlign = 'center';
+        x.fillText(label, cx, y + 1);
+        tracking(x, 0);
+      });
+      if (list.length > shown.length && maxLines > 0) {
+        x.fillStyle = MUTED;
+        x.font = font('Josefin Sans', MIN_TEXT);
+        x.fillText(`+${list.length - shown.length} MORE`, cx, evTop + shown.length * lineH);
+      }
+    }
+    // where it's played
+    if (m.venue) {
+      tracking(x, s * 0.006);
+      const v = m.venue.toUpperCase();
+      x.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(x, v, 'Josefin Sans', W * 0.8, s * 0.03)));
+      x.fillStyle = MUTED;
+      x.fillText(v, W / 2, L.venueY);
+      tracking(x, 0);
+    }
+    return c;
+  }
+
+  // One row of the list under the hero: crest and code each side, the score between them, the
+  // status on the right. The code size is fitted so the score never runs into a team's name.
+  function drawRow(ctx, m, x0, x1, y, rowH, s, t) {
+    const live = m.state === 'in';
+    const cy = y + rowH / 2;
+    const statusW = s * 0.22;
+    const teamsR = x1 - statusW - s * 0.02;
+    const cs = Math.round(rowH * 0.62);
+    const score = m.state === 'pre' ? '·' : `${m.home.score}–${m.away.score}`;
+    ctx.font = font('Josefin Light', rowH * 0.5);
+    const scoreW = Math.max(ctx.measureText(score).width, rowH * 0.9);
+    const mid = (x0 + teamsR) / 2;
+    const room = (teamsR - x0) / 2 - scoreW / 2 - cs - s * 0.035;
+    const abbrSize = Math.min(rowH * 0.36, ...[m.home.abbr, m.away.abbr].map((a) => fitSize(ctx, a, 'Josefin Sans', room, rowH * 0.36)));
+    for (const [side, dir] of [['home', 1], ['away', -1]]) {
+      const tm = m[side];
+      const edge = dir > 0 ? x0 : teamsR;
+      ctx.fillStyle = teamTint(tm);
+      ctx.fillRect(Math.round(dir > 0 ? edge : edge - 2), Math.round(cy - rowH * 0.3), 2, Math.round(rowH * 0.6));
+      const img = crest(tm.logo, cs);
+      const cx = dir > 0 ? edge + 5 : edge - 5 - cs;
+      if (img) ctx.drawImage(img, Math.round(cx), Math.round(cy - cs / 2));
+      ctx.font = font('Josefin Sans', Math.max(MIN_TEXT, abbrSize));
+      ctx.fillStyle = IVORY;
+      ctx.textAlign = dir > 0 ? 'left' : 'right';
+      ctx.fillText(tm.abbr, dir > 0 ? cx + cs + s * 0.02 : cx - s * 0.02, cy + 1);
+    }
+    ctx.textAlign = 'center';
+    ctx.font = font('Josefin Light', rowH * 0.5);
+    ctx.fillStyle = live ? GOLD_LIGHT : IVORY;
+    ctx.fillText(score, mid, cy + 1);
+    const status = m.state === 'pre' ? kickoff(m.date) : (m.detail || m.clock || '').toUpperCase();
+    tracking(ctx, s * 0.004);
+    ctx.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(ctx, status, 'Josefin Sans', statusW * 0.95, rowH * 0.3)));
+    ctx.textAlign = 'right';
+    ctx.fillStyle = live ? GOLD : MUTED;
+    ctx.fillText(status, x1, cy + 1);
+    tracking(ctx, 0);
+    if (live) {
+      ctx.save();
+      ctx.globalAlpha *= 0.45 + 0.55 * Math.abs(Math.sin(t * 1.6));
+      ctx.fillStyle = GOLD;
+      ctx.beginPath();
+      ctx.arc(x1 - ctx.measureText(status).width - rowH * 0.2, cy, Math.max(1.5, rowH * 0.06), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
   function scores(canvas, W, H) {
     const theme = THEMES.scores;
     const ctx = canvas.getContext('2d');
     const s = Math.min(W, H);
     let payload = null, failed = false, pages = [], pageIndex = 0, pageStart = 0, built = '';
+    let hero = null, heroKey = '';
     const stopFeed = feed('scores', (j) => { if (j && j.data) payload = j.data; failed = !j || (!j.ok && !j.data); });
 
     const stop = animate((t) => {
       backdrop(ctx, W, H);
       const hh = header(ctx, W, H, theme);
       if (!payload) { message(ctx, W, hh, H, failed ? 'The scores are unavailable just now' : 'Fetching the scores…'); return; }
-      const pad = Math.round(s * 0.09);
+      const pad = Math.round(s * 0.07);
       const titleH = Math.round(s * 0.1);
       const footH = Math.round(s * 0.07);
-      const avail = H - hh - titleH - footH - pad * 0.5;
-      const rows = Math.max(1, Math.floor(avail / Math.max(10, s * 0.11)));
-      const key = JSON.stringify([payload, rows]);
+      const rowH = Math.max(18, Math.round(s * 0.1));
+      const top = hh + titleH;
+      const room = H - top - footH;
+      const key = JSON.stringify([payload, room]);
       if (key !== built) {
         built = key;
         pages = [];
         for (const league of payload.leagues || []) {
-          const list = orderMatches(league.matches || []);
-          const count = Math.ceil(list.length / rows);
-          for (let i = 0; i < count; i++) pages.push({ name: league.name, rows: list.slice(i * rows, (i + 1) * rows), part: i + 1, of: count });
+          const list = orderMatches(league.matches || []), mine = [];
+          for (let i = 0; i < list.length;) {
+            const L = heroLayout(list[i], W, s);
+            const n = Math.max(0, Math.floor((room - L.h - s * 0.03) / rowH));
+            mine.push({ name: league.name, hero: list[i], L, rows: list.slice(i + 1, i + 1 + n) });
+            i += 1 + n;
+          }
+          mine.forEach((p, i) => { p.part = i + 1; p.of = mine.length; pages.push(p); });
         }
         pageIndex = 0;
         pageStart = t;
+        heroKey = '';
       }
       if (!pages.length) { message(ctx, W, hh, H, 'No fixtures this week'); return; }
-      if (t - pageStart > 10) { pageIndex = (pageIndex + 1) % pages.length; pageStart = t; }
+      if (t - pageStart > 12) { pageIndex = (pageIndex + 1) % pages.length; pageStart = t; }
       const page = pages[pageIndex];
       const since = t - pageStart;
       const fade = Math.min(1, since / 0.8);
-      // rows grow to fill the space when there are only a few matches
-      const rowH = Math.round(Math.min(s * 0.17, avail / Math.max(page.rows.length, 4)));
+      const L = page.L;
+      const ready = [page.hero.home.logo, page.hero.away.logo].map((u) => !u || !!crest(u, 8));
+      const hk = JSON.stringify([pageIndex, page.hero, ready]);
+      if (hk !== heroKey) { heroKey = hk; hero = drawHero(page.hero, W, s, L); }
+      // a hero on its own sits in the middle of the page
+      const heroTop = page.rows.length ? top + s * 0.02 : top + Math.max(0, (room - L.h) / 2);
 
       ctx.save();
       ctx.globalAlpha = fade;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
+      const title = page.of > 1 ? `${page.name.toUpperCase()}  ${page.part}/${page.of}` : page.name.toUpperCase();
       tracking(ctx, s * 0.006);
-      ctx.font = font('Poiret One', fitSize(ctx, page.name.toUpperCase(), 'Poiret One', W - pad * 2, titleH * 0.62));
+      ctx.font = font('Poiret One', fitSize(ctx, title, 'Poiret One', W - pad * 2, titleH * 0.6));
       ctx.fillStyle = IVORY;
-      ctx.fillText(page.name.toUpperCase(), W / 2, hh + titleH * 0.4);
+      ctx.fillText(title, W / 2, hh + titleH * 0.38);
       tracking(ctx, 0);
-
-      const top = hh + titleH;
-      const statusW = W * 0.26;
-      const teamsW = W - pad * 2 - statusW - s * 0.03;
+      ctx.drawImage(hero, 0, Math.round(heroTop));
+      if (page.hero.state === 'in') {
+        // LIVE and the minute, pulsing under the score
+        const label = `LIVE  ${page.hero.clock || page.hero.detail || ''}`.trim();
+        tracking(ctx, s * 0.01);
+        ctx.font = font('Josefin Sans', Math.max(MIN_TEXT, s * 0.034));
+        ctx.globalAlpha = fade * (0.55 + 0.45 * Math.abs(Math.sin(t * 1.6)));
+        ctx.fillStyle = GOLD_LIGHT;
+        ctx.fillText(label, W / 2, heroTop + L.cy + s * 0.1);
+        tracking(ctx, 0);
+        ctx.globalAlpha = fade;
+      } else {
+        const d = new Date(page.hero.date);
+        const st = page.hero.state !== 'pre' ? (page.hero.detail || 'FT').toUpperCase()
+          : d.toDateString() === new Date().toDateString() ? 'TODAY'
+            : d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
+        tracking(ctx, s * 0.01);
+        ctx.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(ctx, st, 'Josefin Sans', W * 0.22, s * 0.032)));
+        ctx.fillStyle = MUTED;
+        ctx.fillText(st, W / 2, heroTop + L.cy + s * 0.1);
+        tracking(ctx, 0);
+      }
+      const listTop = heroTop + L.h + s * 0.03;
       page.rows.forEach((m, i) => {
-        const a = Math.min(1, Math.max(0, (since - i * 0.08) / 0.6));
+        const a = Math.min(1, Math.max(0, (since - 0.3 - i * 0.08) / 0.6));
         if (a <= 0) return;
         ctx.globalAlpha = a * fade;
-        const y = top + i * rowH;
-        const cy = y + rowH / 2;
-        const live = m.state === 'in';
+        const y = listTop + i * rowH;
         ctx.fillStyle = rgba(GOLD, 0.22);
-        ctx.fillRect(pad, Math.round(y + rowH) - 1, W - pad * 2, hair(s));
-        tracking(ctx, s * 0.006);
-        ctx.font = font('Josefin Sans', rowH * 0.34);
-        ctx.fillStyle = IVORY;
-        ctx.textAlign = 'left';
-        ctx.fillText(m.home.abbr, pad, cy + 1);
-        ctx.textAlign = 'right';
-        ctx.fillText(m.away.abbr, pad + teamsW, cy + 1);
-        tracking(ctx, 0);
-        ctx.textAlign = 'center';
-        ctx.font = font('Josefin Light', rowH * 0.5);
-        ctx.fillStyle = live ? GOLD_LIGHT : IVORY;
-        ctx.fillText(m.state === 'pre' ? '·' : `${m.home.score} – ${m.away.score}`, pad + teamsW / 2, cy + 1);
-        const status = m.state === 'pre' ? kickoff(m.date) : (m.detail || m.clock || '').toUpperCase();
-        tracking(ctx, s * 0.004);
-        ctx.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(ctx, status, 'Josefin Sans', statusW * 0.95, rowH * 0.3)));
-        ctx.textAlign = 'right';
-        ctx.fillStyle = live ? GOLD : MUTED;
-        ctx.fillText(status, W - pad, cy + 1);
-        tracking(ctx, 0);
-        if (live) {
-          ctx.globalAlpha = a * fade * (0.45 + 0.55 * Math.abs(Math.sin(t * 1.6)));
-          ctx.fillStyle = GOLD;
-          ctx.beginPath();
-          ctx.arc(W - pad - ctx.measureText(status).width - rowH * 0.2, cy, Math.max(1, rowH * 0.05), 0, Math.PI * 2);
-          ctx.fill();
-        }
+        ctx.fillRect(pad, Math.round(y), W - pad * 2, hair(s));
+        drawRow(ctx, m, pad, W - pad, y, rowH, s, t);
       });
       ctx.globalAlpha = fade;
       if (pages.length > 1) {
-        tracking(ctx, s * 0.01);
-        ctx.font = font('Josefin Sans', small(s));
-        ctx.fillStyle = MUTED;
-        ctx.textAlign = 'center';
-        ctx.fillText(`${pageIndex + 1} / ${pages.length}`, W / 2, H - footH * 0.7);
-        tracking(ctx, 0);
+        // one dot per page along the bottom, the current one lit
+        const d = Math.max(2, Math.round(s * 0.01)), gap = d * 3;
+        const n = Math.min(pages.length, 12), x0 = W / 2 - ((n - 1) * gap) / 2;
+        for (let i = 0; i < n; i++) {
+          ctx.fillStyle = i === pageIndex % n ? GOLD_LIGHT : rgba(GOLD, 0.35);
+          ctx.fillRect(Math.round(x0 + i * gap - d / 2), Math.round(H - footH * 0.6 - d / 2), d, d);
+        }
       }
       ctx.restore();
-    }, 30);
+    }, 20);
     return { stop() { stop(); stopFeed(); } };
   }
 

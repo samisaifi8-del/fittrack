@@ -930,9 +930,9 @@ def fetch_weather(conf):
     query = urlencode({
         "latitude": conf["lat"], "longitude": conf["lon"], "timezone": "auto", "forecast_days": 5,
         "wind_speed_unit": "mph",
-        "current": "temperature_2m,apparent_temperature,weather_code,wind_speed_10m,is_day",
+        "current": "temperature_2m,apparent_temperature,weather_code,wind_speed_10m,is_day,cloud_cover",
         "hourly": "temperature_2m,weather_code,precipitation_probability",
-        "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+        "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset",
     })
     d = json.loads(fetch_url("https://api.open-meteo.com/v1/forecast?" + query))
     cur, hourly, daily = d["current"], d.get("hourly", {}), d.get("daily", {})
@@ -944,10 +944,21 @@ def fetch_weather(conf):
     days = [{"date": day, "code": daily["weather_code"][i], "max": daily["temperature_2m_max"][i],
              "min": daily["temperature_2m_min"][i]}
             for i, day in enumerate(daily.get("time", []))]
+    # the sky on the wall follows the town's own day: its sunrise and sunset today (minutes after
+    # its midnight) and how far its clock is from UTC
+    sun = {k: _minutes(((daily.get(k) or [None])[0] or "")[11:16]) for k in ("sunrise", "sunset")}
     return {"place": conf.get("label", ""),
             "now": {"temp": cur["temperature_2m"], "feels": cur.get("apparent_temperature"),
-                    "code": cur["weather_code"], "wind": cur.get("wind_speed_10m"), "day": bool(cur.get("is_day", 1))},
+                    "code": cur["weather_code"], "wind": cur.get("wind_speed_10m"), "day": bool(cur.get("is_day", 1)),
+                    "cloud": cur.get("cloud_cover")},
+            "sun": {"rise": sun["sunrise"], "set": sun["sunset"]}, "utcOffset": d.get("utc_offset_seconds", 0),
             "hours": hours, "days": days}
+
+
+def _minutes(hhmm):
+    """ "06:22" -> 382, or None."""
+    m = re.fullmatch(r"(\d{2}):(\d{2})", hhmm or "")
+    return int(m.group(1)) * 60 + int(m.group(2)) if m else None
 
 
 class Feeds:

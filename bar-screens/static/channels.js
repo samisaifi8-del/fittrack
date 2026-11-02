@@ -1028,81 +1028,291 @@
     ctx.restore();
   }
 
+  // ---- the weather's sky: colours by the sun's height and the cloud, kept muted for the LEDs
+
+  const SKY = {
+    night: ['#02040c', '#0a1330'], day: ['#0a2c5c', '#4a7fa8'], glow: ['#1c1238', '#b8583a'],
+    grey: ['#1e2329', '#4a5058'], storm: ['#0c0e12', '#262a31'],
+  };
+  function mixHex(a, b, k) {
+    const p = parseInt(a.slice(1), 16), q = parseInt(b.slice(1), 16);
+    const ch = (sh) => Math.round(((p >> sh) & 255) * (1 - k) + ((q >> sh) & 255) * k);
+    return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+  }
+  const rgbHex = (rgb) => '#' + rgb.match(/\d+/g).map((n) => (+n).toString(16).padStart(2, '0')).join('');
+  const mix2 = (a, b, k) => [rgbHex(mixHex(a[0], b[0], k)), rgbHex(mixHex(a[1], b[1], k))];
+
+  // Where the sun is for the town right now: alt runs 0 at sunrise, 1 at midday, 0 at sunset, and
+  // below 0 through the night; along is 0..1 across the day.
+  function sunNow(p) {
+    const mins = (((Date.now() / 60000 + (p.utcOffset || 0) / 60) % 1440) + 1440) % 1440;
+    const rise = p.sun && p.sun.rise != null ? p.sun.rise : 360, set = p.sun && p.sun.set != null ? p.sun.set : 1080;
+    if (mins >= rise && mins <= set) {
+      const along = (mins - rise) / (set - rise);
+      return { alt: Math.sin(along * Math.PI), along, mins };
+    }
+    const night = 1440 - (set - rise), into = ((mins - set + 1440) % 1440) / night;
+    return { alt: -Math.sin(into * Math.PI), along: into, mins };
+  }
+
+  function skyColours(alt, cloud, kind) {
+    const day = Math.max(0, Math.min(1, alt * 2.5));
+    let c = mix2(SKY.night, SKY.day, day);
+    const low = Math.max(0, 1 - Math.abs(alt) * 4);  // the colour at sunrise and sunset
+    c = mix2(c, SKY.glow, low * 0.75);
+    const wet = kind === 'rain' || kind === 'drizzle' || kind === 'snow';
+    const grey = Math.min(1, (cloud / 100) * 0.8 + (wet ? 0.3 : 0));
+    c = mix2(c, kind === 'storm' ? SKY.storm : mix2(SKY.night, SKY.grey, 0.3 + day * 0.7), grey * 0.85);
+    return c;
+  }
+
+  // A soft cloud, drawn once: overlapping blurred puffs, lit or dark by the time of day.
+  const cloudSprites = new Map();
+  function cloudSprite(w, shade, seed) {
+    const key = `${Math.round(w)}|${shade}|${seed}`;
+    if (cloudSprites.has(key)) return cloudSprites.get(key);
+    const c = document.createElement('canvas');
+    c.width = Math.round(w); c.height = Math.round(w * 0.5);
+    const x = c.getContext('2d');
+    const rand = rng(seed * 977 + 13);
+    x.filter = `blur(${Math.max(1, Math.round(w * 0.04))}px)`;
+    x.fillStyle = shade;
+    for (let i = 0; i < 6; i++) {
+      const px = w * (0.2 + rand() * 0.6), py = w * (0.22 + rand() * 0.1), r = w * (0.1 + rand() * 0.1);
+      x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fill();
+    }
+    x.beginPath(); x.ellipse(w * 0.5, w * 0.33, w * 0.4, w * 0.08, 0, 0, Math.PI * 2); x.fill();
+    if (cloudSprites.size > 30) cloudSprites.clear();
+    cloudSprites.set(key, c);
+    return c;
+  }
+
+  // A glow with a disc in it (the sun or the moon), drawn once per size and colour.
+  const orbs = new Map();
+  function orb(r, core, halo, crescent) {
+    const key = `${r}|${core}|${halo}|${!!crescent}`;
+    if (orbs.has(key)) return orbs.get(key);
+    const size = Math.ceil(r * 7);
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const x = c.getContext('2d'), m = size / 2;
+    const g = x.createRadialGradient(m, m, r * 0.8, m, m, m);
+    g.addColorStop(0, rgba(halo, 0.5));
+    g.addColorStop(0.35, rgba(halo, 0.14));
+    g.addColorStop(1, rgba(halo, 0));
+    x.fillStyle = g; x.fillRect(0, 0, size, size);
+    // the disc on its own layer, so the moon's shadow can be cut out of it cleanly
+    const d = document.createElement('canvas');
+    d.width = d.height = size;
+    const y = d.getContext('2d');
+    y.fillStyle = core;
+    y.beginPath(); y.arc(m, m, r, 0, Math.PI * 2); y.fill();
+    if (crescent) {
+      y.globalCompositeOperation = 'destination-out';
+      y.beginPath(); y.arc(m + r * 0.5, m - r * 0.32, r * 0.9, 0, Math.PI * 2); y.fill();
+    }
+    x.drawImage(d, 0, 0);
+    orbs.set(key, c);
+    return c;
+  }
+
   function weather(canvas, W, H) {
     const theme = THEMES.weather;
     const ctx = canvas.getContext('2d');
     const s = Math.min(W, H);
-    let payload = null, failed = false;
+    let payload = null, failed = false, sky = null, skyKey = '', flashAt = -99, nextFlash = 4;
     const stopFeed = feed('weather', (j) => { if (j && j.data) payload = j.data; failed = !j || (!j.ok && !j.data); });
+    const rand = rng(W * 31 + H);
+    const stars = Array.from({ length: 70 }, () => ({ x: rand() * W, y: rand() * H * 0.6, r: rand() < 0.15 ? 2 : 1, ph: rand() * 6 }));
+    const drops = Array.from({ length: 90 }, () => ({ x: rand() * W * 1.2, y: rand() * H, v: 0.8 + rand() * 0.5, ph: rand() * 6 }));
+    const clouds = Array.from({ length: 8 }, (_, i) => ({ x: rand() * W * 1.4 - W * 0.2, y: H * (0.06 + rand() * 0.42), w: W * (0.45 + rand() * 0.45), v: 3 + rand() * 5, seed: i }));
 
     const stop = animate((t) => {
-      backdrop(ctx, W, H);
-      const label = payload && payload.place ? payload.place.toUpperCase() : '';
-      const hh = header(ctx, W, H, theme, label);
-      if (!payload) { message(ctx, W, hh, H, failed ? 'The forecast is unavailable just now' : 'Fetching the forecast…'); return; }
-      if (payload.needsPlace) { message(ctx, W, hh, H, 'Set your town in Channel settings on your phone'); return; }
-      const pad = Math.round(s * 0.09);
+      if (!payload || payload.needsPlace) {
+        backdrop(ctx, W, H);
+        const hh = header(ctx, W, H, theme);
+        message(ctx, W, hh, H, !payload ? (failed ? 'The forecast is unavailable just now' : 'Fetching the forecast…') : 'Set your town in Channel settings on your phone');
+        return;
+      }
       const now = payload.now;
       const [, kind, desc] = wx(now.code);
-      const nowH = (H - hh) * 0.5;
-      const top = hh;
+      const cloud = now.cloud != null ? now.cloud : { clear: 5, partly: 45, cloud: 95, fog: 60 }[kind] ?? 85;
+      const sun = sunNow(payload);
+      const dayK = Math.max(0, Math.min(1, sun.alt * 2.5));
+      const panelTop = Math.round(H * 0.74);
+      // the sky's horizon is at roof height, so sunrise, sunset and their glow show above the city
+      const horizon = panelTop - H * 0.13;
 
-      // now: icon and temperature side by side, centred, with the conditions underneath
+      // the sky, rebuilt each minute
+      const sk = `${Math.round(sun.mins)}|${cloud}|${kind}`;
+      if (sk !== skyKey) {
+        skyKey = sk;
+        const [topC, lowC] = skyColours(sun.alt, cloud, kind);
+        sky = document.createElement('canvas');
+        sky.width = W; sky.height = H;
+        const x = sky.getContext('2d');
+        const g = x.createLinearGradient(0, 0, 0, horizon);
+        g.addColorStop(0, topC); g.addColorStop(1, lowC);
+        x.fillStyle = g; x.fillRect(0, 0, W, H);
+      }
+      ctx.drawImage(sky, 0, 0);
+      const clearness = 1 - Math.min(1, cloud / 100);
+
+      // stars, twinkling, on a clear night
+      const starK = (1 - dayK) * clearness;
+      if (starK > 0.05) {
+        for (const st of stars) {
+          ctx.fillStyle = `rgba(236,228,212,${(starK * (0.35 + 0.65 * Math.abs(Math.sin(t * 0.8 + st.ph)))).toFixed(3)})`;
+          ctx.fillRect(Math.round(st.x), Math.round(st.y), st.r, st.r);
+        }
+      }
+      // the sun on its arc through the day, or the moon at night
+      const veil = 1 - Math.min(0.85, (cloud / 100) * 0.9);
+      if (sun.alt > -0.08) {
+        const r = Math.round(s * 0.055);
+        const o = orb(r, sun.alt < 0.25 ? '#f2b264' : '#f6e7b8', sun.alt < 0.25 ? '#e0703a' : '#f2c76b');
+        // its arc tops out just under the header, clear of the temperature
+        const sx = W * (0.1 + 0.8 * sun.along), sy = horizon - Math.max(0, sun.alt) * (horizon - s * 0.15 - r * 1.3);
+        ctx.globalAlpha = veil;
+        ctx.drawImage(o, Math.round(sx - o.width / 2), Math.round(sy - o.height / 2));
+        ctx.globalAlpha = 1;
+      } else {
+        const r = Math.round(s * 0.045);
+        const o = orb(r, '#e9e4d4', '#9fb4d8', true);
+        const mx = W * (0.15 + 0.7 * sun.along), my = H * 0.17 + Math.sin(sun.along * Math.PI) * -H * 0.04;
+        ctx.globalAlpha = veil;
+        ctx.drawImage(o, Math.round(mx - o.width / 2), Math.round(my - o.height / 2));
+        ctx.globalAlpha = 1;
+      }
+      // clouds drifting across, as many as the sky has
+      const nClouds = Math.round((cloud / 100) * clouds.length + (kind === 'partly' ? 1 : 0));
+      const shade = dayK > 0.3 ? (cloud > 70 ? '#8a9099' : '#d8dde4') : '#2a3140';
+      for (let i = 0; i < nClouds; i++) {
+        const c = clouds[i];
+        const spr = cloudSprite(c.w, shade, c.seed);
+        const span = W + c.w * 1.2;
+        const cx = ((c.x + t * c.v) % span + span) % span - c.w * 0.6;
+        ctx.globalAlpha = dayK > 0.3 ? 0.55 : 0.8;
+        ctx.drawImage(spr, Math.round(cx), Math.round(c.y));
+      }
+      ctx.globalAlpha = 1;
+      // rain, snow or fog when there is some
+      if (kind === 'rain' || kind === 'drizzle' || kind === 'storm') {
+        const n = kind === 'drizzle' ? 35 : drops.length, len = s * (kind === 'drizzle' ? 0.03 : 0.06);
+        ctx.strokeStyle = 'rgba(190,205,225,0.45)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let i = 0; i < n; i++) {
+          const d = drops[i];
+          const y = (d.y + t * H * d.v) % (panelTop + len) - len;
+          const x = (d.x - (y / H) * W * 0.12) % (W * 1.2);
+          ctx.moveTo(Math.round(x), Math.round(y)); ctx.lineTo(Math.round(x - len * 0.2), Math.round(y + len));
+        }
+        ctx.stroke();
+      } else if (kind === 'snow') {
+        ctx.fillStyle = 'rgba(236,240,246,0.8)';
+        for (let i = 0; i < 60; i++) {
+          const d = drops[i];
+          const y = (d.y + t * H * 0.08 * d.v) % panelTop;
+          const x = d.x % W + Math.sin(t * 0.8 + d.ph) * s * 0.02;
+          ctx.fillRect(Math.round(x), Math.round(y), d.v > 1.1 ? 2 : 1, d.v > 1.1 ? 2 : 1);
+        }
+      } else if (kind === 'fog') {
+        for (let i = 0; i < 5; i++) {
+          const y = horizon - (i + 1) * s * 0.09 + Math.sin(t * 0.2 + i) * s * 0.01;
+          const g = ctx.createLinearGradient(0, y - s * 0.04, 0, y + s * 0.04);
+          g.addColorStop(0, 'rgba(160,165,172,0)'); g.addColorStop(0.5, 'rgba(160,165,172,0.22)'); g.addColorStop(1, 'rgba(160,165,172,0)');
+          ctx.fillStyle = g;
+          ctx.fillRect(0, y - s * 0.04, W, s * 0.08);
+        }
+      }
+      if (kind === 'storm') {
+        // now and then, lightning
+        if (t - flashAt > nextFlash) { flashAt = t; nextFlash = 5 + (Math.sin(t * 7.3) + 1) * 4; }
+        const since = t - flashAt;
+        if (since < 0.25) {
+          ctx.fillStyle = `rgba(220,225,255,${(0.35 * (1 - since / 0.25)).toFixed(3)})`;
+          ctx.fillRect(0, 0, W, H);
+          if (since < 0.12) {
+            ctx.strokeStyle = 'rgba(245,245,255,0.9)'; ctx.lineWidth = 2;
+            let bx = W * (0.3 + 0.4 * ((flashAt * 13) % 1)), by = H * 0.12;
+            ctx.beginPath(); ctx.moveTo(bx, by);
+            for (let i = 0; i < 6; i++) { bx += (((flashAt * 31 + i * 7) % 1) - 0.5) * s * 0.12; by += (horizon - H * 0.12) / 6; ctx.lineTo(bx, by); }
+            ctx.stroke();
+          }
+        }
+      }
+      // the deco city along the horizon, its windows lit after dark
+      const town = city(W, H, H * 0.24);
+      ctx.drawImage(town.canvas, 0, panelTop - H);
+      const lit = 1 - dayK * 0.85;
+      for (const w of town.windows) {
+        const on = 0.5 + 0.5 * Math.sin(t * 0.05 + w.phase);
+        if (on < 0.25) continue;
+        ctx.fillStyle = `rgba(242,196,120,${(lit * (w.near ? 0.85 : 0.45) * on).toFixed(3)})`;
+        ctx.fillRect(w.x, w.y + panelTop - H, w.w, w.h);
+      }
+      // the foot of the wall is black, for the forecast
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, panelTop, W, H - panelTop);
+
+      frame(ctx, W, H);
+      const hh = header(ctx, W, H, theme, (payload.place || '').toUpperCase());
+
+      // now: the temperature large over the sky, the conditions and the rest under it
+      const pad = Math.round(s * 0.08);
       const temp = `${Math.round(now.temp)}°`;
-      const tempSize = Math.round(Math.min(nowH * 0.55, W * 0.24));
-      ctx.font = font('Josefin Light', tempSize);
-      const tw = ctx.measureText(temp).width;
-      const iconS = tempSize * 0.95;
-      const gap = s * 0.04;
-      const x0 = (W - (iconS + gap + tw)) / 2;
-      const cy = top + nowH * 0.42;
-      weatherIcon(ctx, kind, x0 + iconS / 2, cy, iconS, t, now.day);
-      ctx.font = font('Josefin Light', tempSize);
-      ctx.fillStyle = IVORY;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(temp, x0 + iconS + gap, cy + tempSize * 0.04);
+      const tempSize = Math.round(s * 0.3);
+      const ty = hh + (horizon - hh) * 0.42;
       ctx.textAlign = 'center';
-      ctx.font = font('Cormorant Italic', fitSize(ctx, desc, 'Cormorant Italic', W - pad * 2, nowH * 0.16));
+      ctx.textBaseline = 'middle';
+      ctx.font = font('Josefin Light', tempSize);
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillText(temp, W / 2 + 2, ty + 2);
+      ctx.fillStyle = IVORY;
+      ctx.fillText(temp, W / 2, ty);
+      ctx.font = font('Cormorant Italic', fitSize(ctx, desc, 'Cormorant Italic', W - pad * 2, s * 0.085));
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillText(desc, W / 2 + 1, ty + tempSize * 0.62 + 1);
       ctx.fillStyle = GOLD_LIGHT;
-      ctx.fillText(desc, W / 2, top + nowH * 0.8);
+      ctx.fillText(desc, W / 2, ty + tempSize * 0.62);
       let extra = `FEELS ${Math.round(now.feels)}°   ·   WIND ${Math.round(now.wind)} MPH`;
       tracking(ctx, s * 0.008);
       if (fitSize(ctx, extra, 'Josefin Sans', W - pad * 2, small(s)) < MIN_TEXT) extra = `FEELS ${Math.round(now.feels)}°`;
       ctx.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(ctx, extra, 'Josefin Sans', W - pad * 2, small(s))));
-      ctx.fillStyle = MUTED;
-      ctx.fillText(extra, W / 2, top + nowH * 0.95);
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillText(extra, W / 2 + 1, ty + tempSize * 0.62 + s * 0.075 + 1);
+      ctx.fillStyle = IVORY;
+      ctx.fillText(extra, W / 2, ty + tempSize * 0.62 + s * 0.075);
       tracking(ctx, 0);
 
-      // forecast: the next few hours, then the next few days, as quiet columns
+      // forecast: the next few hours, then the next few days, under the city
       const phaseT = t % 20;
       const showDays = phaseT >= 10 || !payload.hours.length;
       const fade = Math.min(1, (phaseT % 10) / 0.8, (10 - (phaseT % 10)) / 0.8);
-      const fy = top + nowH + s * 0.05;
-      const fh = H - fy - pad * 0.8;
-      const cols = W >= H ? 4 : 3;
+      const fy = panelTop + s * 0.01;
+      const fh = H - fy - s * 0.05;
+      const cols = 3;
       const list = showDays ? payload.days.slice(0, cols) : payload.hours.slice(0, cols);
       const cw = (W - pad * 2) / cols;
-      ctx.fillStyle = rgba(GOLD, 0.35);
-      ctx.fillRect(pad, Math.round(fy), W - pad * 2, hair(s));
       ctx.save();
       ctx.globalAlpha = Math.max(0, fade);
       list.forEach((f, i) => {
         const cx = pad + cw * i + cw / 2;
-        if (i > 0) { ctx.fillStyle = rgba(GOLD, 0.2); ctx.fillRect(Math.round(pad + cw * i), fy + fh * 0.15, hair(s), fh * 0.7); }
+        if (i > 0) { ctx.fillStyle = rgba(GOLD, 0.2); ctx.fillRect(Math.round(pad + cw * i), fy + fh * 0.12, hair(s), fh * 0.76); }
         const name = showDays ? (i === 0 ? 'TODAY' : new Date(f.date + 'T12:00').toLocaleDateString([], { weekday: 'short' }).toUpperCase()) : f.time;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         tracking(ctx, s * 0.008);
-        ctx.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(ctx, name, 'Josefin Sans', cw * 0.85, Math.max(MIN_TEXT, fh * 0.12))));
+        ctx.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(ctx, name, 'Josefin Sans', cw * 0.85, Math.max(MIN_TEXT, fh * 0.14))));
         ctx.fillStyle = MUTED;
-        ctx.fillText(name, cx, fy + fh * 0.2);
+        ctx.fillText(name, cx, fy + fh * 0.18);
         tracking(ctx, 0);
-        weatherIcon(ctx, wx(f.code)[1], cx, fy + fh * 0.5, Math.min(cw * 0.55, fh * 0.34), t + i, true);
+        weatherIcon(ctx, wx(f.code)[1], cx, fy + fh * 0.5, Math.min(cw * 0.5, fh * 0.36), t + i, true);
         const temps = showDays ? `${Math.round(f.max)}°  ${Math.round(f.min)}°` : `${Math.round(f.temp)}°`;
-        ctx.font = font('Josefin Light', fitSize(ctx, temps, 'Josefin Light', cw * 0.85, fh * 0.18));
+        ctx.font = font('Josefin Light', fitSize(ctx, temps, 'Josefin Light', cw * 0.85, fh * 0.2));
         ctx.fillStyle = IVORY;
-        ctx.fillText(temps, cx, fy + fh * 0.82);
+        ctx.fillText(temps, cx, fy + fh * 0.83);
       });
       ctx.restore();
     }, 24);

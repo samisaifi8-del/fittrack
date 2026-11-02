@@ -300,6 +300,41 @@
     }));
     const signFont = `400 ${Math.max(7, Math.round(s * 0.034))}px "Poiret One", sans-serif`;
 
+    // Drawn once, so a frame is mostly stamping: a searchlight beam (pointing up from its foot),
+    // the neon sign lit and buzzing, the water's shading, and the river's mirror (refilled each
+    // frame with one copy of the city above it).
+    const beamLen = Math.hypot(W, H) * 1.1, beamW = Math.ceil(beamLen * Math.tan(0.07) * 2) + 2;
+    const beam = offscreen(beamW, beamLen, (x, w, h) => {
+      for (const [spread, alpha] of [[0.07, 0.07], [0.025, 0.12]]) {
+        const g = x.createLinearGradient(0, h, 0, 0);
+        g.addColorStop(0, `rgba(255,244,215,${alpha})`);
+        g.addColorStop(1, 'rgba(255,244,215,0)');
+        x.fillStyle = g;
+        const half = Math.tan(spread) * h;
+        x.beginPath(); x.moveTo(w / 2 - 1, h); x.lineTo(w / 2 - half, 0); x.lineTo(w / 2 + half, 0); x.lineTo(w / 2 + 1, h); x.closePath(); x.fill();
+      }
+    });
+    const signs = [1, 0.35].map((a) => offscreen(W * 0.8, s * 0.1, (x, w, h) => {
+      x.font = signFont;
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      x.shadowColor = 'rgba(255,200,110,0.9)';
+      x.shadowBlur = s * 0.02;
+      x.fillStyle = `rgba(255,222,150,${a})`;
+      x.fillText(name, w / 2, h / 2);
+    }));
+    let signFontsIn = false;
+    const waterShade = offscreen(W, H - water, (x, w, h) => {
+      const g = x.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, 'rgba(3,4,14,0.28)');
+      g.addColorStop(1, 'rgba(3,4,14,0.7)');
+      x.fillStyle = g;
+      x.fillRect(0, 0, w, h);
+    });
+    const mirror = offscreen(W, H - water);
+    const mctx = mirror.getContext('2d');
+    const mirrorSpan = Math.min(water, Math.round((H - water) * 1.15));
+
     function drawLayer(ctx, L, t) {
       const off = (t * L.speed + panX) % L.Lw;
       ctx.drawImage(L.canvas, Math.round(-off), 0);
@@ -332,25 +367,14 @@
         const x = ((c.x + t * c.v) % span + span) % span - c.img.width;
         ctx.drawImage(c.img, Math.round(x), Math.round(c.y));
       }
-      // searchlights sweeping behind the city
+      // searchlights sweeping behind the city: the one beam, turned for each light
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      const len = Math.hypot(W, H) * 1.1, by = water - H * 0.18;
+      const by = water - H * 0.18;
       for (const L of lights) {
-        const a = Math.sin(t * L.speed + L.phase) * L.amp;
-        for (const [spread, alpha] of [[0.07, 0.07], [0.025, 0.12]]) {
-          const g = ctx.createLinearGradient(L.x, by, L.x + Math.sin(a) * len, by - Math.cos(a) * len);
-          g.addColorStop(0, `rgba(255,244,215,${alpha})`);
-          g.addColorStop(1, 'rgba(255,244,215,0)');
-          ctx.fillStyle = g;
-          ctx.beginPath();
-          ctx.moveTo(L.x - 1, by);
-          ctx.lineTo(L.x + Math.sin(a - spread) * len, by - Math.cos(a - spread) * len);
-          ctx.lineTo(L.x + Math.sin(a + spread) * len, by - Math.cos(a + spread) * len);
-          ctx.lineTo(L.x + 1, by);
-          ctx.closePath();
-          ctx.fill();
-        }
+        ctx.setTransform(1, 0, 0, 1, L.x, by);
+        ctx.rotate(Math.sin(t * L.speed + L.phase) * L.amp);
+        ctx.drawImage(beam, -beam.width / 2, -beam.height);
       }
       ctx.restore();
 
@@ -403,39 +427,41 @@
         ctx.drawImage(gl, x - gl.width / 2, l.y - gl.height / 2);
       });
       // the bar's name in gold neon on a rooftop, buzzing now and then
+      if (!signFontsIn && document.fonts && document.fonts.check(signFont)) {
+        // the sign was drawn before Poiret One arrived: draw it again in the right type
+        signFontsIn = true;
+        signs.forEach((c, i) => {
+          const x = c.getContext('2d');
+          x.clearRect(0, 0, c.width, c.height);
+          x.font = signFont; x.textAlign = 'center'; x.textBaseline = 'middle';
+          x.shadowColor = 'rgba(255,200,110,0.9)'; x.shadowBlur = s * 0.02;
+          x.fillStyle = `rgba(255,222,150,${i ? 0.35 : 1})`;
+          x.fillText(name, c.width / 2, c.height / 2);
+        });
+      }
       each(near, no, near.meta.signs, (sg, x) => {
-        const buzz = Math.sin(t * 13) > 0.92 || (t % 11) < 0.12 ? 0.35 : 1;
-        ctx.save();
-        ctx.font = signFont;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.shadowColor = 'rgba(255,200,110,0.9)';
-        ctx.shadowBlur = s * 0.02;
-        ctx.fillStyle = `rgba(255,222,150,${buzz})`;
-        ctx.fillText(name, x, sg.y);
-        ctx.restore();
+        const lit = signs[Math.sin(t * 13) > 0.92 || (t % 11) < 0.12 ? 1 : 0];
+        ctx.drawImage(lit, Math.round(x - lit.width / 2), Math.round(sg.y - lit.height / 2));
         ctx.fillStyle = '#030307';
         ctx.fillRect(x - Math.round(sg.w * 0.3), sg.y + Math.round(s * 0.018), 1, Math.round(s * 0.022));
         ctx.fillRect(x + Math.round(sg.w * 0.3), sg.y + Math.round(s * 0.018), 1, Math.round(s * 0.022));
       });
 
       // the river: the city upside down, rippling, darkened, with the moon's path on it
+      // (one copy of the city above the water, flipped into the mirror; then the mirror laid on
+      // the water in thin strips, each nudged sideways for the ripple)
+      mctx.setTransform(1, 0, 0, -1, 0, mirror.height);
+      mctx.clearRect(0, 0, W, mirror.height);
+      mctx.drawImage(ctx.canvas, 0, water - mirrorSpan, W, mirrorSpan, 0, 0, W, mirror.height);
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      const cw = ctx.canvas.width;
-      for (let y = water; y < H; y++) {
-        const d = y - water;
-        const src = water - 1 - Math.round(d * 1.15);
-        if (src < 0) break;
-        const dx = Math.sin(y * 0.55 + t * 2.4) * (0.6 + d * 0.06);
-        ctx.drawImage(ctx.canvas, 0, src, cw, 1, dx, y, cw, 1);
+      const strip = 3;
+      for (let d = 0; d < mirror.height; d += strip) {
+        const dx = Math.sin((water + d) * 0.55 + t * 2.4) * (0.6 + d * 0.06);
+        ctx.drawImage(mirror, 0, d, W, strip, dx, water + d, W, strip);
       }
       ctx.restore();
-      const wg = ctx.createLinearGradient(0, water, 0, H);
-      wg.addColorStop(0, 'rgba(3,4,14,0.28)');
-      wg.addColorStop(1, 'rgba(3,4,14,0.7)');
-      ctx.fillStyle = wg;
-      ctx.fillRect(0, water, W, H - water);
+      ctx.drawImage(waterShade, 0, water);
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       for (let k = 0; k < 9; k++) {

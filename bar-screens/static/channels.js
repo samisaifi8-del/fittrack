@@ -370,6 +370,32 @@
     const pre = m.state === 'pre';
     const { cs, cy } = L;
     const sides = [['home', W * 0.24], ['away', W * 0.76]];
+    const lean = W * 0.06;
+    for (const [side, dir] of [['home', -1], ['away', 1]]) {
+      const tint = teamTint(m[side]);
+      const g = x.createLinearGradient(0, 0, 0, L.h);
+      g.addColorStop(0, rgba(tint, 0.3));
+      g.addColorStop(0.55, rgba(tint, 0.1));
+      g.addColorStop(1, rgba(tint, 0));
+      x.fillStyle = g;
+      x.beginPath();
+      x.moveTo(W / 2 + lean, 0); x.lineTo(W / 2 - lean, L.h);
+      x.lineTo(dir < 0 ? 0 : W, L.h); x.lineTo(dir < 0 ? 0 : W, 0);
+      x.closePath();
+      x.fill();
+    }
+    const seam = x.createLinearGradient(0, 0, 0, L.h);
+    seam.addColorStop(0, rgba(GOLD, 0.5));
+    seam.addColorStop(1, rgba(GOLD, 0));
+    x.strokeStyle = seam;
+    x.lineWidth = hair(s);
+    x.beginPath(); x.moveTo(W / 2 + lean, 0); x.lineTo(W / 2 - lean, L.h); x.stroke();
+    // a black pool behind the score so it reads over the seam
+    const pool = x.createRadialGradient(W / 2, cy, 0, W / 2, cy, W * 0.16);
+    pool.addColorStop(0, 'rgba(0,0,0,0.85)');
+    pool.addColorStop(1, 'rgba(0,0,0,0)');
+    x.fillStyle = pool;
+    x.fillRect(W / 2 - W * 0.16, cy - W * 0.16, W * 0.32, W * 0.32);
     for (const [side, cx] of sides) {
       const t = m[side], tint = teamTint(t);
       const g = x.createRadialGradient(cx, cy, cs * 0.1, cx, cy, cs * 0.95);
@@ -498,15 +524,128 @@
     }
   }
 
+  // A goal in a live match takes the whole wall for a few seconds. The still parts (crest, GOAL,
+  // scorer, score) are drawn once; each frame only turns the rays and eases things in.
+  const CELEBRATE = 9;
+  function drawGoalCard(m, side, W, H, s) {
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const x = c.getContext('2d');
+    const team = m[side], tint = teamTint(team);
+    const cs = Math.round(W * 0.46);
+    const img = crest(team.logo, cs);
+    if (img) x.drawImage(img, Math.round(W / 2 - cs / 2), Math.round(H * 0.3 - cs / 2));
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    tracking(x, s * 0.02);
+    x.font = font('Poiret One', fitSize(x, 'GOAL', 'Poiret One', W * 0.86, s * 0.27));
+    x.shadowColor = tint; x.shadowBlur = s * 0.06;
+    x.fillStyle = IVORY;
+    x.fillText('GOAL', W / 2, H * 0.58);
+    x.shadowBlur = 0;
+    tracking(x, 0);
+    const ev = (m.events || []).filter((e) => e.side === side && e.kind !== 'red').pop();
+    if (ev) {
+      const who = `${(ev.who || '').replace(/^\p{Lu}\.\s*/u, '').toUpperCase()}${EVENT_MARK[ev.kind] || ''}`.trim();
+      tracking(x, s * 0.008);
+      x.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(x, who || team.name.toUpperCase(), 'Josefin Sans', W * 0.84, s * 0.075)));
+      x.fillStyle = GOLD_LIGHT;
+      x.fillText(who || team.name.toUpperCase(), W / 2, H * 0.71);
+      x.font = font('Josefin Sans', Math.max(MIN_TEXT, s * 0.045));
+      x.fillStyle = IVORY;
+      x.fillText(ev.min, W / 2, H * 0.71 + s * 0.08);
+      tracking(x, 0);
+    }
+    const line = `${m.home.abbr}  ${m.home.score}–${m.away.score}  ${m.away.abbr}`;
+    tracking(x, s * 0.01);
+    x.font = font('Josefin Light', fitSize(x, line, 'Josefin Light', W * 0.8, s * 0.1));
+    x.fillStyle = IVORY;
+    x.fillText(line, W / 2, H * 0.88);
+    tracking(x, 0);
+    return { canvas: c, tint, ready: !!img || !team.logo };
+  }
+
+  function goalTakeover(ctx, card, W, H, s, age) {
+    const { tint } = card;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    const cx = W / 2, cy = H * 0.3, r = Math.hypot(W, H);
+    // rays turning slowly out of the crest, in the scorer's colour
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(age * 0.25);
+    const rays = 24;
+    ctx.fillStyle = rgba(tint, 0.22);
+    for (let i = 0; i < rays; i += 2) {
+      const a0 = (i / rays) * Math.PI * 2, a1 = ((i + 1) / rays) * Math.PI * 2;
+      ctx.beginPath(); ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(a0) * r, Math.sin(a0) * r); ctx.lineTo(Math.cos(a1) * r, Math.sin(a1) * r);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, W * 0.7);
+    g.addColorStop(0, rgba(tint, 0.55));
+    g.addColorStop(1, rgba(tint, 0));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    // the card eases in with a little overshoot, then everything fades out at the end
+    const k = Math.min(1, age / 0.6);
+    const sc = 0.7 + 0.3 * (1 - Math.pow(1 - k, 3)) + 0.06 * Math.sin(Math.min(1, age / 0.9) * Math.PI);
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, age / 0.25) * Math.min(1, (CELEBRATE - age) / 0.8);
+    ctx.translate(W / 2, H / 2); ctx.scale(sc, sc); ctx.translate(-W / 2, -H / 2);
+    ctx.drawImage(card.canvas, 0, 0);
+    ctx.restore();
+    // a flash of the colour as the goal goes in
+    if (age < 0.5) {
+      ctx.fillStyle = rgba(tint, 0.6 * (1 - age / 0.5));
+      ctx.fillRect(0, 0, W, H);
+    }
+    frame(ctx, W, H);
+  }
+
+  // How long until a kickoff today: IN 2H 14M, IN 9M, or SOON.
+  function countdown(dateStr) {
+    const mins = Math.round((new Date(dateStr) - Date.now()) / 60000);
+    if (!(mins > 0)) return 'SOON';
+    return mins >= 60 ? `IN ${Math.floor(mins / 60)}H ${mins % 60}M` : `IN ${mins}M`;
+  }
+
   function scores(canvas, W, H) {
     const theme = THEMES.scores;
     const ctx = canvas.getContext('2d');
     const s = Math.min(W, H);
     let payload = null, failed = false, pages = [], pageIndex = 0, pageStart = 0, built = '';
     let hero = null, heroKey = '';
-    const stopFeed = feed('scores', (j) => { if (j && j.data) payload = j.data; failed = !j || (!j.ok && !j.data); });
+    // each match's last score, so a goal can be spotted (not on the first load), and the goals waiting to be shown
+    const seen = new Map(), goals = [];
+    let goal = null, goalAt = 0;
+    const onData = (data) => {
+      for (const league of data.leagues || []) {
+        for (const m of league.matches || []) {
+          const id = `${m.date}|${m.home.abbr}|${m.away.abbr}`;
+          const now = [Number(m.home.score) || 0, Number(m.away.score) || 0];
+          const was = seen.get(id);
+          if (was && m.state !== 'pre') {
+            if (now[0] > was[0]) goals.push({ m, side: 'home' });
+            if (now[1] > was[1]) goals.push({ m, side: 'away' });
+          }
+          seen.set(id, now);
+        }
+      }
+    };
+    const stopFeed = feed('scores', (j) => {
+      if (j && j.data) { payload = j.data; onData(j.data); }
+      failed = !j || (!j.ok && !j.data);
+    });
 
     const stop = animate((t) => {
+      if (!goal && goals.length) { const g = goals.shift(); goal = { ...g, card: drawGoalCard(g.m, g.side, W, H, s) }; goalAt = t; }
+      if (goal) {
+        if (!goal.card.ready && t - goalAt < 1.5) goal.card = drawGoalCard(goal.m, goal.side, W, H, s);  // the crest may still be loading
+        goalTakeover(ctx, goal.card, W, H, s, t - goalAt);
+        if (t - goalAt >= CELEBRATE) { goal = null; pageStart = t; }
+        return;
+      }
       backdrop(ctx, W, H);
       const hh = header(ctx, W, H, theme);
       if (!payload) { message(ctx, W, hh, H, failed ? 'The scores are unavailable just now' : 'Fetching the scores…'); return; }
@@ -557,6 +696,25 @@
       ctx.fillText(title, W / 2, hh + titleH * 0.38);
       tracking(ctx, 0);
       ctx.drawImage(hero, 0, Math.round(heroTop));
+      // two floodlight beams swinging slowly over the match (brighter while it's live)
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const beam = page.hero.state === 'in' ? 0.13 : 0.07;
+      for (const [fx, dir] of [[W * 0.04, 1], [W * 0.96, -1]]) {
+        const a = Math.PI / 2 - dir * (0.42 + 0.16 * Math.sin(t * 0.35 + (dir > 0 ? 0 : 2)));
+        const len = L.h * 1.2, spread = 0.13;
+        const g = ctx.createLinearGradient(fx, heroTop, fx + Math.cos(a) * len, heroTop + Math.sin(a) * len);
+        g.addColorStop(0, `rgba(255,248,230,${beam})`);
+        g.addColorStop(1, 'rgba(255,248,230,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(fx, heroTop);
+        ctx.lineTo(fx + Math.cos(a - spread) * len, heroTop + Math.sin(a - spread) * len);
+        ctx.lineTo(fx + Math.cos(a + spread) * len, heroTop + Math.sin(a + spread) * len);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
       if (page.hero.state === 'in') {
         // LIVE and the minute, pulsing under the score
         const label = `LIVE  ${page.hero.clock || page.hero.detail || ''}`.trim();
@@ -570,7 +728,7 @@
       } else {
         const d = new Date(page.hero.date);
         const st = page.hero.state !== 'pre' ? (page.hero.detail || 'FT').toUpperCase()
-          : d.toDateString() === new Date().toDateString() ? 'TODAY'
+          : d.toDateString() === new Date().toDateString() ? countdown(page.hero.date)
             : d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
         tracking(ctx, s * 0.01);
         ctx.font = font('Josefin Sans', Math.max(MIN_TEXT, fitSize(ctx, st, 'Josefin Sans', W * 0.22, s * 0.032)));

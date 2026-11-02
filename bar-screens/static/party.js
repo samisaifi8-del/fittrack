@@ -176,35 +176,81 @@
     });
   }
 
-  // The lobby: the game's name, how it works, how to join and who's in.
+  // The lobby: the game's name, how it works, a code to scan to join, and who's in. The words and
+  // the code are drawn once over a transparent layer; deco rays turn slowly behind them.
   function lobby(g, st) {
     const { ctx, k, W, H, s } = g;
     const list = (g.roster.players || []).map((p) => p.name);
-    const key = `lobby|${st.game}|${(st.lines || []).join('|')}|${g.roster.joinUrl}|${list.join(',')}|${st.note || ''}`;
-    ctx.drawImage(g.layer(key, (x) => {
-      const hh = base(g, x, null, g.bar);
-      let y = title(g, x, st.title.toUpperCase(), hh + H * 0.05, H * 0.27, 'Poiret One');
-      y += s * 0.04;
-      k.decoRule(x, W * 0.22, y, W * 0.56, s);
-      const few = (st.lines || []).length < 3; // two lines (Colours): spread out, no empty band
-      y += s * (few ? 0.12 : 0.08);
-      y = stack(g, x, y, (st.lines || []).map((l) => [l, 'Josefin Sans', Math.round(s * 0.058), k.IVORY, s * 0.008]));
-      y = Math.max(y + s * (few ? 0.12 : 0.05), H * (few ? 0.6 : 0.66));
-      y = stack(g, x, y, [['JOIN ON YOUR PHONE', 'Josefin Sans', Math.round(s * 0.047), k.MUTED, s * 0.01]]);
-      y = stack(g, x, y, joinLines(g, x, (g.roster.joinUrl || 'THE BAR WI-FI/PLAY').toUpperCase()));
+    const qr = g.roster.joinQr || null;
+    const key = `lobby|${st.game}|${(st.lines || []).join('|')}|${g.roster.joinUrl}|${qr ? qr.length : 0}|${list.join(',')}|${st.note || ''}`;
+    let qrBox = null;
+    const layer = g.layer(key, (x) => {
+      k.frame(x, W, H);
+      const hh = k.header(x, W, H, { name: g.bar });
+      let y = title(g, x, st.title.toUpperCase(), hh + H * 0.03, H * (qr ? 0.17 : 0.27), 'Poiret One');
       y += s * 0.03;
-      if (st.note) stack(g, x, y, [[st.note.toUpperCase(), 'Josefin Sans', Math.round(s * 0.047), k.GOLD_LIGHT]]);
+      k.decoRule(x, W * 0.22, y, W * 0.56, s);
+      y += s * 0.07;
+      y = stack(g, x, y, (st.lines || []).map((l) => [l, 'Josefin Sans', Math.round(s * (qr ? 0.05 : 0.058)), k.IVORY, s * 0.008]));
+      if (qr) {
+        // SCAN TO PLAY over the code, the address small under it for anyone typing
+        y += s * 0.04;
+        y = stack(g, x, y, [['SCAN TO PLAY', 'Josefin Sans', Math.round(s * 0.047), k.GOLD_LIGHT, s * 0.02]]);
+        const room = H - y - s * 0.2;
+        const size = Math.min(W * 0.46, room);
+        const n = qr.length + 4, cell = Math.max(2, Math.floor(size / n)), px = cell * n;
+        const left = Math.round(W / 2 - px / 2);
+        k.drawQR(x, qr, left, Math.round(y + s * 0.01), px);
+        qrBox = { x: left, y: Math.round(y + s * 0.01), w: px };
+        y += px + s * 0.04;
+        y = stack(g, x, y, [[(g.roster.joinUrl || '').toUpperCase(), 'Josefin Sans', MIN(g), k.MUTED, s * 0.006]]);
+      } else {
+        y = Math.max(y + s * 0.05, H * 0.66);
+        y = stack(g, x, y, [['JOIN ON YOUR PHONE', 'Josefin Sans', Math.round(s * 0.047), k.MUTED, s * 0.01]]);
+        y = stack(g, x, y, joinLines(g, x, (g.roster.joinUrl || 'THE BAR WI-FI/PLAY').toUpperCase()));
+      }
+      y += s * 0.015;
+      if (st.note) stack(g, x, y, [[st.note.toUpperCase(), 'Josefin Sans', Math.round(s * 0.045), k.GOLD_LIGHT]]);
       else if (list.length) {
         // names only break between names, so a separator never hangs at the end of a line
         x.textAlign = 'center';
         x.textBaseline = 'top';
-        const b = nameLines(g, x, list, W * 0.84, H - y - s * 0.07, 3, Math.round(s * 0.055));
+        const b = nameLines(g, x, list, W * 0.84, H - y - s * 0.06, 2, Math.round(s * 0.05));
         x.font = k.font('Josefin Sans', b.size);
         x.fillStyle = k.IVORY;
         b.lines.forEach((l, i) => x.fillText(l, W / 2, y + i * b.size * 1.2));
-      } else stack(g, x, y, [['NOBODY HAS JOINED YET', 'Josefin Sans', Math.round(s * 0.047), k.MUTED]]);
-    }), 0, 0);
+      } else stack(g, x, y, [['NOBODY HAS JOINED YET', 'Josefin Sans', Math.round(s * 0.045), k.MUTED]]);
+      x.canvas.qrBox = qrBox;
+    });
+    const t = Date.now() / 1000;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    // rays from below the wall, turning slowly
+    ctx.save();
+    ctx.translate(W / 2, H * 1.05);
+    ctx.rotate(Math.sin(t * 0.07) * 0.12);
+    const rays = 16, r = Math.hypot(W, H) * 1.1;
+    for (let i = 0; i < rays; i++) {
+      const a0 = Math.PI + (i / rays) * Math.PI, a1 = a0 + (Math.PI / rays) * 0.45;
+      ctx.fillStyle = k.rgba(k.GOLD, 0.07 + 0.04 * Math.sin(t * 0.5 + i * 0.8));
+      ctx.beginPath(); ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(a0) * r, Math.sin(a0) * r); ctx.lineTo(Math.cos(a1) * r, Math.sin(a1) * r);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+    ctx.drawImage(layer, 0, 0);
+    // a gold ring breathing round the code, so eyes find it
+    const box = layer.qrBox;
+    if (box) {
+      const p = 0.5 + 0.5 * Math.sin(t * 2);
+      ctx.strokeStyle = k.rgba(k.GOLD_LIGHT, 0.35 + 0.5 * p);
+      ctx.lineWidth = 2;
+      const o = 3 + p * 2;
+      ctx.strokeRect(box.x - o, box.y - o, box.w + o * 2, box.w + o * 2);
+    }
   }
+
+  const MIN = (g) => Math.max(7, Math.round(g.s * 0.03));
 
   // The join link, big enough to read across the room: one line, or the host over the path
   // when one line would come out small (BASEMENT.LOCAL / /PLAY).

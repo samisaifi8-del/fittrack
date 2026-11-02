@@ -1103,7 +1103,8 @@ class GameHub:
         game = self.store.state["channels"]["games"]["game"]
         players = sorted(self.players.values(), key=lambda p: p["slot"])
         on_wall = any(s["enabled"] and s.get("channel") in ("games",) + GAME_CHANNELS for s in self.store.state["screens"])
-        return {"type": "roster", "game": game, "joinUrl": self.join_url, "onWall": on_wall,
+        return {"type": "roster", "game": game, "joinUrl": self.join_url, "joinQr": qr_matrix(join_link(self.join_url)),
+                "onWall": on_wall,
                 "party": self.party is not None, "sips": self.sips_on(),
                 "players": [{"slot": p["slot"], "name": p["name"], "color": p["color"]} for p in players]}
 

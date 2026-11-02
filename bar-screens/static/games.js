@@ -30,7 +30,11 @@
       lastReport: '', reportAt: 0, pending: null,
     };
     g.off = opts.bus.on((m) => {
-      if (m.type === 'roster') { g.players = m.players || []; g.joinUrl = m.joinUrl || ''; }
+      if (m.type === 'roster') {
+        g.players = m.players || []; g.joinUrl = m.joinUrl || '';
+        const key = (m.joinQr || []).join('');
+        if (key !== g.qrKey) { g.qrKey = key; g.joinQr = m.joinQr || null; g.qrCanvas = null; }
+      }
       else if (m.type === 'input') g.inputs.push(m);
     });
     g.frame = (label) => {
@@ -79,6 +83,22 @@
     const lineSize = Math.max(8, Math.min(area.h * 0.075, s * 0.06));
     for (const line of lines) {
       if (!line) { y += lineSize * 0.5; continue; }
+      if (line.qr) {
+        // the code to scan, as big as the card has room for (drawn once, then stamped)
+        const room = Math.min(area.w * 0.52, area.y + area.h - y - lineSize * 1.6);
+        const n = g.joinQr.length + 4, cell = Math.floor(room / n);
+        if (cell >= 2) {
+          const px = cell * n;
+          if (!g.qrCanvas || g.qrCanvas.width !== px) {
+            g.qrCanvas = document.createElement('canvas');
+            g.qrCanvas.width = g.qrCanvas.height = px;
+            k.drawQR(g.qrCanvas.getContext('2d'), g.joinQr, 0, 0, px);
+          }
+          ctx.drawImage(g.qrCanvas, Math.round(area.x + area.w / 2 - px / 2), Math.round(y));
+          y += px + lineSize * 0.5;
+        }
+        continue;
+      }
       const [text, color] = Array.isArray(line) ? line : [line, k.IVORY];
       const b = k.fitWrapped(ctx, text, 'Cormorant', area.w - pad * 2, lineSize * 2.2, 2, 1.1);
       ctx.font = k.font('Cormorant', Math.min(b.size, lineSize));
@@ -90,6 +110,7 @@
 
   function joinLines(g) {
     const who = g.players.length ? g.players.map((p) => p.name).join('  ·  ') : 'Nobody has joined yet';
+    if (g.joinQr) return ['', ['Scan to play', g.k.GOLD_LIGHT], { qr: true }, [who, '#a59a84']];
     return ['', ['Join on your phone', g.k.GOLD], [g.joinUrl ? g.joinUrl.toUpperCase() : 'OPEN /PLAY ON THE BAR WI-FI', g.k.GOLD_LIGHT], '', [who, '#a59a84']];
   }
 

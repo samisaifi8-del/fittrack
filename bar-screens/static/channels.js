@@ -3264,6 +3264,6 @@
     },
     drawIdent,
     // Shared drawing kit, used by the games so they match the channels.
-    kit: { font, fitSize, fitWrapped, glow, rgba, roundRect, tracking, gold, decoRule, header, backdrop, sunburst, timeStr, THEMES, GOLD, GOLD_LIGHT, IVORY, MUTED },
+    kit: { font, fitSize, fitWrapped, glow, rgba, roundRect, tracking, gold, decoRule, header, backdrop, frame, sunburst, timeStr, drawQR, THEMES, GOLD, GOLD_LIGHT, IVORY, MUTED },
   };
 })();
